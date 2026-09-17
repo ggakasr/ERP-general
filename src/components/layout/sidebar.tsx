@@ -54,12 +54,17 @@ const GROUPS: { label: string; items: Item[] }[] = [
   },
 ]
 
-export function Sidebar() {
+export function Sidebar({ mobileOpen = false, onNavigate }: { mobileOpen?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname()
   const { canAny } = useSession()
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r bg-card lg:flex">
+    <aside
+      className={cn(
+        "w-60 shrink-0 flex-col border-r bg-card lg:static lg:flex",
+        mobileOpen ? "fixed inset-y-0 left-0 z-50 flex shadow-xl" : "hidden"
+      )}
+    >
       <div className="flex h-14 items-center gap-2 border-b px-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">E</div>
         <div className="leading-tight">
@@ -80,6 +85,7 @@ export function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={onNavigate}
                     className={cn(
                       "flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors",
                       active ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"

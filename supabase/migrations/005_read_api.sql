@@ -263,7 +263,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION api_dashboard() RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_me app_users := fn_current_user(); v_activity jsonb := '[]'::jsonb; a record; d documents; v_n int := 0;
+DECLARE v_me app_users := fn_current_user(); v_activity jsonb := '[]'::jsonb; a record; v_doc documents; v_n int := 0;
 BEGIN
   IF v_me.id IS NULL THEN RETURN fn_fail('UNAUTHENTICATED', 'Chưa đăng nhập'); END IF;
   FOR a IN
@@ -272,11 +272,11 @@ BEGIN
     ORDER BY da.created_at DESC LIMIT 150
   LOOP
     EXIT WHEN v_n >= 15;
-    SELECT * INTO d FROM documents WHERE id = a.document_id;
-    CONTINUE WHEN NOT fn_doc_in_scope(v_me.id, d, d.doc_type, 'VIEW');
+    SELECT * INTO v_doc FROM documents WHERE id = a.document_id;
+    CONTINUE WHEN NOT fn_doc_in_scope(v_me.id, v_doc, v_doc.doc_type, 'VIEW');
     v_n := v_n + 1;
-    v_activity := v_activity || jsonb_build_object('document_id', d.id, 'number', d.number, 'doc_type', d.doc_type,
-      'action', a.action, 'label', coalesce((SELECT label FROM state_transitions WHERE doc_type = d.doc_type AND action = a.action LIMIT 1),
+    v_activity := v_activity || jsonb_build_object('document_id', v_doc.id, 'number', v_doc.number, 'doc_type', v_doc.doc_type,
+      'action', a.action, 'label', coalesce((SELECT label FROM state_transitions st WHERE st.doc_type = v_doc.doc_type AND st.action = a.action LIMIT 1),
                                           CASE a.action WHEN 'create' THEN 'Tạo chứng từ' ELSE a.action END),
       'to_status', a.to_status, 'user_name', a.full_name, 'department_name', a.dept, 'sod_role', a.sod_role, 'created_at', a.created_at);
   END LOOP;

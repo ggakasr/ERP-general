@@ -4,7 +4,8 @@
 //   node scripts/db.mjs seed           load demo data (supabase/seed/seed.sql)
 //   node scripts/db.mjs reset          drop app objects, migrate, seed
 //   node scripts/db.mjs sql "<query>"  run an ad-hoc query and print rows
-//   node scripts/db.mjs file <path>    run a SQL file (e.g. re-apply CREATE OR REPLACE functions)
+//   node scripts/db.mjs file <path>    run a SQL file
+//   node scripts/db.mjs functions      re-apply every CREATE OR REPLACE FUNCTION from 004/005 + grants (dev hot-patch)
 // Connection string: SUPABASE_DB_URL in .env.local (never commit it).
 import pg from 'pg'
 import { readFileSync, readdirSync, existsSync } from 'fs'
@@ -67,6 +68,29 @@ async function seed() {
   console.table(rows)
 }
 
+async function functions() {
+  const dir = join(root, 'supabase', 'migrations')
+  for (const file of ['004_engine.sql', '005_read_api.sql']) {
+    const sql = readFileSync(join(dir, file), 'utf8')
+    const blocks = sql.split(/\n(?=CREATE OR REPLACE FUNCTION )/).filter((b) => b.startsWith('CREATE OR REPLACE FUNCTION '))
+    for (const b of blocks) {
+      const body = b.slice(0, b.indexOf('$$;') + 3)
+      await client.query(body)
+    }
+    console.log(`→ ${file}: ${blocks.length} functions`)
+  }
+  await client.query(`
+    REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon, authenticated;
+    DO $$ DECLARE f record; BEGIN
+      FOR f IN SELECT p.oid::regprocedure AS sig FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+               WHERE n.nspname = 'public' AND p.proname LIKE 'api\\_%' LOOP
+        EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated', f.sig);
+      END LOOP;
+    END $$;
+    NOTIFY pgrst, 'reload schema';`)
+  console.log('→ grants refreshed')
+}
+
 async function reset() {
   console.log('→ dropping application objects in schema public')
   await client.query(`
@@ -90,6 +114,7 @@ try {
   if (cmd === 'migrate') await migrate()
   else if (cmd === 'seed') await seed()
   else if (cmd === 'reset') { await reset(); await migrate(); await seed() }
+  else if (cmd === 'functions') await functions()
   else if (cmd === 'file') {
     await client.query(readFileSync(arg, 'utf8'))
     console.log('ok', arg)

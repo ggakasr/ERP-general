@@ -7,6 +7,25 @@
 
 ---
 
+## 0. TRẠNG THÁI TRIỂN KHAI THỰC TẾ (đọc trước)
+
+Kiến trúc tham chiếu bên dưới (NestJS + Prisma monorepo) **chưa được dùng**. Hệ thống đang chạy là:
+
+- **Next.js 14 (App Router) + Supabase (Postgres + Auth) + Vercel** — xem `docs/adr/0001-supabase-document-engine.md`.
+- Toàn bộ LOGIC (state machine, SoD, phân quyền 3 tầng, audit, sổ cái, kho FIFO, 3-way match) nằm trong
+  PostgreSQL: `supabase/migrations/002–006`. Frontend chỉ gọi RPC `api_*`; không truy cập trực tiếp bảng nghiệp vụ.
+- Bản đồ hệ thống: `docs/app-map/001-system-overview.md`. Kịch bản demo & tài khoản: `docs/demo-guide.md`.
+- Quy tắc khi sửa:
+  - Thêm loại chứng từ / chuyển trạng thái / quyền / bàn giao → sửa **dữ liệu cấu hình** trong `003_config.sql`
+    (hoặc migration mới), rồi thêm cấu hình UI trong `src/lib/doc-config.ts`.
+  - Side effect của một thao tác → `fn_apply_effects` trong `004_engine.sql`; roll-up sau khi đổi trạng thái → `fn_after_effects`.
+  - Không cấp quyền SELECT/INSERT/UPDATE bảng nghiệp vụ cho `authenticated`; mọi đọc phải qua hàm có `fn_doc_in_scope` + `fn_mask`.
+  - Sửa hàm trong 004/005 khi dev: `node scripts/db.mjs functions`. Thay đổi schema: tạo migration mới `007_*.sql`.
+  - Trước commit: `npm run typecheck`, `npx next lint`, `npm run test:acceptance` (T3.1–T3.4 phải PASS).
+- Kiểm thử acceptance: `tests/acceptance.test.mjs` (49 test, chạy trong transaction rồi rollback, ghi kết quả vào BM-14).
+
+---
+
 ## MỤC LỤC
 
 1. [Tổng quan dự án](#1-tổng-quan-dự-án)

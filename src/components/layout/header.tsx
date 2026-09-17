@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Bell, LogOut, Search } from "lucide-react"
+import { Bell, LogOut, Menu, Search } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { useSession } from "@/lib/session"
 import type { DocRef } from "@/lib/types"
@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/shared/bits"
 
 interface Notification { id: string; title: string; body: string | null; document_id: string | null; is_read: boolean; created_at: string }
 
-export function Header() {
+export function Header({ onMenu }: { onMenu?: () => void }) {
   const router = useRouter()
   const { me, unread, setUnread, signOut } = useSession()
   const [q, setQ] = useState("")
@@ -71,6 +71,9 @@ export function Header() {
 
   return (
     <header ref={boxRef} className="flex h-14 shrink-0 items-center gap-3 border-b bg-card px-4 lg:px-6">
+      <button onClick={onMenu} className="rounded-md p-2 hover:bg-accent lg:hidden" aria-label="Mở menu">
+        <Menu className="h-4 w-4" />
+      </button>
       <div className="relative w-full max-w-md">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input

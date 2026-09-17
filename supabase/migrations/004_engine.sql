@@ -13,7 +13,7 @@ RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION fn_money(p numeric) RETURNS text LANGUAGE sql IMMUTABLE AS $$
-  SELECT to_char(round(coalesce(p, 0)), 'FM999G999G999G999G990') || ' ₫'
+  SELECT replace(to_char(round(coalesce(p, 0)), 'FM999G999G999G999G990'), ',', '.') || ' ₫'
 $$;
 
 CREATE OR REPLACE FUNCTION fn_current_user() RETURNS app_users
@@ -264,6 +264,11 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   LIMIT 1
 $$;
 
+CREATE OR REPLACE FUNCTION fn_sod_label(p_role text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE p_role WHEN 'REQUESTER' THEN 'Người đề xuất' WHEN 'APPROVER' THEN 'Người phê duyệt'
+                     WHEN 'EXECUTOR' THEN 'Người thực hiện' WHEN 'AUDITOR' THEN 'Người kiểm tra' ELSE p_role END
+$$;
+
 -- Checks and LOGS (T3.4) every SoD evaluation. Returns error text when blocked.
 CREATE OR REPLACE FUNCTION fn_sod_enforce(p_doc_id uuid, p_user uuid, p_role text, p_action text) RETURNS text
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -279,8 +284,8 @@ BEGIN
   END IF;
   SELECT full_name INTO v_name FROM app_users WHERE id = p_user;
   v_msg := format('Vi phạm SoD (%s): %s đã là %s trên %s nên không thể làm %s cho %s.',
-    v_conflict->>'rule', v_name, v_conflict->>'existing_role', v_conflict->>'document_number',
-    p_role, v_doc.number);
+    v_conflict->>'rule', v_name, fn_sod_label(v_conflict->>'existing_role'), v_conflict->>'document_number',
+    fn_sod_label(p_role), v_doc.number);
   INSERT INTO sod_check_log (document_id, doc_type, document_number, action, user_id, attempted_role,
                              conflicting_role, conflicting_document_id, result, detail)
   VALUES (p_doc_id, v_doc.doc_type, v_doc.number, p_action, p_user, p_role,
@@ -1066,6 +1071,23 @@ BEGIN
   END IF;
 END $$;
 
+-- is there anything left to derive from the parent? (quantities / open amount)
+CREATE OR REPLACE FUNCTION fn_child_remaining(p_doc documents, p_child text) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT CASE p_doc.doc_type || '>' || p_child
+    WHEN 'PR>PO'   THEN EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = p_doc.id AND l.quantity > fn_consumed(l.id, 'PO'))
+    WHEN 'PO>GRN'  THEN EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = p_doc.id AND l.quantity > fn_consumed(l.id, 'GRN'))
+    WHEN 'PO>SINV' THEN EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = p_doc.id AND fn_consumed(l.id, 'GRN', ARRAY['STORED']) > fn_consumed(l.id, 'SINV'))
+    WHEN 'QUOT>SO' THEN EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = p_doc.id AND l.quantity > fn_consumed(l.id, 'SO'))
+    WHEN 'SO>DN'   THEN EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = p_doc.id AND l.quantity > fn_consumed(l.id, 'DN'))
+    WHEN 'SO>INV'  THEN EXISTS (SELECT 1 FROM document_lines l WHERE l.document_id = p_doc.id AND fn_consumed(l.id, 'DN', ARRAY['SHIPPED']) > fn_consumed(l.id, 'INV'))
+    WHEN 'SINV>PMT' THEN p_doc.amount > fn_children_amount(p_doc.id, 'PMT')
+    WHEN 'PAYROLL>PMT' THEN p_doc.amount > fn_children_amount(p_doc.id, 'PMT')
+    WHEN 'ASSET>PMT' THEN NOT coalesce((p_doc.data->>'opening')::boolean, false) AND p_doc.amount > fn_children_amount(p_doc.id, 'PMT')
+    WHEN 'INV>RCPT' THEN p_doc.amount > fn_children_amount(p_doc.id, 'RCPT')
+    ELSE true END
+$$;
+
 -- ============================================================
 -- AVAILABLE ACTIONS for a user on a document
 -- ============================================================
@@ -1083,7 +1105,7 @@ BEGIN
     END IF;
   END LOOP;
   FOR r IN SELECT * FROM doc_child_rules WHERE parent_type = p_doc.doc_type AND p_doc.status = ANY(parent_statuses) LOOP
-    IF fn_perm_scope(p_user, r.child_type, 'CREATE') > 0 THEN
+    IF fn_perm_scope(p_user, r.child_type, 'CREATE') > 0 AND fn_child_remaining(p_doc, r.child_type) THEN
       v_res := v_res || jsonb_build_object('kind', 'create', 'child_type', r.child_type, 'label', r.label, 'style', 'primary',
         'sod_conflict', fn_sod_find_conflict(p_doc.id, p_user, (SELECT create_sod_role FROM doc_types WHERE code = r.child_type)));
     END IF;
