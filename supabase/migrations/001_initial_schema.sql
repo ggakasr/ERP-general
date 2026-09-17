@@ -32,7 +32,7 @@ CREATE TABLE users (
   position VARCHAR(255),
   roles JSONB DEFAULT '[]',
   status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED')),
-  auth_user_id UUID REFERENCES auth.users(id),
+  auth_user_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
