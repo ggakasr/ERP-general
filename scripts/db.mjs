@@ -4,6 +4,7 @@
 //   node scripts/db.mjs seed           load demo data (supabase/seed/seed.sql)
 //   node scripts/db.mjs reset          drop app objects, migrate, seed
 //   node scripts/db.mjs sql "<query>"  run an ad-hoc query and print rows
+//   node scripts/db.mjs file <path>    run a SQL file (e.g. re-apply CREATE OR REPLACE functions)
 // Connection string: SUPABASE_DB_URL in .env.local (never commit it).
 import pg from 'pg'
 import { readFileSync, readdirSync, existsSync } from 'fs'
@@ -89,7 +90,10 @@ try {
   if (cmd === 'migrate') await migrate()
   else if (cmd === 'seed') await seed()
   else if (cmd === 'reset') { await reset(); await migrate(); await seed() }
-  else if (cmd === 'sql') {
+  else if (cmd === 'file') {
+    await client.query(readFileSync(arg, 'utf8'))
+    console.log('ok', arg)
+  } else if (cmd === 'sql') {
     const res = await client.query(arg)
     const out = Array.isArray(res) ? res.map((r) => r.rows) : res.rows
     console.log(JSON.stringify(out, null, 2))

@@ -367,7 +367,7 @@ BEGIN
     SELECT l.parent_id, u.depth + 1 FROM document_links l JOIN up u ON l.child_id = u.id
     WHERE u.depth < 12 AND l.link_type IN ('SOURCE','REFERENCE','EXCEPTION')
   )
-  SELECT jsonb_agg(jsonb_build_object('id', x.id, 'number', x.number, 'doc_type', x.doc_type, 'depth', x.depth) ORDER BY x.depth)
+  SELECT jsonb_agg(jsonb_build_object('id', x.id, 'number', x.number, 'doc_type', x.doc_type, 'depth', x.depth) ORDER BY x.depth, x.doc_type = 'BUDGET')
   INTO v_path FROM (SELECT DISTINCT ON (dd.id) dd.id, dd.number, dd.doc_type, u.depth FROM up u JOIN documents dd ON dd.id = u.id ORDER BY dd.id, u.depth) x;
 
   FOR d IN SELECT doc.* FROM documents doc WHERE doc.id IN (SELECT fn_chain_ids(p_id)) ORDER BY doc.created_at LOOP

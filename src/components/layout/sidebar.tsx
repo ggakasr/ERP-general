@@ -2,133 +2,99 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
 import {
-  LayoutDashboard, ShoppingCart, ShoppingBag, Package, Factory,
-  Users, Landmark, Building2, Headphones, Settings, BarChart3,
-  CalendarClock, Shield, FileSearch, AlertTriangle, ChevronDown,
-  LogOut,
+  AlertTriangle, BarChart3, Building2, CalendarClock, ClipboardCheck, Factory, FileSearch, Headphones,
+  Inbox, Landmark, LayoutDashboard, Package, Route, Settings, Shield, ShoppingBag, ShoppingCart, Users,
 } from "lucide-react"
-import { useERPStore } from "@/lib/store"
-import { useState } from "react"
+import { useSession } from "@/lib/session"
+import { cn } from "@/lib/utils"
 
-const MODULES = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { divider: true, label: "Nghiep vu" },
-  { name: "Ke hoach & Ngan sach", href: "/planning", icon: CalendarClock },
-  { name: "Ban hang", href: "/sales", icon: ShoppingCart },
-  { name: "Mua hang", href: "/procurement", icon: ShoppingBag },
-  { name: "Kho", href: "/inventory", icon: Package },
-  { name: "San xuat", href: "/production", icon: Factory },
-  { name: "Nhan su & Luong", href: "/hr", icon: Users },
-  { name: "Tai chinh", href: "/finance", icon: Landmark },
-  { name: "Tai san", href: "/assets", icon: Building2 },
-  { name: "Dich vu KH", href: "/customer-service", icon: Headphones },
-  { divider: true, label: "Kiem soat" },
-  { name: "Kiem soat noi bo", href: "/controls", icon: Shield },
-  { name: "Audit Trail", href: "/audit-trail", icon: FileSearch },
-  { name: "Ngoai le", href: "/exceptions", icon: AlertTriangle },
-  { divider: true, label: "Bao cao & He thong" },
-  { name: "Bao cao", href: "/reports", icon: BarChart3 },
-  { name: "Quan tri", href: "/admin", icon: Settings },
-] as const
+interface Item {
+  name: string
+  href: string
+  icon: React.ElementType
+  /** visible if user has VIEW on any of these resources (empty = everyone) */
+  resources: string[]
+  flow?: string
+}
+
+const GROUPS: { label: string; items: Item[] }[] = [
+  {
+    label: "Làm việc",
+    items: [
+      { name: "Tổng quan", href: "/dashboard", icon: LayoutDashboard, resources: [] },
+      { name: "Việc cần làm", href: "/tasks", icon: Inbox, resources: [] },
+      { name: "Truy vết chứng từ", href: "/trace", icon: Route, resources: [] },
+    ],
+  },
+  {
+    label: "Nghiệp vụ",
+    items: [
+      { name: "Kế hoạch & Ngân sách", href: "/planning", icon: CalendarClock, resources: ["BUDGET"], flow: "L1" },
+      { name: "Bán hàng", href: "/sales", icon: ShoppingCart, resources: ["QUOT", "SO", "INV"], flow: "L2" },
+      { name: "Mua hàng", href: "/procurement", icon: ShoppingBag, resources: ["PR", "PO", "SINV"], flow: "L3" },
+      { name: "Kho vận", href: "/inventory", icon: Package, resources: ["GRN", "DN", "ST", "ADJ", "INVENTORY"], flow: "L4" },
+      { name: "Sản xuất", href: "/production", icon: Factory, resources: ["WO"], flow: "L5" },
+      { name: "Nhân sự & Lương", href: "/hr", icon: Users, resources: ["HIRE", "PAYROLL", "EMPLOYEE"], flow: "L6" },
+      { name: "Tài chính & Kế toán", href: "/finance", icon: Landmark, resources: ["JV", "PMT", "RCPT", "SINV", "BANKREC", "GL"], flow: "L7" },
+      { name: "Tài sản", href: "/assets", icon: Building2, resources: ["ASSET"], flow: "L8" },
+      { name: "Dịch vụ khách hàng", href: "/customer-service", icon: Headphones, resources: ["TICKET"], flow: "L9" },
+    ],
+  },
+  {
+    label: "Kiểm soát & Báo cáo",
+    items: [
+      { name: "Ngoại lệ", href: "/exceptions", icon: AlertTriangle, resources: ["EXC"] },
+      { name: "Kiểm soát nội bộ", href: "/controls", icon: Shield, resources: ["SOD_LOG", "HANDOFF", "AUDIT_TRAIL"] },
+      { name: "Audit trail", href: "/audit-trail", icon: FileSearch, resources: ["AUDIT_TRAIL"] },
+      { name: "Báo cáo & KPI", href: "/reports", icon: BarChart3, resources: ["GL", "KPI", "REPORT_OPS", "BUDGET"], flow: "L11" },
+      { name: "Nghiệm thu (BM-14)", href: "/acceptance", icon: ClipboardCheck, resources: [] },
+      { name: "Quản trị hệ thống", href: "/admin", icon: Settings, resources: ["USER_ADMIN", "ACCESS_REVIEW", "MDC"], flow: "L10" },
+    ],
+  },
+]
 
 export function Sidebar() {
   const pathname = usePathname()
-  const currentUser = useERPStore((s) => s.currentUser)
-  const setCurrentUser = useERPStore((s) => s.setCurrentUser)
-  const [collapsed, setCollapsed] = useState(false)
+  const { canAny } = useSession()
 
   return (
-    <aside
-      className={cn(
-        "flex flex-col border-r bg-card transition-all duration-200",
-        collapsed ? "w-16" : "w-64"
-      )}
-    >
-      <div className="flex h-14 items-center border-b px-4">
-        {!collapsed && (
-          <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
-              E
-            </div>
-            <span>ERP General</span>
-          </Link>
-        )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className={cn(
-            "ml-auto rounded-md p-1 hover:bg-accent",
-            collapsed && "mx-auto"
-          )}
-        >
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 transition-transform",
-              collapsed ? "rotate-[-90deg]" : "rotate-90"
-            )}
-          />
-        </button>
+    <aside className="hidden w-60 shrink-0 flex-col border-r bg-card lg:flex">
+      <div className="flex h-14 items-center gap-2 border-b px-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">E</div>
+        <div className="leading-tight">
+          <p className="text-sm font-semibold">ERP General</p>
+          <p className="text-[11px] text-muted-foreground">11 luồng nghiệp vụ</p>
+        </div>
       </div>
-
-      <nav className="flex-1 overflow-y-auto p-2">
-        {MODULES.map((item, i) => {
-          if ("divider" in item) {
-            if (collapsed) return <div key={i} className="my-2 border-t" />
-            return (
-              <div key={i} className="mt-4 mb-1 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                {item.label}
-              </div>
-            )
-          }
-
-          const isActive = item.href === "/dashboard"
-            ? pathname === "/dashboard"
-            : pathname.startsWith(item.href)
-
+      <nav className="flex-1 space-y-4 overflow-y-auto p-2">
+        {GROUPS.map((g) => {
+          const items = g.items.filter((i) => i.resources.length === 0 || canAny(i.resources, "VIEW"))
+          if (!items.length) return null
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                isActive
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
-              title={collapsed ? item.name : undefined}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>{item.name}</span>}
-            </Link>
+            <div key={g.label}>
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{g.label}</p>
+              {items.map((item) => {
+                const active = pathname === item.href || pathname.startsWith(item.href + "/")
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors",
+                      active ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 truncate">{item.name}</span>
+                    {item.flow && <span className="text-[10px] text-muted-foreground/70">{item.flow}</span>}
+                  </Link>
+                )
+              })}
+            </div>
           )
         })}
       </nav>
-
-      {currentUser && (
-        <div className="border-t p-3">
-          <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
-              {currentUser.fullName.split(" ").map((n) => n[0]).join("").slice(-2)}
-            </div>
-            {!collapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{currentUser.fullName}</p>
-                <p className="text-xs text-muted-foreground truncate">{currentUser.position}</p>
-              </div>
-            )}
-            {!collapsed && (
-              <button
-                onClick={() => setCurrentUser(null)}
-                className="rounded-md p-1 hover:bg-accent"
-                title="Dang xuat"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
     </aside>
   )
 }
