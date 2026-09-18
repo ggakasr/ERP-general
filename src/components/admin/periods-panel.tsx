@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Info } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { useSession } from "@/lib/session"
 import { statusLabel } from "@/lib/labels"
@@ -62,13 +61,6 @@ export function PeriodsPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <div className="space-y-1">
-          <p><b>Đang mở</b>: mọi chứng từ được ghi sổ vào kỳ. <b>Khóa sơ bộ</b>: chỉ cho phép bút toán điều chỉnh (JV) để rà soát cuối kỳ. <b>Khóa sổ</b>: chặn mọi ghi sổ và không thể mở lại.</p>
-          <p>Quy trình đóng kỳ (T4.11): Khóa sơ bộ → Rà soát &amp; điều chỉnh → Khóa sổ → Lập báo cáo. Ghi sổ vào kỳ đã khóa bị chặn (T1.9).</p>
-        </div>
-      </div>
       <TableShell>
         <thead>
           <HeadRow>

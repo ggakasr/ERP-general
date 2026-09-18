@@ -82,7 +82,7 @@ export function ProductProfitPanel() {
 
   useEffect(() => { load() }, [load])
 
-  if (!allowed) return <NoPermission>Báo cáo lãi gộp theo sản phẩm/khách hàng yêu cầu quyền xem Sổ cái (GL).</NoPermission>
+  if (!allowed) return <NoPermission>Báo cáo lãi gộp theo sản phẩm/khách hàng yêu cầu quyền xem Sổ cái.</NoPermission>
 
   const rows = view === "product" ? data?.by_product || [] : data?.by_customer || []
   const opts = periods.length ? periods : [from]
@@ -97,10 +97,6 @@ export function ProductProfitPanel() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Doanh thu tính theo hóa đơn bán hàng đã phát hành (TK 511); giá vốn tính theo lô FIFO đã xuất giao (TK 632) trong cùng kỳ —
-        khớp với Báo cáo tài chính. Việc theo dõi &amp; cải thiện biên lợi nhuận theo sản phẩm/khách hàng là việc của <b>Kế toán trưởng và CFO</b>.
-      </p>
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Từ kỳ" className="w-32">
           <Select value={from} onChange={(e) => { setFrom(e.target.value); if (e.target.value > to) setTo(e.target.value) }}>

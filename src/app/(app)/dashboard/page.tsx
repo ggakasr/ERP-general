@@ -5,7 +5,7 @@ import Link from "next/link"
 import { ArrowRight, Plus, ShieldAlert } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { DOC_TYPES, MODULES } from "@/lib/doc-config"
-import { SCOPE_LABELS, SOD_LABELS } from "@/lib/labels"
+import { SCOPE_LABELS } from "@/lib/labels"
 import { useSession } from "@/lib/session"
 import type { DocRef } from "@/lib/types"
 import { cn, formatDateTime, formatMoney, formatNumber } from "@/lib/utils"
@@ -139,7 +139,6 @@ export default function DashboardPage() {
             <CardContent className="grid grid-cols-2 gap-2">
               {MODULES.filter((m) => m.docTypes.some((t) => can(t, "VIEW"))).map((m) => (
                 <Link key={m.key} href={m.href} className="rounded-md border p-2 hover:bg-accent">
-                  <p className="text-xs text-muted-foreground">{m.flow}</p>
                   <p className="text-sm font-medium">{m.title}</p>
                   <p className="text-xs tabular-nums text-muted-foreground">{dash?.module_counts?.[m.key] ?? 0} chứng từ</p>
                 </Link>
@@ -163,7 +162,6 @@ export default function DashboardPage() {
                   )
                 })}
               <Link href="/me" className="block pt-1 text-primary hover:underline">Xem đầy đủ quyền hạn →</Link>
-              <p className="pt-2 text-muted-foreground">Vai trò SoD: {Object.values(SOD_LABELS).join(" ≠ ")}</p>
             </CardContent>
           </Card>
         </div>

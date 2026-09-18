@@ -30,9 +30,6 @@ export function DataDictionaryPanel() {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Từ điển dữ liệu thống nhất (ĐK6): mỗi thuật ngữ có đúng một định nghĩa dùng chung cho mọi phân hệ, kèm kiểu dữ liệu và các bảng sử dụng.
-      </p>
       <div className="flex items-center gap-2">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

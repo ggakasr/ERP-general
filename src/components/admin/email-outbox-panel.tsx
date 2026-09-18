@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Info, RefreshCw, Send } from "lucide-react"
+import { RefreshCw, Send } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { cn, formatDateTime } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -58,18 +58,6 @@ export function EmailOutboxPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <div className="space-y-1">
-          <p>
-            Mọi thông báo trong ứng dụng cũng được đưa vào hàng đợi email này. Nếu đã cấu hình nhà cung cấp
-            (biến môi trường <code className="rounded bg-white px-1">RESEND_API_KEY</code>), thư sẽ được gửi thật; nếu chưa, thư được đánh dấu
-            <b> Mô phỏng</b> để vẫn thấy được nội dung sẽ gửi.
-          </p>
-          <p>Hàng đợi được xử lý tự động 1 lần/ngày lúc 3h sáng (Vercel Cron — giới hạn của gói miễn phí), hoặc bấm &quot;Gửi ngay&quot; bên dưới / mở chuông thông báo để xử lý ngay.</p>
-        </div>
-      </div>
-
       <div className="flex flex-wrap items-center gap-2">
         {Object.entries(summary).map(([k, v]) => (
           <span key={k} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset", STATUS_CLASS[k])}>

@@ -60,8 +60,8 @@ export function OverviewTab() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Kiểm tra SoD đạt" value={data.sod.passed} tone="good" hint="Lượt kiểm tra được phép" />
-        <Stat label="Vi phạm SoD bị chặn" value={data.sod.blocked} tone={data.sod.blocked > 0 ? "warn" : "default"} hint="Đã ghi log (T3.4)" />
+        <Stat label="Kiểm tra SoD đạt" value={data.sod.passed} tone="good" />
+        <Stat label="Vi phạm SoD bị chặn" value={data.sod.blocked} tone={data.sod.blocked > 0 ? "warn" : "default"} />
         <Stat label="Tổng chứng từ" value={data.documents_total} hint={`${data.actions_total} lượt thao tác`} />
         <Stat label="Bản ghi audit trail" value={data.audit_total} hint={`${data.audit_24h} trong 24 giờ qua`} />
         <Stat label="Bàn giao" value={data.handoffs.total} hint={`${data.handoffs.cross_department} liên phòng ban`} />
@@ -77,7 +77,7 @@ export function OverviewTab() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Ngoại lệ theo trạng thái (BM-11)</CardTitle>
+            <CardTitle className="text-base">Ngoại lệ theo trạng thái</CardTitle>
           </CardHeader>
           <CardContent>
             {excTotal === 0 ? (
@@ -101,7 +101,7 @@ export function OverviewTab() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Chứng từ mồ côi (T3.8)</CardTitle>
+            <CardTitle className="text-base">Chứng từ mồ côi</CardTitle>
             <p className="text-xs text-muted-foreground">
               Phiếu nhập kho, hóa đơn, phiếu chi/thu, phiếu xuất giao hàng không liên kết tới chứng từ nguồn.
             </p>
@@ -131,8 +131,6 @@ export function OverviewTab() {
           <CardTitle className="text-base">Quyền chồng lấn theo vai trò</CardTitle>
           <p className="text-xs text-muted-foreground">
             Người dùng có vai trò cấp từ 2 quyền trở lên trong nhóm Tạo / Duyệt / Thực hiện trên cùng một loại chứng từ.
-            Đây không phải vi phạm: SoD được kiểm soát ở mức <b>từng giao dịch</b> — cùng một người không thể vừa đề xuất,
-            vừa duyệt, vừa thực hiện trên cùng một chứng từ (T3.1–T3.3).
           </p>
         </CardHeader>
         <CardContent>
@@ -256,9 +254,6 @@ export function SodLogTab() {
           </Button>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Mọi lượt kiểm tra tách biệt nhiệm vụ đều được ghi lại, kể cả khi đạt (T3.4). Lượt bị chặn đồng thời được ghi vào audit trail với hành động SOD_VIOLATION.
-      </p>
       {error && <ErrorBox message={error.message} />}
       <DataTable
         rows={rows}
@@ -398,9 +393,6 @@ export function HandoffsTab() {
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Mỗi lần chứng từ chuyển sang trạng thái cần bộ phận khác xử lý, hệ thống tự tạo bản ghi bàn giao theo bản đồ BM-04 (T3.9).
-      </p>
       {error && <ErrorBox message={error.message} />}
       <DataTable
         rows={visible}

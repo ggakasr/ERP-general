@@ -169,7 +169,6 @@ export function DocTable({
         </div>
       </div>
 
-      {cfg.hint && !compact && <p className="text-xs text-muted-foreground">{cfg.hint}</p>}
       {error && <ErrorBox message={error} />}
 
       <div className="overflow-x-auto rounded-lg border bg-card">

@@ -106,7 +106,7 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
 
       <div className="ml-auto flex items-center gap-2">
         <span className="hidden rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 md:inline">
-          Supabase · {user.branch_code}
+          {user.branch_code}
         </span>
 
         <div className="relative">

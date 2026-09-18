@@ -44,7 +44,7 @@ export function DocLink({ id, number, canView = true, className }: { id: string;
 
 export function Masked({ label = "Ẩn theo quyền" }: { label?: string }) {
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="Trường này bị ẩn theo ma trận phân quyền (BM-12)">
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="Trường này bị ẩn theo phân quyền của bạn">
       <Lock className="h-3 w-3" />
       {label}
     </span>

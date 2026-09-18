@@ -18,10 +18,7 @@ export default function TasksPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      <PageHeader
-        title="Việc cần làm"
-        subtitle="Các chứng từ trong phạm vi dữ liệu của bạn đang chờ một thao tác mà vai trò của bạn được phép thực hiện (duyệt, thực hiện, lập chứng từ tiếp theo…)."
-      />
+      <PageHeader title="Việc cần làm" />
       {error && <ErrorBox message={error} />}
       {rows && rows.length > 0 && (
         <div className="flex flex-wrap gap-1">
@@ -34,9 +31,6 @@ export default function TasksPage() {
         </div>
       )}
       <InboxList rows={filtered} onReload={reload} />
-      <p className="text-xs text-muted-foreground">
-        Việc có biểu tượng khiên cam là thao tác sẽ bị chặn bởi SoD vì bạn đã giữ vai trò xung đột trên cùng chuỗi chứng từ — cần người khác xử lý.
-      </p>
     </div>
   )
 }

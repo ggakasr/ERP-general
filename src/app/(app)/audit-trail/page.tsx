@@ -162,7 +162,6 @@ export default function AuditTrailPage() {
     <div className="mx-auto max-w-7xl space-y-4">
       <PageHeader
         title="Audit trail"
-        subtitle="Nhật ký mọi thay đổi dữ liệu kèm giá trị trước/sau và người thực hiện (ĐK4)."
         actions={
           <>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={load} title="Tải lại">
@@ -177,9 +176,7 @@ export default function AuditTrailPage() {
 
       <div className="flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
         <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <span>
-          Bảng audit_trail là append-only: trigger chặn mọi UPDATE/DELETE (T2.9, T2.10). Mọi lượt vi phạm SoD bị chặn cũng được ghi tại đây (T3.4).
-        </span>
+        <span>Nhật ký này không thể sửa hoặc xóa.</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

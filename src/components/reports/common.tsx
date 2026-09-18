@@ -11,7 +11,7 @@ export function NoPermission({ children }: { children?: React.ReactNode }) {
       <ShieldOff className="mt-0.5 h-5 w-5 shrink-0" />
       <div>
         <p className="font-medium text-foreground">Bạn chưa được cấp quyền xem nội dung này</p>
-        <p className="mt-1">{children || "Quyền truy cập được quản lý theo ma trận phân quyền 3 tầng (BM-12). Liên hệ quản trị hệ thống nếu bạn cần quyền."}</p>
+        <p className="mt-1">{children || "Liên hệ quản trị hệ thống nếu bạn cần quyền truy cập."}</p>
       </div>
     </div>
   )

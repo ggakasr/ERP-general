@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useCallback, useEffect, useState } from "react"
-import { ChevronDown, ChevronRight, Info, RefreshCw } from "lucide-react"
+import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { useSession } from "@/lib/session"
 import { cn, formatMoney } from "@/lib/utils"
@@ -45,7 +45,7 @@ export function BudgetPanel() {
 
   useEffect(() => { load() }, [load])
 
-  if (!allowed) return <NoPermission>Báo cáo ngân sách yêu cầu quyền xem Ngân sách (BUDGET).</NoPermission>
+  if (!allowed) return <NoPermission>Báo cáo ngân sách yêu cầu quyền xem Ngân sách.</NoPermission>
 
   const t = (rows || []).reduce(
     (a, r) => ({ planned: a.planned + num(r.planned), committed: a.committed + num(r.committed), actual: a.actual + num(r.actual), remaining: a.remaining + num(r.remaining) }),
@@ -64,14 +64,6 @@ export function BudgetPanel() {
         <Button variant="ghost" size="icon" className="ml-auto h-9 w-9" onClick={load} title="Tải lại">
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>
-      </div>
-
-      <div className="flex gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <p>
-          <b>Cam kết</b> = giá trị đơn mua hàng (PO) đã duyệt; <b>Thực chi</b> = hóa đơn nhà cung cấp đã ghi sổ.
-          Còn lại = Kế hoạch − Cam kết − Thực chi. PO vượt ngân sách còn lại sẽ bị chặn khi gửi duyệt (T1.14, T4.8).
-        </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

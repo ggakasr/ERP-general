@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Banknote, ChevronRight, Package, Search, ShieldAlert, UserCheck } from "lucide-react"
 import { rpc } from "@/lib/api"
-import { MOVE_LABELS, SOD_LABELS } from "@/lib/labels"
+import { MOVE_LABELS } from "@/lib/labels"
 import type { DocRef } from "@/lib/types"
 import { cn, formatDateTime, formatMoney, formatNumber } from "@/lib/utils"
 import { Input } from "@/components/ui/form"
@@ -129,7 +129,7 @@ function MoneyTrace({ id }: { id: string }) {
       )}
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold">Kiểm tra tính nhất quán số tiền (T3.5)</h3>
+        <h3 className="mb-2 text-sm font-semibold">Kiểm tra tính nhất quán số tiền</h3>
         <CheckList checks={data.checks as Check[]} />
       </div>
     </div>
@@ -185,7 +185,6 @@ function GoodsTrace({ id }: { id: string }) {
         <>
           <div>
             <h3 className="text-sm font-semibold">Nguồn gốc hàng đã xuất (truy ngược theo lô FIFO)</h3>
-            <p className="mb-2 text-xs text-muted-foreground">Giao hàng → lô thành phẩm → vật tư đã xuất cho sản xuất → phiếu nhập → PO → PR (T3.6)</p>
             {data.upstream.length === 0 ? <EmptyState>Chuỗi này chưa có hàng xuất kho.</EmptyState> : (
               <div className="space-y-3">{data.upstream.map((u: any, i: number) => <MoveTree key={i} node={u} depth={0} dir="up" />)}</div>
             )}
@@ -235,7 +234,7 @@ function ResponsibilityTrace({ id }: { id: string }) {
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold">Hành động → Người dùng → Vai trò → Phòng ban → Chủ sở hữu quy trình (T3.7)</h3>
+        <h3 className="text-sm font-semibold">Hành động → Người dùng → Vai trò → Phòng ban → Chủ sở hữu quy trình</h3>
         {data.documents.map((d: any) => (
           <div key={d.document.id} className={cn("rounded-lg border bg-card", d.document.is_start && "border-primary")}>
             <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
@@ -284,7 +283,6 @@ function ResponsibilityTrace({ id }: { id: string }) {
       <div>
         <h3 className="mb-2 text-sm font-semibold">Kiểm tra trách nhiệm</h3>
         <CheckList checks={data.checks} />
-        <p className="mt-2 text-xs text-muted-foreground">Quy tắc SoD: {Object.values(SOD_LABELS).join(" ≠ ")} trên cùng chuỗi giao dịch.</p>
       </div>
     </div>
   )
@@ -316,10 +314,7 @@ function TraceView() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4">
-      <PageHeader
-        title="Truy vết chứng từ"
-        subtitle="Ba đường truy vết (ĐK4): theo dòng tiền, theo dòng hàng và theo trách nhiệm. Kết quả chỉ hiển thị dữ liệu trong phạm vi quyền của bạn."
-      />
+      <PageHeader title="Truy vết chứng từ" />
       <div className="relative max-w-xl">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nhập số chứng từ: PAY-202607-00001, DN-202607-00001, SI-202609…" className="pl-8" />
@@ -339,17 +334,15 @@ function TraceView() {
       {!id ? (
         <div className="grid gap-3 md:grid-cols-3">
           {[
-            { icon: Banknote, title: "Theo tiền", body: "Phiếu chi → Hóa đơn NCC → PO → PR → Ngân sách, kèm bút toán sổ cái và kiểm tra số tiền mỗi cấp." },
-            { icon: Package, title: "Theo hàng", body: "Phiếu giao → lô FIFO → lệnh sản xuất → vật tư → phiếu nhập → PO → PR; và chiều ngược lại." },
-            { icon: UserCheck, title: "Theo trách nhiệm", body: "Mỗi hành động → người dùng → vai trò → phòng ban → chủ sở hữu quy trình; phát hiện xung đột SoD." },
+            { icon: Banknote, title: "Theo tiền" },
+            { icon: Package, title: "Theo hàng" },
+            { icon: UserCheck, title: "Theo trách nhiệm" },
           ].map((c) => (
             <div key={c.title} className="rounded-lg border bg-card p-4">
               <c.icon className="h-5 w-5 text-primary" />
               <p className="mt-2 font-medium">{c.title}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{c.body}</p>
             </div>
           ))}
-          <p className="text-sm text-muted-foreground md:col-span-3">Tìm một chứng từ ở ô trên, hoặc bấm nút “Truy vết” trên bất kỳ trang chi tiết chứng từ nào.</p>
         </div>
       ) : (
         <>

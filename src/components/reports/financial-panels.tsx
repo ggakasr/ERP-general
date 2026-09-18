@@ -102,7 +102,7 @@ export function FinancialStatementsPanel() {
 
   useEffect(() => { load() }, [load])
 
-  if (!allowed) return <NoPermission>Báo cáo tài chính yêu cầu quyền xem Sổ cái &amp; BCTC (GL).</NoPermission>
+  if (!allowed) return <NoPermission>Báo cáo tài chính yêu cầu quyền xem Sổ cái &amp; BCTC.</NoPermission>
 
   const is = data?.income_statement
   const bs = data?.balance_sheet
@@ -226,7 +226,7 @@ export function TrialBalancePanel() {
 
   useEffect(() => { load() }, [load])
 
-  if (!allowed) return <NoPermission>Bảng cân đối số phát sinh yêu cầu quyền xem Sổ cái &amp; BCTC (GL).</NoPermission>
+  if (!allowed) return <NoPermission>Bảng cân đối số phát sinh yêu cầu quyền xem Sổ cái &amp; BCTC.</NoPermission>
 
   const totals = (rows || []).reduce(
     (acc, r) => ({ opening: acc.opening + num(r.opening), debit: acc.debit + num(r.debit), credit: acc.credit + num(r.credit), closing: acc.closing + num(r.closing) }),
@@ -344,7 +344,7 @@ export function AgingPanel() {
 
   useEffect(() => { load() }, [load])
 
-  if (!canAR && !canAP) return <NoPermission>Báo cáo công nợ yêu cầu quyền xem Hóa đơn bán hàng (AR) hoặc Hóa đơn NCC (AP).</NoPermission>
+  if (!canAR && !canAP) return <NoPermission>Báo cáo công nợ yêu cầu quyền xem Hóa đơn bán hàng hoặc Hóa đơn NCC.</NoPermission>
 
   const sums = BUCKETS.map((b) => ({
     ...b,

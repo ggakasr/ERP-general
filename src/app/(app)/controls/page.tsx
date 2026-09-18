@@ -16,13 +16,13 @@ export default function ControlsPage() {
 
   const tabs = [
     ...(canControls ? [{ key: "overview", label: "Tổng quan" }] : []),
-    { key: "sod-matrix", label: "Ma trận SoD (BM-06)" },
+    { key: "sod-matrix", label: "Ma trận SoD" },
     ...(canControls ? [{ key: "sod-log", label: "Nhật ký SoD" }] : []),
-    ...(canHandoff ? [{ key: "handoffs", label: "Bàn giao (BM-04)" }] : []),
-    { key: "ownership", label: "Chủ sở hữu quy trình (BM-02)" },
-    { key: "permissions", label: "Ma trận phân quyền (BM-12)" },
-    { key: "state-machines", label: "Máy trạng thái (BM-05)" },
-    { key: "shadow-it", label: "Shadow-IT (BM-13) & Tác động (BM-03)" },
+    ...(canHandoff ? [{ key: "handoffs", label: "Bàn giao" }] : []),
+    { key: "ownership", label: "Chủ sở hữu quy trình" },
+    { key: "permissions", label: "Ma trận phân quyền" },
+    { key: "state-machines", label: "Máy trạng thái" },
+    { key: "shadow-it", label: "Shadow-IT & Tác động" },
   ]
 
   const [tab, setTab] = useState(tabs[0].key)
@@ -30,10 +30,7 @@ export default function ControlsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4">
-      <PageHeader
-        title="Kiểm soát nội bộ"
-        subtitle="Tầng L4 — tách biệt nhiệm vụ, bàn giao, chủ sở hữu, phân quyền 3 tầng và máy trạng thái (ĐK1–ĐK8)."
-      />
+      <PageHeader title="Kiểm soát nội bộ" />
       {!canControls && (
         <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
           Bạn đang xem các bảng cấu hình kiểm soát. Báo cáo tổng quan và nhật ký SoD chỉ dành cho người có quyền xem Nhật ký SoD hoặc Audit trail.

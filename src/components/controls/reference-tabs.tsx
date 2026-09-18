@@ -25,10 +25,6 @@ export function SodMatrixTab() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Ma trận tách biệt nhiệm vụ: trên <b>cùng một chứng từ</b> (và chuỗi chứng từ liên quan), một người không được giữ hai vai trò
-        xung đột. Xung đột <b>HARD</b> bị chặn tuyệt đối, không có ngoại lệ (T3.1–T3.4).
-      </p>
       <div className="grid gap-4 lg:grid-cols-[auto_1fr]">
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="text-sm">
@@ -86,9 +82,6 @@ export function SodMatrixTab() {
               ))}
               {rows.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">Chưa cấu hình quy tắc SoD.</li>}
             </ul>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Cặp Người phê duyệt – Người kiểm tra không xung đột: người duyệt vẫn có thể hậu kiểm chứng từ khác, nhưng người thực hiện thì không.
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -128,9 +121,6 @@ export function OwnershipTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Nguyên tắc NT1 — một nghiệp vụ, một chủ sở hữu (ĐK1). Chủ sở hữu chịu trách nhiệm cuối cùng trong truy vết trách nhiệm.
-      </p>
       <DataTable
         rows={sorted}
         loading={loading}
@@ -197,10 +187,6 @@ export function PermissionMatrixTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Quyền = <b>Hành động</b> × <b>Phạm vi dữ liệu</b> × <b>Trường</b> (NT5, ĐK8). Bảng chỉ để xem — thay đổi quyền thực hiện ở
-        phân hệ Quản trị hệ thống và được ghi audit trail.
-      </p>
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Vai trò" className="w-72">
           <Select value={role} onChange={(e) => setRole(e.target.value)}>
@@ -279,10 +265,6 @@ export function StateMachineTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        NT3 — trạng thái là hợp đồng: mọi chuyển trạng thái đều được kiểm tra bởi engine (quyền, điều kiện, SoD). Chuyển trạng thái
-        không có trong bảng sẽ bị từ chối (T2.11).
-      </p>
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Loại chứng từ" className="w-80">
           <Select value={current.code} onChange={(e) => setType(e.target.value)}>
@@ -397,9 +379,9 @@ export function ShadowItImpactTab() {
     <div className="space-y-6">
       <section className="space-y-3">
         <div>
-          <h2 className="text-base font-semibold">Sổ Shadow-IT (BM-13)</h2>
+          <h2 className="text-base font-semibold">Sổ Shadow-IT</h2>
           <p className="text-sm text-muted-foreground">
-            ĐK7 — mọi dữ liệu nghiệp vụ phải đi qua ERP. Còn <b>{pending}</b> mục chưa chuyển đổi xong.
+            Còn <b>{pending}</b> mục chưa chuyển đổi xong.
           </p>
         </div>
         {shadow.error && <ErrorBox message={shadow.error} />}
@@ -436,7 +418,7 @@ export function ShadowItImpactTab() {
 
       <section className="space-y-3">
         <div>
-          <h2 className="text-base font-semibold">Ma trận tác động (BM-03)</h2>
+          <h2 className="text-base font-semibold">Ma trận tác động</h2>
           <p className="text-sm text-muted-foreground">Các thay đổi khi đưa ERP vào vận hành, luồng bị ảnh hưởng và kế hoạch giảm thiểu.</p>
         </div>
         {impact.error && <ErrorBox message={impact.error} />}

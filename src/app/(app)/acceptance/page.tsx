@@ -86,8 +86,7 @@ export default function AcceptancePage() {
   return (
     <div className="mx-auto max-w-7xl space-y-4">
       <PageHeader
-        title="Nghiệm thu (BM-14)"
-        subtitle="Tiêu chí nghiệm thu theo 5 nhóm kiểm thử — điều kiện bắt buộc trước go-live."
+        title="Nghiệm thu"
         actions={
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={reload} title="Tải lại">
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
@@ -95,22 +94,9 @@ export default function AcceptancePage() {
         }
       />
 
-      <div className="space-y-1.5 rounded-lg border bg-card p-4 text-sm">
-        <p>
-          Kế hoạch nghiệm thu gồm <b>63 bài kiểm thử</b> chia 5 nhóm: chức năng (15), kiểm soát (12), truy vết (12), luồng đầu-cuối (12)
-          và tải/biên (12). Mỗi bài gắn với luồng nghiệp vụ (L1–L11) và các điều kiện ĐK1–ĐK8.
-        </p>
-        <p>
-          Bốn bài <b>T3.1–T3.4</b> (tách biệt nhiệm vụ) là <b className="text-red-700">điều kiện chặn tuyệt đối</b>: phải đạt 100% mới được go-live.
-        </p>
-        <p className="text-muted-foreground">
-          Chạy <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">npm run test:acceptance</code> để thực thi bộ kiểm thử API tự động
-          trên Supabase; kết quả và bằng chứng được ghi lại tại đây.
-          {canUpdate
-            ? " Bạn có quyền cập nhật kết quả thủ công."
-            : " Chỉ kiểm toán nội bộ/lãnh đạo có phạm vi toàn công ty mới được cập nhật kết quả."}
-        </p>
-      </div>
+      {!canUpdate && (
+        <p className="text-xs text-muted-foreground">Chỉ kiểm toán nội bộ/lãnh đạo có phạm vi toàn công ty mới được cập nhật kết quả.</p>
+      )}
 
       {error && <ErrorBox message={error} />}
       {loading && rows.length === 0 ? (
@@ -118,7 +104,7 @@ export default function AcceptancePage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-            <Stat label="Tiêu chí đã khai báo" value={rows.length} hint="Kế hoạch: 63" />
+            <Stat label="Tiêu chí đã khai báo" value={rows.length} />
             <Stat label="Đạt" value={counts.PASSED || 0} tone="good" />
             <Stat label="Không đạt" value={counts.FAILED || 0} tone={counts.FAILED ? "bad" : "default"} />
             <Stat label="Chưa kiểm thử / bị chặn" value={(counts.NOT_TESTED || 0) + (counts.BLOCKED || 0)} tone="warn" />
@@ -126,7 +112,6 @@ export default function AcceptancePage() {
               label="Điều kiện chặn go-live"
               value={`${blockersPassed}/${blockers.length}`}
               tone={blockers.length > 0 && blockersPassed === blockers.length ? "good" : "bad"}
-              hint="T3.1–T3.4 phải đạt"
             />
           </div>
 
@@ -215,7 +200,7 @@ export default function AcceptancePage() {
         <div className="space-y-3">
           {editing?.is_blocker && (
             <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-800">
-              Đây là điều kiện chặn go-live (SoD). Chỉ đánh dấu “Đạt” khi có bằng chứng kiểm thử rõ ràng.
+              Đây là điều kiện chặn go-live. Chỉ đánh dấu “Đạt” khi có bằng chứng kiểm thử rõ ràng.
             </p>
           )}
           <Field label="Kết quả" required>
@@ -223,8 +208,8 @@ export default function AcceptancePage() {
               {STATUS_KEYS.map((s) => <option key={s} value={s}>{STATUS[s].label}</option>)}
             </Select>
           </Field>
-          <Field label="Bằng chứng" hint="Ví dụ: số chứng từ, mã lỗi trả về, đường dẫn log/ảnh chụp màn hình.">
-            <Textarea rows={4} value={form.evidence} onChange={(e) => setForm({ ...form, evidence: e.target.value })} />
+          <Field label="Bằng chứng">
+            <Textarea rows={4} value={form.evidence} onChange={(e) => setForm({ ...form, evidence: e.target.value })} placeholder="Số chứng từ, mã lỗi, đường dẫn log/ảnh chụp màn hình…" />
           </Field>
         </div>
       </Dialog>

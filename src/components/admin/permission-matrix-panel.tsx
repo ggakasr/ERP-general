@@ -60,7 +60,7 @@ export function PermissionMatrixPanel() {
 
   useEffect(() => { load() }, [load])
 
-  if (!can("USER_ADMIN", "VIEW")) return <NoPermission>Ma trận phân quyền (BM-12) yêu cầu quyền xem Quản trị người dùng.</NoPermission>
+  if (!can("USER_ADMIN", "VIEW")) return <NoPermission>Ma trận phân quyền yêu cầu quyền xem Quản trị người dùng.</NoPermission>
 
   const resources = Object.keys(RESOURCE_LABELS)
 
@@ -119,17 +119,12 @@ export function PermissionMatrixPanel() {
         <p className="pb-2 text-xs text-muted-foreground">{master.roles.find((r) => r.code === role)?.description}</p>
       </div>
 
-      <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-        <div>
-          <p>
-            Quyền = <b>Hành động</b> × <b>Phạm vi dữ liệu</b> (Của tôi / Phòng ban / Chi nhánh / Toàn công ty) × <b>Trường bị ẩn</b> (chỉ áp dụng cho quyền Xem).
-            Mọi thay đổi được ghi vào audit trail và có hiệu lực ngay ở lần tải dữ liệu tiếp theo.
-          </p>
-          {ownsRole && canEdit && <p className="mt-1 font-medium">Bạn đang giữ vai trò này nên không thể sửa quyền của nó (tách biệt nhiệm vụ).</p>}
-          {!canEdit && <p className="mt-1 font-medium">Bạn chỉ có quyền xem ma trận.</p>}
+      {ownsRole && canEdit && (
+        <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="font-medium">Bạn đang giữ vai trò này nên không thể sửa quyền của nó (tách biệt nhiệm vụ).</p>
         </div>
-      </div>
+      )}
 
       {error && <ErrorBox message={error} />}
       {!rows && !error && <Loading />}

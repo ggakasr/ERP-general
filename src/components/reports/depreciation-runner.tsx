@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Calculator, Info } from "lucide-react"
+import { Calculator } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { useSession } from "@/lib/session"
 import { formatMoney } from "@/lib/utils"
@@ -41,15 +41,8 @@ export function DepreciationRunner() {
         <CardDescription>Tạo bút toán (JV) Nợ 642 / Có 214 cho mọi tài sản đang sử dụng, rồi gửi duyệt theo quy trình bút toán.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>
-            Phương pháp đường thẳng: <b>khấu hao tháng = nguyên giá / số tháng khấu hao</b> (làm tròn đến đồng), không vượt quá giá trị còn lại.
-            Mỗi tài sản chỉ được khấu hao một lần mỗi kỳ; kỳ đã khóa sổ sẽ bị từ chối (T1.12).
-          </p>
-        </div>
         {!allowed ? (
-          <p className="text-sm text-muted-foreground">Bạn không có quyền thực hiện chạy khấu hao (DEPRECIATION · Thực hiện).</p>
+          <p className="text-sm text-muted-foreground">Bạn không có quyền thực hiện chạy khấu hao.</p>
         ) : (
           <div className="flex flex-wrap items-end gap-3">
             <Field label="Kỳ khấu hao (YYYY-MM)" className="w-44">

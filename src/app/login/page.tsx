@@ -64,8 +64,7 @@ function LoginForm() {
           <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-blue-900">
             <p className="flex items-center gap-2 font-medium"><ShieldCheck className="h-4 w-4" /> Môi trường giáo dục</p>
             <p className="mt-1 text-blue-900/80">
-              Tất cả tài khoản demo dùng mật khẩu <code className="rounded bg-white px-1">{DEMO_PASSWORD}</code>. Mỗi tài khoản có vai trò,
-              phạm vi dữ liệu và trường hiển thị khác nhau; mọi thao tác đều được kiểm soát SoD và ghi audit trail.
+              Tất cả tài khoản demo dùng mật khẩu <code className="rounded bg-white px-1">{DEMO_PASSWORD}</code>.
             </p>
           </div>
         </div>

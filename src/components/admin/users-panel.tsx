@@ -106,7 +106,7 @@ export function UsersPanel() {
   const branchById = useMemo(() => new Map(master.branches.map((b) => [b.id, b])), [master.branches])
   const roleName = useMemo(() => new Map(master.roles.map((r) => [r.code, r.name])), [master.roles])
 
-  if (!can("USER_ADMIN", "VIEW")) return <NoPermission>Danh bạ người dùng (BM-01) yêu cầu quyền xem Quản trị người dùng.</NoPermission>
+  if (!can("USER_ADMIN", "VIEW")) return <NoPermission>Danh bạ người dùng yêu cầu quyền xem Quản trị người dùng.</NoPermission>
 
   const term = q.trim().toLowerCase()
   const users = master.users.filter((u) =>

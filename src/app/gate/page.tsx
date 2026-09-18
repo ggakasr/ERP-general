@@ -40,7 +40,6 @@ export default function GatePage({
 
         <p className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Lớp bảo vệ này chỉ ngăn người lạ có link truy cập thẳng vào các tài khoản demo (kể cả CEO/CFO xem toàn bộ dữ liệu).
           Hỏi người quản lý dự án để lấy mã truy cập.
         </p>
       </div>

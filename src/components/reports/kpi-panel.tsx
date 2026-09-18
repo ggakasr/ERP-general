@@ -55,7 +55,7 @@ export function KpiPanel() {
 
   useEffect(() => { load() }, [load])
 
-  if (!allowed) return <NoPermission>Danh mục KPI (BM-10) yêu cầu quyền xem KPI.</NoPermission>
+  if (!allowed) return <NoPermission>Danh mục KPI yêu cầu quyền xem KPI.</NoPermission>
   if (error) return <ErrorBox message={error} />
   if (!rows) return <Loading />
   if (!rows.length) return <EmptyState>Chưa có KPI nào trong danh mục.</EmptyState>

@@ -16,7 +16,6 @@ export interface HeaderField {
   /** only when creating without a parent document */
   noParentOnly?: boolean
   productFilter?: string[]
-  hint?: string
 }
 
 export type LineMode = "product" | "journal" | "budget" | "bankrec" | "none"
@@ -45,7 +44,6 @@ export interface DocTypeConfig {
   /** quantity label (ADJ = counted qty) */
   qtyLabel?: string
   createVia?: "payroll" | "access_review"
-  hint?: string
 }
 
 const BASE_COLS: ListColumn[] = [
@@ -65,7 +63,6 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
       { key: "fiscal_year", label: "Năm tài chính", type: "number", data: true, required: true },
     ],
     columns: [...BASE_COLS, { key: "cost_center_name", label: "Bộ phận" }, { key: "data.fiscal_year", label: "Năm" }, AMOUNT_COL, STATUS_COL],
-    hint: "Ngân sách ACTIVE được dùng để kiểm soát PO (T1.14): PO vượt ngân sách còn lại sẽ bị chặn.",
   },
   PR: {
     code: "PR", label: "Đề nghị mua hàng", plural: "Đề nghị mua hàng (PR)", module: "procurement", flow: "L3", lineMode: "product",
@@ -87,14 +84,12 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
     ],
     productTypes: ["RAW", "GOODS", "SUPPLY", "FINISHED"], priceLabel: "Đơn giá mua",
     columns: [...BASE_COLS, { key: "partner_name", label: "Nhà cung cấp" }, AMOUNT_COL, BY_COL, DATE_COL, STATUS_COL],
-    hint: "SoD: người lập PO không được duyệt hay thanh toán cho chính PO đó (T3.1–T3.3).",
   },
   GRN: {
     code: "GRN", label: "Phiếu nhập kho", plural: "Phiếu nhập kho (GRN)", module: "inventory", flow: "L4", lineMode: "product",
     requiresParent: true,
     header: [{ key: "title", label: "Diễn giải", type: "text" }, { key: "delivery_note_no", label: "Số phiếu giao của NCC", type: "text", data: true }],
     columns: [...BASE_COLS, { key: "partner_name", label: "Nhà cung cấp" }, { key: "warehouse_name", label: "Kho" }, BY_COL, DATE_COL, STATUS_COL],
-    hint: "Số lượng nhận không được vượt số lượng còn lại của PO (T1.4).",
   },
   SINV: {
     code: "SINV", label: "Hóa đơn NCC", plural: "Hóa đơn nhà cung cấp", module: "finance", flow: "L3", lineMode: "product",
@@ -103,11 +98,9 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
       { key: "title", label: "Diễn giải", type: "text" },
       { key: "invoice_no", label: "Số hóa đơn NCC", type: "text", data: true, required: true },
       { key: "vat_rate", label: "Thuế suất GTGT", type: "select", data: true, options: [
-        { value: "0", label: "0%" }, { value: "5", label: "5%" }, { value: "8", label: "8%" }, { value: "10", label: "10%" } ],
-        hint: "Tính vào TK 1331 (thuế GTGT đầu vào được khấu trừ) khi ghi sổ công nợ." },
+        { value: "0", label: "0%" }, { value: "5", label: "5%" }, { value: "8", label: "8%" }, { value: "10", label: "10%" } ] },
     ],
     columns: [...BASE_COLS, { key: "partner_name", label: "Nhà cung cấp" }, AMOUNT_COL, { key: "due_date", label: "Hạn trả", kind: "date" }, STATUS_COL],
-    hint: "Đối chiếu 3 chiều: SL hóa đơn ≤ SL đã nhập kho, đơn giá lệch PO ≤ 2%. Lệch → tạm giữ và tự tạo ngoại lệ (T1.5, T1.6). Đối chiếu dùng đơn giá chưa thuế; thuế GTGT cộng thêm khi ghi sổ công nợ.",
   },
   PMT: {
     code: "PMT", label: "Phiếu chi", plural: "Phiếu chi / Ủy nhiệm chi", module: "finance", flow: "L7", lineMode: "none",
@@ -120,7 +113,6 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
       { key: "bank_account", label: "Tài khoản chi", type: "text", data: true },
     ],
     columns: [...BASE_COLS, { key: "partner_name", label: "Người nhận" }, AMOUNT_COL, BY_COL, DATE_COL, STATUS_COL],
-    hint: "4 vai trò tách biệt: Kế toán lập → CFO duyệt → Thủ quỹ chi → Kiểm toán hậu kiểm.",
   },
   QUOT: {
     code: "QUOT", label: "Báo giá", plural: "Báo giá", module: "sales", flow: "L2", lineMode: "product",
@@ -143,7 +135,6 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
     ],
     productTypes: ["FINISHED", "GOODS"], priceLabel: "Đơn giá bán",
     columns: [...BASE_COLS, { key: "partner_name", label: "Khách hàng" }, AMOUNT_COL, BY_COL, DATE_COL, STATUS_COL],
-    hint: "Xác nhận đơn sẽ kiểm tra tồn kho khả dụng (T1.7).",
   },
   DN: {
     code: "DN", label: "Phiếu xuất giao hàng", plural: "Phiếu xuất giao hàng", module: "inventory", flow: "L4", lineMode: "product",
@@ -157,11 +148,9 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
     header: [
       { key: "title", label: "Diễn giải", type: "text" },
       { key: "vat_rate", label: "Thuế suất GTGT", type: "select", data: true, options: [
-        { value: "0", label: "0%" }, { value: "5", label: "5%" }, { value: "8", label: "8%" }, { value: "10", label: "10%" } ],
-        hint: "Tính vào TK 3331 (thuế GTGT đầu ra phải nộp) khi phát hành hóa đơn." },
+        { value: "0", label: "0%" }, { value: "5", label: "5%" }, { value: "8", label: "8%" }, { value: "10", label: "10%" } ] },
     ],
     columns: [...BASE_COLS, { key: "partner_name", label: "Khách hàng" }, AMOUNT_COL, { key: "due_date", label: "Hạn thu", kind: "date" }, STATUS_COL],
-    hint: "Chỉ xuất hóa đơn cho số lượng đã giao. Giá trị dòng chưa gồm thuế; thuế GTGT cộng thêm khi phát hành, tổng phải thu = tiền hàng + thuế.",
   },
   RCPT: {
     code: "RCPT", label: "Phiếu thu", plural: "Phiếu thu", module: "finance", flow: "L7", lineMode: "none",
@@ -193,7 +182,6 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
     ],
     productTypes: ["RAW", "GOODS", "SUPPLY", "FINISHED"], qtyLabel: "SL thực đếm",
     columns: [...BASE_COLS, { key: "warehouse_name", label: "Kho" }, { key: "amount", label: "Chênh lệch giá trị", kind: "money", align: "right" }, BY_COL, STATUS_COL],
-    hint: "Nhập số lượng thực đếm; hệ thống tự tính chênh lệch so với sổ kho khi ghi nhận.",
   },
   WO: {
     code: "WO", label: "Lệnh sản xuất", plural: "Lệnh sản xuất", module: "production", flow: "L5", lineMode: "none",
@@ -204,7 +192,6 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
       { key: "planned_qty", label: "Số lượng kế hoạch", type: "number", data: true, required: true },
     ],
     columns: [...BASE_COLS, { key: "product_name", label: "Thành phẩm" }, { key: "data.planned_qty", label: "SL KH", kind: "number", align: "right" }, { key: "data.completed_qty", label: "SL HT", kind: "number", align: "right" }, BY_COL, STATUS_COL],
-    hint: "Vật tư được tính tự động từ định mức (BOM).",
   },
   HIRE: {
     code: "HIRE", label: "Đề nghị tuyển dụng", plural: "Tuyển dụng & tiếp nhận", module: "hr", flow: "L6", lineMode: "none",
@@ -231,7 +218,6 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
       { key: "doc_date", label: "Ngày hạch toán", type: "date", required: true },
     ],
     columns: [...BASE_COLS, AMOUNT_COL, BY_COL, DATE_COL, STATUS_COL],
-    hint: "Tổng Nợ phải bằng tổng Có (T1.8). Kỳ đã khóa sẽ chặn ghi sổ (T1.9).",
   },
   BANKREC: {
     code: "BANKREC", label: "Đối chiếu ngân hàng", plural: "Đối chiếu ngân hàng", module: "finance", flow: "L7", lineMode: "bankrec",
@@ -265,10 +251,9 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
       { key: "description", label: "Mô tả", type: "textarea", data: true },
     ],
     columns: [...BASE_COLS, { key: "partner_name", label: "Khách hàng" }, { key: "data.priority", label: "Ưu tiên" }, { key: "owner_name", label: "Người xử lý" }, { key: "data.sla_due_at", label: "Hạn SLA", kind: "date" }, STATUS_COL],
-    hint: "Ticket được tự động phân công cho nhân viên CSKH ít việc nhất (T1.13).",
   },
   EXC: {
-    code: "EXC", label: "Ngoại lệ", plural: "Sổ ngoại lệ (BM-11)", module: "exceptions", flow: "L4", lineMode: "none",
+    code: "EXC", label: "Ngoại lệ", plural: "Sổ ngoại lệ", module: "exceptions", flow: "L4", lineMode: "none",
     header: [
       { key: "title", label: "Tiêu đề", type: "text", required: true },
       { key: "exception_type", label: "Loại ngoại lệ", type: "select", data: true, required: true, options: [
@@ -281,13 +266,11 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
       { key: "description", label: "Mô tả", type: "textarea", data: true, required: true },
     ],
     columns: [...BASE_COLS, { key: "data.exception_type", label: "Loại" }, { key: "data.severity", label: "Mức độ" }, { key: "data.affected_document_number", label: "Chứng từ gốc" }, BY_COL, STATUS_COL],
-    hint: "Người phê duyệt ngoại lệ phải khác người nêu (T2.8).",
   },
   MDC: {
     code: "MDC", label: "Yêu cầu thay đổi dữ liệu chủ", plural: "Thay đổi dữ liệu chủ", module: "admin", flow: "L10", lineMode: "none",
     header: [],
     columns: [...BASE_COLS, { key: "data.entity", label: "Đối tượng" }, { key: "data.op", label: "Thao tác" }, BY_COL, STATUS_COL],
-    hint: "Mọi thay đổi khách hàng/NCC/sản phẩm phải được phê duyệt trước khi áp dụng (T1.15).",
   },
   ACCESS_REVIEW: {
     code: "ACCESS_REVIEW", label: "Rà soát quyền truy cập", plural: "Rà soát quyền", module: "admin", flow: "L10", lineMode: "none",
@@ -300,34 +283,20 @@ export interface ModuleConfig {
   key: string
   href: string
   title: string
-  subtitle: string
-  flow: string
   docTypes: string[]
-  /** ai làm bước nào, tiếp theo là ai — hiển thị ngay dưới subtitle trên trang phân hệ */
-  ownerFlow: string
 }
 
 export const MODULES: ModuleConfig[] = [
-  { key: "planning", href: "/planning", title: "Kế hoạch & Ngân sách", flow: "L1", subtitle: "Lập ngân sách → Phê duyệt → Kích hoạt → Theo dõi cam kết/thực chi → Phân tích chênh lệch", docTypes: ["BUDGET"],
-    ownerFlow: "Trưởng bộ phận lập → CFO/CEO phê duyệt → hệ thống tự kích hoạt & cộng dồn cam kết/thực chi theo từng PO, JV → CFO đóng kỳ ngân sách." },
-  { key: "sales", href: "/sales", title: "Bán hàng", flow: "L2", subtitle: "Báo giá → Đơn bán → Giao hàng → Hóa đơn → Thu tiền", docTypes: ["QUOT", "SO", "INV"],
-    ownerFlow: "NV Kinh doanh lập báo giá → TP Kinh doanh (hoặc GĐ chi nhánh) duyệt & xác nhận đơn → Thủ kho soạn hàng & giao → Kế toán trưởng phát hành hóa đơn → Thủ quỹ thu tiền → Kiểm toán nội bộ hậu kiểm phiếu thu." },
-  { key: "procurement", href: "/procurement", title: "Mua hàng", flow: "L3", subtitle: "Đề nghị mua → Đơn mua → Nhập kho → Đối chiếu 3 chiều → Thanh toán", docTypes: ["PR", "PO", "SINV"],
-    ownerFlow: "Nhân viên đề nghị mua → Trưởng bộ phận duyệt đề nghị → NV Mua hàng lập đơn → TP Mua hàng (hoặc GĐ chi nhánh) duyệt đơn → Thủ kho nhận hàng & QC kiểm tra → Kế toán đối chiếu 3 chiều → Kế toán trưởng/CFO duyệt ghi sổ & chi tiền → Thủ quỹ chi tiền → Kiểm toán nội bộ hậu kiểm." },
-  { key: "inventory", href: "/inventory", title: "Kho vận", flow: "L4", subtitle: "Nhập kho → Lưu kho (FIFO theo lô) → Xuất giao hàng → Chuyển kho → Kiểm kê", docTypes: ["GRN", "DN", "ST", "ADJ"],
-    ownerFlow: "Thủ kho lập phiếu nhập/xuất/chuyển/kiểm kê → QC kiểm tra hàng nhập → Trưởng kho (hoặc GĐ chi nhánh) duyệt chuyển kho & xuất giao hàng → Kế toán trưởng duyệt chênh lệch kiểm kê → Trưởng kho ghi nhận điều chỉnh." },
-  { key: "production", href: "/production", title: "Sản xuất", flow: "L5", subtitle: "Lệnh sản xuất → Xuất vật tư theo BOM → Sản xuất → QC → Nhập thành phẩm", docTypes: ["WO"],
-    ownerFlow: "NV Kế hoạch SX lập lệnh → GĐ Sản xuất duyệt lệnh → Trưởng kho xuất vật tư theo BOM → NV Kế hoạch SX vận hành sản xuất → QC kiểm tra chất lượng → NV Kế hoạch SX đóng lệnh." },
-  { key: "hr", href: "/hr", title: "Nhân sự & Tiền lương", flow: "L6", subtitle: "Tuyển dụng → Tiếp nhận → Tính lương → Duyệt → Hạch toán → Chi lương", docTypes: ["HIRE", "PAYROLL"],
-    ownerFlow: "Trưởng bộ phận đề nghị tuyển dụng → TP Nhân sự duyệt → Chuyên viên nhân sự tiếp nhận nhân viên & tính lương → CFO duyệt chi lương → Thủ quỹ chi lương." },
-  { key: "finance", href: "/finance", title: "Tài chính & Kế toán", flow: "L7", subtitle: "Bút toán → Sổ cái → Công nợ → Thu/chi → Đối chiếu ngân hàng → Khóa sổ", docTypes: ["JV", "SINV", "PMT", "RCPT", "BANKREC"],
-    ownerFlow: "Kế toán viên lập hóa đơn/bút toán/phiếu thu-chi → Kế toán trưởng duyệt ghi sổ & đối chiếu ngân hàng → CFO duyệt các khoản chi → Thủ quỹ thực hiện thu/chi → Kiểm toán nội bộ hậu kiểm → Kế toán trưởng khóa sổ kỳ." },
-  { key: "assets", href: "/assets", title: "Tài sản", flow: "L8", subtitle: "Đề nghị mua sắm → Phê duyệt → Ghi tăng → Khấu hao → Thanh lý", docTypes: ["ASSET"],
-    ownerFlow: "Nhân viên/bộ phận đề nghị mua sắm → CFO phê duyệt → Kế toán ghi tăng tài sản & tính khấu hao hàng kỳ → CFO phê duyệt khi thanh lý." },
-  { key: "customer-service", href: "/customer-service", title: "Dịch vụ khách hàng", flow: "L9", subtitle: "Ticket → Tự động phân công → Xử lý → Giải quyết → Đóng & CSAT", docTypes: ["TICKET"],
-    ownerFlow: "NV Kinh doanh/CSKH tạo ticket → hệ thống tự phân công cho NV CSKH đang ít việc nhất → NV CSKH xử lý & đề xuất giải quyết → TP CSKH đóng ticket & ghi nhận điểm hài lòng khách hàng." },
-  { key: "exceptions", href: "/exceptions", title: "Ngoại lệ", flow: "L4", subtitle: "Nêu ngoại lệ → Xem xét → Phê duyệt (khác người nêu) → Xử lý → Đóng", docTypes: ["EXC"],
-    ownerFlow: "Người phát hiện sai lệch (thường là Kế toán khi đối chiếu 3 chiều) nêu ngoại lệ → CFO xem xét & phê duyệt — bắt buộc khác người nêu (ĐK5/T2.8) → CFO ghi nhận nguyên nhân & hành động phòng ngừa để đóng." },
+  { key: "planning", href: "/planning", title: "Kế hoạch & Ngân sách", docTypes: ["BUDGET"] },
+  { key: "sales", href: "/sales", title: "Bán hàng", docTypes: ["QUOT", "SO", "INV"] },
+  { key: "procurement", href: "/procurement", title: "Mua hàng", docTypes: ["PR", "PO", "SINV"] },
+  { key: "inventory", href: "/inventory", title: "Kho vận", docTypes: ["GRN", "DN", "ST", "ADJ"] },
+  { key: "production", href: "/production", title: "Sản xuất", docTypes: ["WO"] },
+  { key: "hr", href: "/hr", title: "Nhân sự & Tiền lương", docTypes: ["HIRE", "PAYROLL"] },
+  { key: "finance", href: "/finance", title: "Tài chính & Kế toán", docTypes: ["JV", "SINV", "PMT", "RCPT", "BANKREC"] },
+  { key: "assets", href: "/assets", title: "Tài sản", docTypes: ["ASSET"] },
+  { key: "customer-service", href: "/customer-service", title: "Dịch vụ khách hàng", docTypes: ["TICKET"] },
+  { key: "exceptions", href: "/exceptions", title: "Ngoại lệ", docTypes: ["EXC"] },
 ]
 
 export function docTypeLabel(code: string) {

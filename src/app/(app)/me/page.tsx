@@ -5,7 +5,7 @@ import { useSession } from "@/lib/session"
 import { ACTION_LABELS, RESOURCE_LABELS, SCOPE_LABELS } from "@/lib/labels"
 import { cn, initials } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { EmptyState, PageHeader, SodBadge } from "@/components/shared/bits"
+import { EmptyState, PageHeader } from "@/components/shared/bits"
 
 const ACTIONS = ["VIEW", "CREATE", "EDIT", "APPROVE", "EXECUTE", "AUDIT", "EXPORT"]
 
@@ -43,7 +43,7 @@ export default function MePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
-      <PageHeader title="Quyền của tôi" subtitle="Vai trò, phạm vi dữ liệu và quy tắc tách biệt nhiệm vụ áp dụng cho tài khoản của bạn." />
+      <PageHeader title="Quyền của tôi" />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <Card>
@@ -93,31 +93,6 @@ export default function MePage() {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Mô hình phân quyền</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="list-disc space-y-1.5 pl-5 text-sm">
-            <li>
-              <b>Hành động</b> — bạn được làm gì: xem, tạo, sửa/xử lý, duyệt, thực hiện, hậu kiểm, xuất dữ liệu.
-            </li>
-            <li>
-              <b>Phạm vi dữ liệu</b> — bạn thấy bản ghi nào: của tôi, phòng ban, chi nhánh hoặc toàn công ty. Khi có nhiều vai trò,
-              phạm vi rộng nhất được áp dụng.
-            </li>
-            <li>
-              <b>Trường</b> — một số trường nhạy cảm (đơn giá, lương…) có thể bị ẩn theo vai trò, kể cả khi bạn xem được chứng từ.
-            </li>
-            <li>
-              <b>Tách biệt nhiệm vụ (SoD)</b> — trên cùng một chứng từ, bạn không thể giữ hai vai trò xung đột:{" "}
-              <SodBadge role="REQUESTER" /> ≠ <SodBadge role="APPROVER" /> ≠ <SodBadge role="EXECUTOR" /> ≠ <SodBadge role="AUDITOR" />.
-              Quy tắc này áp dụng cho mọi người, kể cả lãnh đạo, và mọi lượt vi phạm đều được ghi log.
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
 
       <section className="space-y-2">
         <h2 className="text-base font-semibold">Ma trận quyền của tôi</h2>

@@ -85,7 +85,7 @@ export default function DocumentPage() {
       </div>
 
       <div>
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">{doc.doc_type_name} · Luồng {doc.flow_code}</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">{doc.doc_type_name}</p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="font-mono text-2xl font-semibold">{doc.number}</h1>
           <StatusBadge status={doc.status} className="text-sm" />
@@ -154,7 +154,7 @@ export default function DocumentPage() {
 
         <div className="space-y-4">
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Chuỗi chứng từ (BM-09)</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Chuỗi chứng từ</CardTitle></CardHeader>
             <CardContent><ChainCard detail={detail} /></CardContent>
           </Card>
           <Card>
@@ -167,9 +167,6 @@ export default function DocumentPage() {
               )}
             </CardContent>
           </Card>
-          {cfg?.hint && (
-            <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900">{cfg.hint}</div>
-          )}
         </div>
       </div>
     </div>

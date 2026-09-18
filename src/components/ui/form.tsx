@@ -28,8 +28,8 @@ export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLab
 }
 
 export function Field({
-  label, required, hint, children, className,
-}: { label: string; required?: boolean; hint?: string; children: React.ReactNode; className?: string }) {
+  label, required, children, className,
+}: { label: string; required?: boolean; children: React.ReactNode; className?: string }) {
   return (
     <div className={cn("space-y-1", className)}>
       <Label>
@@ -37,7 +37,6 @@ export function Field({
         {required && <span className="text-red-600"> *</span>}
       </Label>
       {children}
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   )
 }

@@ -147,7 +147,7 @@ export function ActionBar({ doc, actions, onDone }: { doc: DocumentRow; actions:
                   <p className="font-medium">Thao tác này vi phạm SoD và sẽ bị chặn</p>
                   <p className="mt-0.5 text-xs">
                     Bạn đã là <b>{SOD_LABELS[active.sod_conflict.existing_role]}</b> trên {active.sod_conflict.document_number} ({active.sod_conflict.rule}).
-                    Nếu tiếp tục, hệ thống từ chối và ghi lần thử vào nhật ký SoD (T3.4).
+                    Nếu tiếp tục, hệ thống sẽ từ chối và ghi lần thử vào nhật ký SoD.
                   </p>
                 </div>
               </div>
@@ -217,7 +217,7 @@ export function ActionBar({ doc, actions, onDone }: { doc: DocumentRow; actions:
             )}
 
             <Field label={COMMENT_REQUIRED.has(active.action || "") ? "Lý do (bắt buộc)" : "Ghi chú (tùy chọn)"}>
-              <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Nội dung sẽ được lưu vào dòng thời gian và audit trail" />
+              <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Ghi chú…" />
             </Field>
 
             {active.style === "danger" && (

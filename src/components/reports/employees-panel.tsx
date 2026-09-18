@@ -44,7 +44,7 @@ export function EmployeesPanel() {
 
   useEffect(() => { load() }, [load])
 
-  if (!allowed) return <NoPermission>Hồ sơ nhân sự yêu cầu quyền xem EMPLOYEE.</NoPermission>
+  if (!allowed) return <NoPermission>Hồ sơ nhân sự yêu cầu quyền xem Nhân sự.</NoPermission>
 
   const term = q.trim().toLowerCase()
   const filtered = (rows || []).filter((r) =>

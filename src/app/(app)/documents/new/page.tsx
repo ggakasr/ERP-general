@@ -208,10 +208,7 @@ function DocumentForm() {
   return (
     <div className="mx-auto max-w-5xl space-y-4">
       <Button variant="ghost" size="sm" className="-ml-2 h-8" onClick={() => router.back()}><ArrowLeft className="mr-1 h-4 w-4" /> Quay lại</Button>
-      <PageHeader
-        title={`${editId ? "Sửa" : "Tạo"} ${cfg.label.toLowerCase()}`}
-        subtitle={cfg.hint}
-      />
+      <PageHeader title={`${editId ? "Sửa" : "Tạo"} ${cfg.label.toLowerCase()}`} />
 
       {parent && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3 text-sm">
@@ -361,9 +358,6 @@ function DocumentForm() {
           )}
 
           <div className="flex items-center justify-end gap-2">
-            <p className="mr-auto text-xs text-muted-foreground">
-              Chứng từ được lưu ở trạng thái nháp. Mở chứng từ để gửi duyệt — mọi bước đều kiểm tra quyền, SoD và ghi audit trail.
-            </p>
             <Button variant="outline" onClick={() => router.back()}>Hủy</Button>
             <Button onClick={submit} disabled={busy}>{busy ? "Đang lưu…" : editId ? "Lưu thay đổi" : "Tạo chứng từ"}</Button>
           </div>
@@ -454,7 +448,7 @@ function HeaderInput({ field, value, onChange }: { field: HeaderField; value: an
       input = <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} placeholder={f.placeholder} />
   }
   return (
-    <Field label={f.label} required={f.required} hint={f.hint} className={f.type === "textarea" ? "sm:col-span-2" : undefined}>
+    <Field label={f.label} required={f.required} className={f.type === "textarea" ? "sm:col-span-2" : undefined}>
       {input}
     </Field>
   )
@@ -576,13 +570,10 @@ function PayrollGenerator() {
       <CardContent className="space-y-4 pt-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Kỳ lương (YYYY-MM)" required><Input value={period} onChange={(e) => setPeriod(e.target.value)} /></Field>
-          <Field label="Ngày công khác chuẩn 22 ngày" hint="Mỗi dòng: mã NV: số ngày. Ví dụ NV101: 20">
+          <Field label="Ngày công khác chuẩn 22 ngày">
             <Textarea value={workDays} onChange={(e) => setWorkDays(e.target.value)} placeholder={"NV101: 20\nNV103: 19"} />
           </Field>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Công thức (T1.10): Thu nhập = Lương CB × ngày công/22 + phụ cấp · BHXH NLĐ = 10,5% lương CB · Thuế TNCN lũy tiến sau giảm trừ bản thân 11 triệu và 4,4 triệu/người phụ thuộc · Thực lĩnh = Thu nhập − BHXH − Thuế.
-        </p>
         <div className="flex justify-end"><Button onClick={run} disabled={busy}>{busy ? "Đang tính…" : "Tính lương"}</Button></div>
       </CardContent>
     </Card>
@@ -596,7 +587,6 @@ function AccessReviewGenerator() {
   return (
     <Card>
       <CardContent className="space-y-3 pt-6 text-sm">
-        <p>Hệ thống sẽ chụp toàn bộ danh sách người dùng × vai trò hiện tại. Bạn đánh dấu quyền cần thu hồi, gửi Kiểm toán nội bộ phê duyệt; khi duyệt, quyền bị thu hồi tự động và ghi audit trail (T4.12).</p>
         <div className="flex justify-end">
           <Button disabled={busy} onClick={async () => {
             setBusy(true)

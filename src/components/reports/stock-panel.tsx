@@ -105,7 +105,7 @@ export function StockPanel() {
 
   useEffect(() => { load() }, [load])
 
-  if (!allowed) return <NoPermission>Báo cáo tồn kho yêu cầu quyền xem Tồn kho (INVENTORY).</NoPermission>
+  if (!allowed) return <NoPermission>Báo cáo tồn kho yêu cầu quyền xem Tồn kho.</NoPermission>
 
   const valueMasked = (rows || []).some((r) => r._masked?.includes("value"))
   const totalValue = (rows || []).reduce((s, r) => s + num(r.value), 0)
@@ -141,7 +141,7 @@ export function StockPanel() {
         <Stat label="Tổng số lượng tồn" value={formatNumber(totalQty)} />
         <Stat label="Tổng giá trị tồn (FIFO)" value={valueMasked ? "Ẩn theo quyền" : formatMoney(totalValue)} />
       </div>
-      <p className="text-xs text-muted-foreground">Nhấn vào một mặt hàng để xem thẻ kho (từng lần nhập/xuất với chứng từ gốc và số dư chạy). Khả dụng = Tồn − Đã giữ chỗ cho đơn bán/xuất đang xử lý.</p>
+      <p className="text-xs text-muted-foreground">Nhấn vào một mặt hàng để xem thẻ kho.</p>
 
       {error && <ErrorBox message={error} />}
       {!rows && !error && <Loading />}

@@ -36,8 +36,6 @@ export function ModulePage({ moduleKey, extraTabs = [], docTypes }: { moduleKey:
     <div className="mx-auto max-w-7xl space-y-4">
       <PageHeader
         title={mod.title}
-        badge={<span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{mod.flow}</span>}
-        subtitle={mod.subtitle}
         actions={creatable.map((t) => (
           <Link key={t} href={`/documents/new?type=${t}`}>
             <Button size="sm" variant={t === creatable[0] ? "default" : "outline"} className="h-8">
@@ -46,11 +44,6 @@ export function ModulePage({ moduleKey, extraTabs = [], docTypes }: { moduleKey:
           </Link>
         ))}
       />
-      {mod.ownerFlow && (
-        <p className="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-xs text-blue-900">
-          <b>Việc của ai, tiếp theo là ai:</b> {mod.ownerFlow}
-        </p>
-      )}
       {tabs.length > 1 && <Tabs items={tabs} value={tab} onChange={setTab} />}
       {tab === "docs" && types.length > 0 && <DocTable docTypes={types} />}
       {extras.map((t) => (tab === t.key ? <div key={t.key}>{t.render()}</div> : null))}
