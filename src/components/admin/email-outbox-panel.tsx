@@ -66,7 +66,7 @@ export function EmailOutboxPanel() {
             (biến môi trường <code className="rounded bg-white px-1">RESEND_API_KEY</code>), thư sẽ được gửi thật; nếu chưa, thư được đánh dấu
             <b> Mô phỏng</b> để vẫn thấy được nội dung sẽ gửi.
           </p>
-          <p>Hàng đợi được xử lý tự động mỗi 10 phút (Vercel Cron) hoặc bấm &quot;Gửi ngay&quot; bên dưới để xử lý thủ công.</p>
+          <p>Hàng đợi được xử lý tự động 1 lần/ngày lúc 3h sáng (Vercel Cron — giới hạn của gói miễn phí), hoặc bấm &quot;Gửi ngay&quot; bên dưới / mở chuông thông báo để xử lý ngay.</p>
         </div>
       </div>
 
