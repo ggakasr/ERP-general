@@ -22,7 +22,7 @@ Kiến trúc tham chiếu bên dưới (NestJS + Prisma monorepo) **chưa đư�
   - Không cấp quyền SELECT/INSERT/UPDATE bảng nghiệp vụ cho `authenticated`; mọi đọc phải qua hàm có `fn_doc_in_scope` + `fn_mask`.
   - Sửa hàm trong 004/005 khi dev: `node scripts/db.mjs functions`. Thay đổi schema: tạo migration mới `007_*.sql`.
   - Trước commit: `npm run typecheck`, `npx next lint`, `npm run test:acceptance` (T3.1–T3.4 phải PASS).
-- Kiểm thử acceptance: `tests/acceptance.test.mjs` (49 test, chạy trong transaction rồi rollback, ghi kết quả vào BM-14).
+- Kiểm thử acceptance: `tests/acceptance.test.mjs` (56 test, chạy trong transaction rồi rollback, ghi kết quả vào BM-14).
 
 ---
 

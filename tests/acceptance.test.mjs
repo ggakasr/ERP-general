@@ -526,6 +526,158 @@ t('T4.2', 'Order-to-Cash đầy đủ', async () => {
   assert.equal((await sys('SELECT status FROM public.documents WHERE id = $1', [so.id]))[0].status, 'CLOSED')
 })
 
+t('T4.3', 'Hire-to-Retire: tuyển dụng → tiếp nhận → tính lương → chi trả', async () => {
+  const deptId = await id('departments', "code = 'PROC'")
+  await as('muahang.tp')
+  const h = await call('api_create_document', { p_doc_type: 'HIRE', p_header: { title: 'Tuyển NV Mua hàng T4.3',
+    data: { full_name: 'Nguyễn Văn T43', position: 'Nhân viên mua hàng', department_id: deptId, base_salary: 8000000, start_date: '2026-12-01' } } })
+  ok(h, 'create HIRE')
+  ok(await act('muahang.tp', h.id, 'submit'))
+  ok(await act('nhansu.tp', h.id, 'approve'))
+  ok(await act('nhansu', h.id, 'onboard'))
+  const hd = (await sys('SELECT employee_id, data FROM public.documents WHERE id = $1', [h.id]))[0]
+  assert.ok(hd.employee_id, 'employee record created')
+
+  await as('nhansu')
+  const pr = await call('api_create_payroll', { p_period: '2026-12' })
+  ok(pr, 'create payroll for a fresh period')
+  const lines = await sys('SELECT data FROM public.document_lines WHERE document_id = $1', [pr.id])
+  assert.ok(lines.some((l) => l.data.employee_code === hd.data.employee_code), 'new employee included in payroll')
+  ok(await act('nhansu', pr.id, 'submit'))
+  ok(await act('cfo', pr.id, 'approve'))
+  ok(await act('ketoan', pr.id, 'post'))
+  const amount = (await sys('SELECT amount FROM public.documents WHERE id = $1', [pr.id]))[0].amount
+  await as('ketoan')
+  const pmt = await call('api_create_document', { p_doc_type: 'PMT', p_header: { title: 'Chi lương T12/2026', amount }, p_parent_id: pr.id })
+  ok(pmt)
+  ok(await act('ketoan', pmt.id, 'submit'))
+  ok(await act('cfo', pmt.id, 'approve'))
+  ok(await act('thuquy', pmt.id, 'execute'))
+  assert.equal((await sys('SELECT status FROM public.documents WHERE id = $1', [pr.id]))[0].status, 'PAID')
+})
+
+t('T4.4', 'Plan-to-Produce: lệnh SX → xuất vật tư theo BOM → QC → nhập kho thành phẩm', async () => {
+  const [prod, w] = [await product('FG-K300'), await wh('WH-HN-01')]
+  await as('sanxuat')
+  const wo = await call('api_create_document', { p_doc_type: 'WO', p_header: { title: 'T4.4 lệnh SX thử', product_id: prod, warehouse_id: w, data: { planned_qty: 1 } } })
+  ok(wo, 'create WO — vật tư tự tính theo BOM')
+  const matLines = await sys('SELECT id FROM public.document_lines WHERE document_id = $1', [wo.id])
+  assert.ok(matLines.length >= 3, 'BOM material lines generated')
+  ok(await act('sanxuat.gd', wo.id, 'release'))
+  ok(await act('kho.tp', wo.id, 'issue_material'))
+  ok(await act('sanxuat', wo.id, 'start'))
+  ok(await act('sanxuat', wo.id, 'send_qc'))
+  const done = await act('qc', wo.id, 'qc_pass', { completed_qty: 1 })
+  ok(done)
+  assert.equal(done.status, 'COMPLETED')
+  ok(await act('sanxuat', wo.id, 'close'))
+  const onHand = Number((await sys('SELECT public.fn_on_hand($1,$2) q', [prod, w]))[0].q)
+  assert.ok(onHand > 0, 'finished goods received into stock')
+})
+
+t('T4.5', 'Acquire-to-Dispose: đề nghị mua sắm → ghi tăng TSCĐ → thanh lý', async () => {
+  await as('kinhdoanh')
+  const a = await call('api_create_document', { p_doc_type: 'ASSET', p_header: { title: 'Máy in văn phòng T4.5', amount: 15000000,
+    data: { name: 'Máy in T4.5', category: 'Thiết bị văn phòng', useful_life_months: 36 } } })
+  ok(a, 'create ASSET')
+  ok(await act('kinhdoanh', a.id, 'submit'))
+  ok(await act('cfo', a.id, 'approve'))
+  ok(await act('ketoan', a.id, 'capitalize'))
+  assert.equal((await sys('SELECT status FROM public.documents WHERE id = $1', [a.id]))[0].status, 'IN_USE')
+  const gl = await sys(`SELECT count(*)::int c FROM public.gl_entries WHERE document_id = $1 AND account_code = '211'`, [a.id])
+  assert.equal(gl[0].c, 1, 'ghi tăng TSCĐ (211) đã hạch toán')
+  const disp = await act('cfo', a.id, 'dispose')
+  ok(disp)
+  assert.equal(disp.status, 'DISPOSED')
+})
+
+t('T4.6', 'Record-to-Report: bút toán → sổ cái → bảng cân đối → báo cáo tài chính', async () => {
+  await as('ketoan')
+  const jv = await call('api_create_document', { p_doc_type: 'JV', p_header: { title: 'T4.6 chi phí văn phòng', doc_date: '2026-11-05' },
+    p_lines: [{ account_code: '642', debit: 5000000 }, { account_code: '111', credit: 5000000 }] })
+  ok(jv)
+  ok(await act('ketoan', jv.id, 'submit'))
+  ok(await act('ketoantruong', jv.id, 'post'))
+  await as('ketoantruong')
+  const tb = await call('api_trial_balance', { p_from: '2026-11', p_to: '2026-11' })
+  ok(tb)
+  const row = tb.rows.find((r) => r.account_code === '642')
+  assert.ok(row && Number(row.debit) >= 5000000, 'bút toán lên bảng cân đối số phát sinh')
+  const fs = await call('api_financial_statements', { p_from: '2026-11', p_to: '2026-11' })
+  ok(fs)
+  assert.ok(fs.income_statement.expense >= 5000000, 'bút toán lên báo cáo kết quả kinh doanh')
+})
+
+t('T4.7', 'Ticket-to-Resolution: tạo → tự phân công → xử lý → đóng & CSAT', async () => {
+  await as('kinhdoanh')
+  const tk = await call('api_create_document', { p_doc_type: 'TICKET', p_header: { partner_id: await partner('CUS-001'), data: { subject: 'T4.7', priority: 'MEDIUM', description: 'Khách hỏi về đơn hàng' } } })
+  ok(tk)
+  assert.equal(tk.status, 'ASSIGNED', 'tự động phân công khi tạo')
+  const row = (await sys('SELECT owner_id FROM public.documents WHERE id = $1', [tk.id]))[0]
+  assert.ok(row.owner_id, 'có người xử lý')
+  const ownerEmail = (await sys('SELECT email FROM public.app_users WHERE id = $1', [row.owner_id]))[0].email.split('@')[0]
+  ok(await act(ownerEmail, tk.id, 'start'))
+  ok(await act(ownerEmail, tk.id, 'resolve', { resolution: 'Đã liên hệ khách và xử lý xong' }))
+  const closed = await act('cskh.tp', tk.id, 'close', { csat: 5 })
+  ok(closed)
+  const d = (await sys('SELECT status, data FROM public.documents WHERE id = $1', [tk.id]))[0]
+  assert.equal(d.status, 'CLOSED')
+  assert.equal(d.data.csat, 5)
+})
+
+t('T4.8', 'Budget-to-Variance: lập ngân sách → cam kết chi (PO) → theo dõi chênh lệch', async () => {
+  const deptId = await id('departments', "code = 'PROC'")
+  await as('muahang.tp')
+  const b = await call('api_create_document', { p_doc_type: 'BUDGET', p_header: { title: 'NS Mua hàng T4.8', data: { fiscal_year: 2026 } },
+    p_lines: [{ account_code: '642', amount: 50000000, description: 'Chi phí mua hàng dự kiến' }] })
+  ok(b, 'create BUDGET')
+  ok(await act('muahang.tp', b.id, 'submit'))
+  ok(await act('cfo', b.id, 'approve'))
+  ok(await act('cfo', b.id, 'activate'))
+
+  await as('muahang')
+  const po = await call('api_create_document', { p_doc_type: 'PO', p_header: { title: 'T4.8 mua vật tư', partner_id: await partner('SUP-001'), warehouse_id: await wh('WH-HN-01'), cost_center_id: deptId },
+    p_lines: [{ product_id: await product('RM-BOLT'), quantity: 100, unit_price: 4500 }] })
+  ok(po)
+  ok(await act('muahang', po.id, 'submit'))
+  ok(await act('muahang.tp', po.id, 'approve'))
+
+  await as('cfo')
+  const rep = await call('api_budget_report', { p_year: 2026 })
+  ok(rep)
+  const row = rep.rows.find((r) => r.number === b.number)
+  assert.ok(row, 'ngân sách xuất hiện trong báo cáo chênh lệch')
+  assert.ok(Number(row.committed) >= 450000, 'cam kết chi từ PO được cộng dồn')
+})
+
+t('T4.10', 'Bank-Reconciliation: nhập sao kê → khớp tự động → xác nhận đối chiếu', async () => {
+  const po = await approvedConfirmedPo()
+  await receiveAll(po)
+  await as('ketoan')
+  const s = await call('api_create_document', { p_doc_type: 'SINV', p_header: {}, p_parent_id: po })
+  ok(await act('ketoan', s.id, 'match'))
+  ok(await act('ketoantruong', s.id, 'post'))
+  await as('ketoan')
+  const pmt = await call('api_create_document', { p_doc_type: 'PMT', p_header: { title: 'T4.10 chi NCC', amount: 45000 }, p_parent_id: s.id })
+  ok(pmt)
+  ok(await act('ketoan', pmt.id, 'submit'))
+  ok(await act('cfo', pmt.id, 'approve'))
+  ok(await act('thuquy', pmt.id, 'execute'))
+
+  await as('ketoan')
+  const br = await call('api_create_document', { p_doc_type: 'BANKREC', p_header: { title: 'T4.10 đối chiếu', data: { bank_account: '0011-TEST' } },
+    p_lines: [{ amount: -45000, description: 'UNC thanh toán NCC' }] })
+  ok(br, 'create BANKREC')
+  const m = await act('ketoan', br.id, 'match')
+  ok(m)
+  assert.equal(m.status, 'MATCHED')
+  const line = (await sys('SELECT data FROM public.document_lines WHERE document_id = $1', [br.id]))[0]
+  assert.equal(line.data.matched_document_id, pmt.id, 'khớp đúng với phiếu chi vừa thực hiện')
+  const r = await act('ketoantruong', br.id, 'reconcile')
+  ok(r)
+  assert.equal(r.status, 'RECONCILED')
+})
+
 t('T4.9', 'Kiểm kê → chênh lệch → điều chỉnh → sổ cái', async () => {
   const [p, w] = [await product('RM-PAINT'), await wh('WH-HN-01')]
   const q = Number((await sys('SELECT public.fn_on_hand($1,$2) q', [p, w]))[0].q)

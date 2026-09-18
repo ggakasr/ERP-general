@@ -72,7 +72,7 @@ L11 báo cáo, KPI, 3 đường truy vết
 npm run db:migrate          # áp dụng migration mới
 npm run db:reset            # xóa & tạo lại toàn bộ + seed (MẤT dữ liệu hiện có)
 node scripts/db.mjs functions   # hot-patch hàm sau khi sửa 004/005
-npm run test:acceptance     # 49 kiểm thử, chạy trong transaction rồi rollback
+npm run test:acceptance     # 56 kiểm thử (BM-14), chạy trong transaction rồi rollback
 npm run typecheck && npm run build
 ```
 
