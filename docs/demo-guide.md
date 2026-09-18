@@ -7,6 +7,13 @@ mọi vai trò kể cả CEO/CFO — chỉ phù hợp khi biết rõ ai sẽ xem
 `DEMO_GATE_CODE` (xem `.env.local.example`) để bật lớp hỏi mã truy cập trước khi thấy trang đăng nhập
 (`src/app/gate`). Không đặt biến này thì hành vi giữ nguyên như hiện tại.
 
+## Chuyển tài khoản nhanh khi test một luồng nhiều người
+
+Một luồng đầy đủ (vd. Procure-to-Pay) đi qua 6-8 người khác nhau. Để không phải đăng xuất/đăng nhập lại mỗi bước:
+mở menu tài khoản (góc phải trên) → **Chuyển tài khoản demo** → chọn người tiếp theo trong danh sách. Trang sẽ tải
+lại và đứng nguyên ở chứng từ đang xem, chỉ đổi người dùng — bấm tiếp hành động của người đó luôn, không cần dò lại
+đường dẫn. Dùng cách này để đi hết một chứng từ từ đầu đến cuối mà không rời trang.
+
 ## "Việc của ai, tiếp theo là ai" — luôn hiển thị sẵn trên UI
 
 Mọi trang chứng từ đều tự tính (từ `state_transitions` + `permission_matrix`, không hard-code) và hiển thị:

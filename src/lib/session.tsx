@@ -20,6 +20,9 @@ interface SessionValue {
   hasRole: (role: string) => boolean
   refreshMaster: () => Promise<void>
   signOut: () => Promise<void>
+  /** Sign in as a different demo account without leaving the current page — lets you
+   *  test a cross-role flow (PR → PO → GRN → SINV → PMT, …) without repeated logout/login. */
+  switchUser: (email: string, password: string) => Promise<string | null>
 }
 
 const SessionContext = createContext<SessionValue | null>(null)
@@ -40,6 +43,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const refreshMaster = useCallback(async () => {
     const m = await rpc<MasterData & { ok: boolean }>("api_master_data")
     if (m.ok) setMaster(m)
+  }, [])
+
+  const switchUser = useCallback(async (email: string, password: string) => {
+    const { error: err } = await createClient().auth.signInWithPassword({
+      email: email.includes("@") ? email : `${email}@erp.demo`,
+      password,
+    })
+    if (err) return err.message === "Invalid login credentials" ? "Sai email hoặc mật khẩu" : err.message
+    // full reload (not router.refresh) so every client-side cache (me, master, this
+    // component's own state) re-fetches under the new session, while staying on the
+    // same URL — if you were on a document page, you land back on it as the new user.
+    window.location.reload()
+    return null
   }, [])
 
   useEffect(() => {
@@ -88,8 +104,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       hasRole: (role) => me.roles.some((r) => r.code === role),
       refreshMaster,
       signOut,
+      switchUser,
     }
-  }, [me, master, unread, permIndex, refreshMaster, signOut])
+  }, [me, master, unread, permIndex, refreshMaster, signOut, switchUser])
 
   if (error) {
     return (

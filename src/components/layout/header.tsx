@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Bell, LogOut, Menu, Search } from "lucide-react"
+import { Bell, LogOut, Menu, Search, Users } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { useSession } from "@/lib/session"
 import type { DocRef } from "@/lib/types"
 import { cn, formatDateTime, initials } from "@/lib/utils"
 import { StatusBadge } from "@/components/shared/bits"
+import { SwitchAccountDialog } from "@/components/layout/switch-account-dialog"
 
 interface Notification { id: string; title: string; body: string | null; document_id: string | null; is_read: boolean; created_at: string }
 
@@ -20,6 +21,7 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
   const [openSearch, setOpenSearch] = useState(false)
   const [openBell, setOpenBell] = useState(false)
   const [openUser, setOpenUser] = useState(false)
+  const [openSwitch, setOpenSwitch] = useState(false)
   const [notes, setNotes] = useState<Notification[]>([])
   const boxRef = useRef<HTMLDivElement>(null)
 
@@ -178,13 +180,20 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
               <Link href="/me" onClick={() => setOpenUser(false)} className="mt-3 block text-xs text-primary hover:underline">
                 Xem quyền hạn & phạm vi dữ liệu của tôi →
               </Link>
-              <button onClick={signOut} className="mt-3 flex w-full items-center justify-center gap-2 rounded-md border px-3 py-1.5 hover:bg-accent">
+              <button
+                onClick={() => { setOpenUser(false); setOpenSwitch(true) }}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-md border px-3 py-1.5 hover:bg-accent"
+              >
+                <Users className="h-4 w-4" /> Chuyển tài khoản demo
+              </button>
+              <button onClick={signOut} className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border px-3 py-1.5 hover:bg-accent">
                 <LogOut className="h-4 w-4" /> Đăng xuất
               </button>
             </div>
           )}
         </div>
       </div>
+      <SwitchAccountDialog open={openSwitch} onClose={() => setOpenSwitch(false)} />
     </header>
   )
 }
