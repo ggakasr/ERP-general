@@ -102,9 +102,12 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
     header: [
       { key: "title", label: "Diễn giải", type: "text" },
       { key: "invoice_no", label: "Số hóa đơn NCC", type: "text", data: true, required: true },
+      { key: "vat_rate", label: "Thuế suất GTGT", type: "select", data: true, options: [
+        { value: "0", label: "0%" }, { value: "5", label: "5%" }, { value: "8", label: "8%" }, { value: "10", label: "10%" } ],
+        hint: "Tính vào TK 1331 (thuế GTGT đầu vào được khấu trừ) khi ghi sổ công nợ." },
     ],
     columns: [...BASE_COLS, { key: "partner_name", label: "Nhà cung cấp" }, AMOUNT_COL, { key: "due_date", label: "Hạn trả", kind: "date" }, STATUS_COL],
-    hint: "Đối chiếu 3 chiều: SL hóa đơn ≤ SL đã nhập kho, đơn giá lệch PO ≤ 2%. Lệch → tạm giữ và tự tạo ngoại lệ (T1.5, T1.6).",
+    hint: "Đối chiếu 3 chiều: SL hóa đơn ≤ SL đã nhập kho, đơn giá lệch PO ≤ 2%. Lệch → tạm giữ và tự tạo ngoại lệ (T1.5, T1.6). Đối chiếu dùng đơn giá chưa thuế; thuế GTGT cộng thêm khi ghi sổ công nợ.",
   },
   PMT: {
     code: "PMT", label: "Phiếu chi", plural: "Phiếu chi / Ủy nhiệm chi", module: "finance", flow: "L7", lineMode: "none",
@@ -151,9 +154,14 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
   INV: {
     code: "INV", label: "Hóa đơn bán hàng", plural: "Hóa đơn bán hàng", module: "sales", flow: "L2", lineMode: "product",
     requiresParent: true,
-    header: [{ key: "title", label: "Diễn giải", type: "text" }],
+    header: [
+      { key: "title", label: "Diễn giải", type: "text" },
+      { key: "vat_rate", label: "Thuế suất GTGT", type: "select", data: true, options: [
+        { value: "0", label: "0%" }, { value: "5", label: "5%" }, { value: "8", label: "8%" }, { value: "10", label: "10%" } ],
+        hint: "Tính vào TK 3331 (thuế GTGT đầu ra phải nộp) khi phát hành hóa đơn." },
+    ],
     columns: [...BASE_COLS, { key: "partner_name", label: "Khách hàng" }, AMOUNT_COL, { key: "due_date", label: "Hạn thu", kind: "date" }, STATUS_COL],
-    hint: "Chỉ xuất hóa đơn cho số lượng đã giao.",
+    hint: "Chỉ xuất hóa đơn cho số lượng đã giao. Giá trị dòng chưa gồm thuế; thuế GTGT cộng thêm khi phát hành, tổng phải thu = tiền hàng + thuế.",
   },
   RCPT: {
     code: "RCPT", label: "Phiếu thu", plural: "Phiếu thu", module: "finance", flow: "L7", lineMode: "none",
@@ -295,19 +303,31 @@ export interface ModuleConfig {
   subtitle: string
   flow: string
   docTypes: string[]
+  /** ai làm bước nào, tiếp theo là ai — hiển thị ngay dưới subtitle trên trang phân hệ */
+  ownerFlow: string
 }
 
 export const MODULES: ModuleConfig[] = [
-  { key: "planning", href: "/planning", title: "Kế hoạch & Ngân sách", flow: "L1", subtitle: "Lập ngân sách → Phê duyệt → Kích hoạt → Theo dõi cam kết/thực chi → Phân tích chênh lệch", docTypes: ["BUDGET"] },
-  { key: "sales", href: "/sales", title: "Bán hàng", flow: "L2", subtitle: "Báo giá → Đơn bán → Giao hàng → Hóa đơn → Thu tiền", docTypes: ["QUOT", "SO", "INV"] },
-  { key: "procurement", href: "/procurement", title: "Mua hàng", flow: "L3", subtitle: "Đề nghị mua → Đơn mua → Nhập kho → Đối chiếu 3 chiều → Thanh toán", docTypes: ["PR", "PO", "SINV"] },
-  { key: "inventory", href: "/inventory", title: "Kho vận", flow: "L4", subtitle: "Nhập kho → Lưu kho (FIFO theo lô) → Xuất giao hàng → Chuyển kho → Kiểm kê", docTypes: ["GRN", "DN", "ST", "ADJ"] },
-  { key: "production", href: "/production", title: "Sản xuất", flow: "L5", subtitle: "Lệnh sản xuất → Xuất vật tư theo BOM → Sản xuất → QC → Nhập thành phẩm", docTypes: ["WO"] },
-  { key: "hr", href: "/hr", title: "Nhân sự & Tiền lương", flow: "L6", subtitle: "Tuyển dụng → Tiếp nhận → Tính lương → Duyệt → Hạch toán → Chi lương", docTypes: ["HIRE", "PAYROLL"] },
-  { key: "finance", href: "/finance", title: "Tài chính & Kế toán", flow: "L7", subtitle: "Bút toán → Sổ cái → Công nợ → Thu/chi → Đối chiếu ngân hàng → Khóa sổ", docTypes: ["JV", "SINV", "PMT", "RCPT", "BANKREC"] },
-  { key: "assets", href: "/assets", title: "Tài sản", flow: "L8", subtitle: "Đề nghị mua sắm → Phê duyệt → Ghi tăng → Khấu hao → Thanh lý", docTypes: ["ASSET"] },
-  { key: "customer-service", href: "/customer-service", title: "Dịch vụ khách hàng", flow: "L9", subtitle: "Ticket → Tự động phân công → Xử lý → Giải quyết → Đóng & CSAT", docTypes: ["TICKET"] },
-  { key: "exceptions", href: "/exceptions", title: "Ngoại lệ", flow: "L4", subtitle: "Nêu ngoại lệ → Xem xét → Phê duyệt (khác người nêu) → Xử lý → Đóng", docTypes: ["EXC"] },
+  { key: "planning", href: "/planning", title: "Kế hoạch & Ngân sách", flow: "L1", subtitle: "Lập ngân sách → Phê duyệt → Kích hoạt → Theo dõi cam kết/thực chi → Phân tích chênh lệch", docTypes: ["BUDGET"],
+    ownerFlow: "Trưởng bộ phận lập → CFO/CEO phê duyệt → hệ thống tự kích hoạt & cộng dồn cam kết/thực chi theo từng PO, JV → CFO đóng kỳ ngân sách." },
+  { key: "sales", href: "/sales", title: "Bán hàng", flow: "L2", subtitle: "Báo giá → Đơn bán → Giao hàng → Hóa đơn → Thu tiền", docTypes: ["QUOT", "SO", "INV"],
+    ownerFlow: "NV Kinh doanh lập báo giá → TP Kinh doanh (hoặc GĐ chi nhánh) duyệt & xác nhận đơn → Thủ kho soạn hàng & giao → Kế toán trưởng phát hành hóa đơn → Thủ quỹ thu tiền → Kiểm toán nội bộ hậu kiểm phiếu thu." },
+  { key: "procurement", href: "/procurement", title: "Mua hàng", flow: "L3", subtitle: "Đề nghị mua → Đơn mua → Nhập kho → Đối chiếu 3 chiều → Thanh toán", docTypes: ["PR", "PO", "SINV"],
+    ownerFlow: "Nhân viên đề nghị mua → Trưởng bộ phận duyệt đề nghị → NV Mua hàng lập đơn → TP Mua hàng (hoặc GĐ chi nhánh) duyệt đơn → Thủ kho nhận hàng & QC kiểm tra → Kế toán đối chiếu 3 chiều → Kế toán trưởng/CFO duyệt ghi sổ & chi tiền → Thủ quỹ chi tiền → Kiểm toán nội bộ hậu kiểm." },
+  { key: "inventory", href: "/inventory", title: "Kho vận", flow: "L4", subtitle: "Nhập kho → Lưu kho (FIFO theo lô) → Xuất giao hàng → Chuyển kho → Kiểm kê", docTypes: ["GRN", "DN", "ST", "ADJ"],
+    ownerFlow: "Thủ kho lập phiếu nhập/xuất/chuyển/kiểm kê → QC kiểm tra hàng nhập → Trưởng kho (hoặc GĐ chi nhánh) duyệt chuyển kho & xuất giao hàng → Kế toán trưởng duyệt chênh lệch kiểm kê → Trưởng kho ghi nhận điều chỉnh." },
+  { key: "production", href: "/production", title: "Sản xuất", flow: "L5", subtitle: "Lệnh sản xuất → Xuất vật tư theo BOM → Sản xuất → QC → Nhập thành phẩm", docTypes: ["WO"],
+    ownerFlow: "NV Kế hoạch SX lập lệnh → GĐ Sản xuất duyệt lệnh → Trưởng kho xuất vật tư theo BOM → NV Kế hoạch SX vận hành sản xuất → QC kiểm tra chất lượng → NV Kế hoạch SX đóng lệnh." },
+  { key: "hr", href: "/hr", title: "Nhân sự & Tiền lương", flow: "L6", subtitle: "Tuyển dụng → Tiếp nhận → Tính lương → Duyệt → Hạch toán → Chi lương", docTypes: ["HIRE", "PAYROLL"],
+    ownerFlow: "Trưởng bộ phận đề nghị tuyển dụng → TP Nhân sự duyệt → Chuyên viên nhân sự tiếp nhận nhân viên & tính lương → CFO duyệt chi lương → Thủ quỹ chi lương." },
+  { key: "finance", href: "/finance", title: "Tài chính & Kế toán", flow: "L7", subtitle: "Bút toán → Sổ cái → Công nợ → Thu/chi → Đối chiếu ngân hàng → Khóa sổ", docTypes: ["JV", "SINV", "PMT", "RCPT", "BANKREC"],
+    ownerFlow: "Kế toán viên lập hóa đơn/bút toán/phiếu thu-chi → Kế toán trưởng duyệt ghi sổ & đối chiếu ngân hàng → CFO duyệt các khoản chi → Thủ quỹ thực hiện thu/chi → Kiểm toán nội bộ hậu kiểm → Kế toán trưởng khóa sổ kỳ." },
+  { key: "assets", href: "/assets", title: "Tài sản", flow: "L8", subtitle: "Đề nghị mua sắm → Phê duyệt → Ghi tăng → Khấu hao → Thanh lý", docTypes: ["ASSET"],
+    ownerFlow: "Nhân viên/bộ phận đề nghị mua sắm → CFO phê duyệt → Kế toán ghi tăng tài sản & tính khấu hao hàng kỳ → CFO phê duyệt khi thanh lý." },
+  { key: "customer-service", href: "/customer-service", title: "Dịch vụ khách hàng", flow: "L9", subtitle: "Ticket → Tự động phân công → Xử lý → Giải quyết → Đóng & CSAT", docTypes: ["TICKET"],
+    ownerFlow: "NV Kinh doanh/CSKH tạo ticket → hệ thống tự phân công cho NV CSKH đang ít việc nhất → NV CSKH xử lý & đề xuất giải quyết → TP CSKH đóng ticket & ghi nhận điểm hài lòng khách hàng." },
+  { key: "exceptions", href: "/exceptions", title: "Ngoại lệ", flow: "L4", subtitle: "Nêu ngoại lệ → Xem xét → Phê duyệt (khác người nêu) → Xử lý → Đóng", docTypes: ["EXC"],
+    ownerFlow: "Người phát hiện sai lệch (thường là Kế toán khi đối chiếu 3 chiều) nêu ngoại lệ → CFO xem xét & phê duyệt — bắt buộc khác người nêu (ĐK5/T2.8) → CFO ghi nhận nguyên nhân & hành động phòng ngừa để đóng." },
 ]
 
 export function docTypeLabel(code: string) {

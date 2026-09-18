@@ -11,6 +11,7 @@ import { KpiPanel } from "@/components/reports/kpi-panel"
 import { AgingPanel, FinancialStatementsPanel, TrialBalancePanel } from "@/components/reports/financial-panels"
 import { BudgetPanel } from "@/components/reports/budget-panel"
 import { StockPanel } from "@/components/reports/stock-panel"
+import { ProductProfitPanel } from "@/components/reports/product-profit-panel"
 
 const TRACES = [
   {
@@ -69,6 +70,7 @@ export default function ReportsPage() {
   const tabs = [
     { key: "kpi", label: "KPI (BM-10)", visible: can("KPI", "VIEW") },
     { key: "fs", label: "Báo cáo tài chính", visible: can("GL", "VIEW") },
+    { key: "profit", label: "Lãi gộp SP/KH", visible: can("GL", "VIEW") },
     { key: "tb", label: "Bảng cân đối số phát sinh", visible: can("GL", "VIEW") },
     { key: "aging", label: "Công nợ (AR/AP aging)", visible: can("INV", "VIEW") || can("SINV", "VIEW") },
     { key: "budget", label: "Ngân sách vs Thực tế", visible: can("BUDGET", "VIEW") },
@@ -93,6 +95,7 @@ export default function ReportsPage() {
       <div>
         {active === "kpi" && <KpiPanel />}
         {active === "fs" && <FinancialStatementsPanel />}
+        {active === "profit" && <ProductProfitPanel />}
         {active === "tb" && <TrialBalancePanel />}
         {active === "aging" && <AgingPanel />}
         {active === "budget" && <BudgetPanel />}

@@ -156,6 +156,7 @@ export const FIELD_LABELS: Record<string, string> = {
   shipped_at: "Thời điểm giao", paid_at: "Thời điểm chi", backorder: "Backorder", revoked_count: "Số quyền đã thu hồi",
   depreciation_period: "Kỳ khấu hao", reconciled_at: "Thời điểm đối chiếu", completed_at: "Thời điểm hoàn thành",
   employee_id: "Nhân viên", department_id: "Phòng ban", target_id: "Đối tượng", affected_document_id: "Chứng từ bị ảnh hưởng",
+  vat_rate: "Thuế suất GTGT (%)", vat_amount: "Tiền thuế GTGT", subtotal: "Cộng tiền hàng (chưa thuế)",
 }
 
 export const PRIORITY_LABELS: Record<string, string> = { LOW: "Thấp", MEDIUM: "Trung bình", HIGH: "Cao", CRITICAL: "Khẩn cấp" }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Banknote, Package, Pencil, Printer, RefreshCw, UserCheck } from "lucide-react"
+import { ArrowLeft, Banknote, CheckCircle2, Clock3, Package, Pencil, Printer, RefreshCw, UserCheck } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { DOC_TYPES } from "@/lib/doc-config"
 import { useSession } from "@/lib/session"
@@ -94,6 +94,17 @@ export default function DocumentPage() {
         {doc.title && <p className="mt-1 text-base">{doc.title}</p>}
         <p className="mt-1 text-xs text-muted-foreground">
           Lập bởi {doc.created_by_name} lúc {formatDateTime(doc.created_at)} · cập nhật {formatDateTime(doc.updated_at)} · phiên bản {doc.version}
+        </p>
+        <p className="mt-1.5 text-sm">
+          {detail.current_owner_label ? (
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-amber-900 ring-1 ring-inset ring-amber-200">
+              <Clock3 className="h-3.5 w-3.5 shrink-0" /> Đang chờ xử lý: <b>{detail.current_owner_label}</b>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-emerald-900 ring-1 ring-inset ring-emerald-200">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> Đã kết thúc luồng xử lý — không cần thao tác thêm
+            </span>
+          )}
         </p>
       </div>
 

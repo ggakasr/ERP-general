@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowDown, ArrowUp, Check, X } from "lucide-react"
+import { ArrowDown, ArrowUp, Check, User, X } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { EXC_TYPE_LABELS, FIELD_LABELS, MOVE_LABELS, PRIORITY_LABELS, SEVERITY_LABELS, SOD_LABELS, statusLabel } from "@/lib/labels"
 import { useSession } from "@/lib/session"
@@ -11,7 +11,8 @@ import { useToast } from "@/components/ui/toast"
 import { DocLink, Masked, Money, SlaBadge, SodBadge, StatusBadge } from "@/components/shared/bits"
 
 const MONEY_KEYS = new Set(["base_salary", "allowance", "total_gross", "total_insurance", "total_pit", "total_net", "material_cost",
-  "unit_cost", "opening_accumulated", "accumulated_depreciation", "paid_amount", "outstanding", "cogs", "credit_limit", "gross", "insurance", "pit", "net"])
+  "unit_cost", "opening_accumulated", "accumulated_depreciation", "paid_amount", "outstanding", "cogs", "credit_limit", "gross", "insurance", "pit", "net",
+  "vat_amount", "subtotal"])
 const DATETIME_KEYS = /(_at)$/
 const DATE_KEYS = /(_on|valid_until|delivery_date|start_date|needed_by|date)$/
 const SKIP_KEYS = new Set(["match_result", "assets", "payload", "department_id", "affected_document_id", "target_id", "employee_id", "sla_hours"])
@@ -436,8 +437,13 @@ export function StateMachine({ detail }: { detail: DocumentDetail }) {
           <span className="text-muted-foreground">→</span>
           <span className={cn("rounded px-1.5 py-0.5 ring-1 ring-inset", visited.has(t.to) ? "bg-muted ring-border" : "ring-border text-muted-foreground")}>{statusLabel(t.to)}</span>
           <span className="text-muted-foreground">{t.label}</span>
-          {t.system_only && <span className="text-[10px] text-muted-foreground">(tự động)</span>}
+          {t.system_only && <span className="text-[10px] text-muted-foreground">(tự động khi chứng từ liên quan xử lý xong)</span>}
           {t.sod_role && <span className="text-[10px] text-muted-foreground">· {SOD_LABELS[t.sod_role]}</span>}
+          {t.actor_label && (
+            <span className="ml-auto inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+              <User className="h-3 w-3" /> {t.actor_label}
+            </span>
+          )}
         </div>
       ))}
     </div>

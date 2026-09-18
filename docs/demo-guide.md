@@ -2,6 +2,14 @@
 
 Mật khẩu mọi tài khoản: `Demo@123` (đăng nhập bằng `tên` hoặc `tên@erp.demo`, hoặc bấm tài khoản ở trang đăng nhập).
 
+## "Việc của ai, tiếp theo là ai" — luôn hiển thị sẵn trên UI
+
+Mọi trang chứng từ đều tự tính (từ `state_transitions` + `permission_matrix`, không hard-code) và hiển thị:
+- Banner đầu trang: **"Đang chờ xử lý: <vai trò>"** hoặc **"Đã kết thúc luồng xử lý"**.
+- Mỗi nút hành động: di chuột vào để thấy **"Sau khi xác nhận, việc chuyển cho: <vai trò>"**; hộp thoại xác nhận cũng nhắc lại.
+- Tab **Máy trạng thái**: từng bước ghi rõ vai trò phụ trách.
+- Đầu mỗi trang phân hệ (Bán hàng, Mua hàng, Kho, …): dòng **"Việc của ai, tiếp theo là ai"** tóm tắt cả luồng.
+
 ## Tài khoản & quyền
 
 | Tài khoản | Vai trò | Phạm vi nổi bật |
@@ -19,7 +27,13 @@ Mật khẩu mọi tài khoản: `Demo@123` (đăng nhập bằng `tên` hoặc 
 | `kinhdoanh.tp` / `kinhdoanh` / `kinhdoanh2` | TP / NV Kinh doanh | NV chỉ thấy **chứng từ của mình** |
 | `nhansu.tp` / `nhansu` | TP / Chuyên viên nhân sự | Duyệt tuyển dụng / tính lương |
 | `cskh.tp` / `cskh` / `cskh2` | TP / NV CSKH | Phân công & đóng / xử lý ticket được giao |
-| `gd.hcm`, `kinhdoanh.hcm`, `kho.hcm` | Chi nhánh HCM | GĐ chi nhánh quyền rộng nhưng **vẫn bị SoD chặn** |
+| `gd.hcm`, `kinhdoanh.hcm`, `kho.hcm`, `ketoan.hcm` | Chi nhánh HCM | GĐ chi nhánh quyền rộng nhưng **vẫn bị SoD chặn** |
+
+**Phạm vi chi nhánh HCM (thiết kế có chủ đích):** HCM chỉ có 4 phòng (Ban giám đốc, Kế toán, Kinh doanh, Kho vận) —
+**không có Mua hàng / Sản xuất / QC**, nên không thể chạy trọn vẹn Kịch bản 1 (Procure-to-Pay) hay lệnh sản xuất
+chỉ trong phạm vi HCM. HCM nhận hàng qua **chuyển kho nội bộ từ HN** (ST), không nhận thẳng từ NCC — vì vậy phiếu
+nhập kho (GRN, cần QC kiểm tra) không phát sinh ở HCM. Các vai trò công ty (CEO, CFO, Kế toán trưởng, Thủ quỹ,
+Kiểm toán, Quản trị hệ thống) có phạm vi COMPANY nên vẫn xử lý được chứng từ của HCM.
 
 ## Kịch bản 1 — Procure-to-Pay trọn vẹn (≈10 phút)
 
@@ -56,3 +70,12 @@ Mật khẩu mọi tài khoản: `Demo@123` (đăng nhập bằng `tên` hoặc 
 | `AR-202609-00001` | Rà soát quyền đã thu hồi quyền SALES_STAFF tạm cấp cho TP CSKH |
 | `BR-202609-00001` | Đối chiếu ngân hàng còn 1 dòng phí chưa khớp → kế toán trưởng quyết định |
 | Kỳ 2026-07 / 2026-08 | Khóa cứng / khóa sơ bộ — thử ghi JV ngày 15/07 sẽ bị chặn |
+
+## Thuế GTGT trên hóa đơn
+
+Khi lập **Hóa đơn NCC (SINV)** hoặc **Hóa đơn bán hàng (INV)**, chọn thuế suất GTGT (0/5/8/10%, mặc định 10%).
+Giá trị dòng vẫn là **giá chưa thuế** (dùng để đối chiếu 3 chiều và ghi doanh thu/giá vốn đúng bản chất).
+Khi **ghi sổ công nợ** (post), hệ thống cộng thêm thuế: Nợ 131 / Có 3331 (đầu ra) cho hóa đơn bán; Nợ 1331 / Có 331
+(đầu vào) cho hóa đơn mua — và tổng phải thu/phải trả (`amount`, dùng cho công nợ, tuổi nợ, đối soát thanh toán)
+chuyển thành **giá trị đã gồm thuế** từ thời điểm đó. Hóa đơn tạo trước khi có tính năng này không bị ảnh hưởng
+(thuế suất mặc định 0%).

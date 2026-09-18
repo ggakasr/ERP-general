@@ -93,7 +93,7 @@ function DocumentForm() {
         return
       }
       const t = params.get("type")
-      const v: Record<string, any> = { doc_date: today(), fiscal_year: new Date().getFullYear(), priority: "MEDIUM", method: "BANK_TRANSFER" }
+      const v: Record<string, any> = { doc_date: today(), fiscal_year: new Date().getFullYear(), priority: "MEDIUM", method: "BANK_TRANSFER", vat_rate: "10" }
       if (parentId && t) {
         const res = await rpc<DocumentDetail>("api_get_document", { p_id: parentId })
         if (!res.ok) return setError((res as any).error)

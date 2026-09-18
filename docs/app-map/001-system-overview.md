@@ -1,6 +1,6 @@
 ---
 covers: project root, src/**, supabase/**, scripts/**, tests/**
-last_verified: 2026-09-17
+last_verified: 2026-09-18
 ttl_days: 30
 ---
 
@@ -24,6 +24,9 @@ Next.js 14 (Vercel)  ──supabase.rpc()──►  PostgreSQL (Supabase)
 | Engine: tạo/chuyển trạng thái chứng từ, side effects, lương, khấu hao | `supabase/migrations/004_engine.sql` |
 | API đọc: danh sách, chi tiết, inbox, 3 truy vết, báo cáo, kiểm soát | `supabase/migrations/005_read_api.sql` |
 | Grants + RLS | `supabase/migrations/006_security.sql` |
+| Nhãn "việc của ai / tiếp theo là ai" (`fn_role_names_for`, `fn_owner_label`) — tính từ `permission_matrix`, không hard-code | `supabase/migrations/007_flow_ownership.sql` |
+| Báo cáo lãi gộp theo sản phẩm & khách hàng (`api_product_profit`) | `supabase/migrations/008_product_profit.sql` |
+| Thuế GTGT trên hóa đơn bán ra/mua vào (TK 1331/3331), cộng vào `documents.amount` khi ghi sổ | `supabase/migrations/009_vat.sql` |
 | Dữ liệu mẫu tháng 7–9/2026 (chạy qua API) | `supabase/seed/seed.sql` |
 | Công cụ DB | `scripts/db.mjs` (`migrate`, `seed`, `reset`, `functions`, `sql`, `file`) |
 | Acceptance tests (BM-14) | `tests/acceptance.test.mjs` |

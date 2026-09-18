@@ -46,6 +46,11 @@ export function ModulePage({ moduleKey, extraTabs = [], docTypes }: { moduleKey:
           </Link>
         ))}
       />
+      {mod.ownerFlow && (
+        <p className="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2 text-xs text-blue-900">
+          <b>Việc của ai, tiếp theo là ai:</b> {mod.ownerFlow}
+        </p>
+      )}
       {tabs.length > 1 && <Tabs items={tabs} value={tab} onChange={setTab} />}
       {tab === "docs" && types.length > 0 && <DocTable docTypes={types} />}
       {extras.map((t) => (tab === t.key ? <div key={t.key}>{t.render()}</div> : null))}

@@ -98,7 +98,13 @@ export function ActionBar({ doc, actions, onDone }: { doc: DocumentRow; actions:
               a.sod_conflict && "ring-2 ring-orange-300"
             )}
             onClick={() => open(a)}
-            title={a.sod_conflict ? `Cảnh báo SoD: bạn đã là ${SOD_LABELS[a.sod_conflict.existing_role]} trên ${a.sod_conflict.document_number}` : undefined}
+            title={
+              a.sod_conflict
+                ? `Cảnh báo SoD: bạn đã là ${SOD_LABELS[a.sod_conflict.existing_role]} trên ${a.sod_conflict.document_number}`
+                : a.next_owner_label
+                ? `Sau khi xác nhận, việc chuyển cho: ${a.next_owner_label}`
+                : undefined
+            }
           >
             {a.kind === "create" && <FilePlus2 className="mr-1.5 h-3.5 w-3.5" />}
             {a.sod_conflict && <ShieldAlert className="mr-1.5 h-3.5 w-3.5 text-orange-300" />}
@@ -145,6 +151,12 @@ export function ActionBar({ doc, actions, onDone }: { doc: DocumentRow; actions:
                   </p>
                 </div>
               </div>
+            )}
+
+            {active.next_owner_label && (
+              <p className="rounded-md bg-sky-50 px-3 py-2 text-xs text-sky-900 ring-1 ring-inset ring-sky-200">
+                Sau khi xác nhận, việc sẽ chuyển cho: <b>{active.next_owner_label}</b>
+              </p>
             )}
 
             {!!active.conditions?.length && (

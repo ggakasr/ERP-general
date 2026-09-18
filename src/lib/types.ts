@@ -162,6 +162,8 @@ export interface AvailableAction {
   sod_role?: SodRole | null
   conditions?: string[]
   sod_conflict: SodConflict | null
+  /** vai trò sẽ phụ trách sau khi hành động này hoàn tất — "làm xong thì việc của ai?" */
+  next_owner_label?: string | null
 }
 
 export interface ActionRecord {
@@ -210,6 +212,8 @@ export interface DocumentDetail {
   stock_moves: { id: string; move_type: string; qty: number; unit_cost?: number; value?: number; remaining_qty: number; product_code: string; product_name: string; unit: string; warehouse_name: string; source_document_number: string | null; created_at: string }[] | null
   audit: { id: number; table_name: string; action: string; old_value: any; new_value: any; changed_fields: string[] | null; user_name: string; created_at: string }[] | null
   sod_checks: { action: string; user_name: string; attempted_role: string; conflicting_role: string | null; result: string; detail: string | null; checked_at: string }[] | null
-  transitions: { from: string; to: string; label: string; sod_role: string | null; system_only: boolean; permission: string }[]
+  transitions: { from: string; to: string; label: string; sod_role: string | null; system_only: boolean; permission: string; actor_label: string | null }[]
   budget: { planned: number; committed: number; actual: number; usage: { document_id: string; number: string; doc_type: string; usage_type: string; amount: number; created_at: string }[] } | null
+  /** vai trò đang "giữ bóng" ở trạng thái hiện tại; null nếu chứng từ đã kết thúc (terminal) */
+  current_owner_label: string | null
 }
