@@ -1,0 +1,3 @@
+npx tsc --noEmit
+npx next lint --quiet
+node scripts/pre-commit-secrets.mjs

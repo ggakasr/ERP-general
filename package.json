@@ -11,7 +11,8 @@
     "db:migrate": "node scripts/db.mjs migrate",
     "db:seed": "node scripts/db.mjs seed",
     "db:reset": "node scripts/db.mjs reset",
-    "test:acceptance": "node --test --test-concurrency=1 tests/acceptance.test.mjs"
+    "test:acceptance": "node --test --test-concurrency=1 tests/acceptance.test.mjs",
+    "prepare": "husky"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.1",
@@ -35,6 +36,7 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.15",
+    "husky": "^9.1.7",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.12",
     "typescript": "^5.6.2"

@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # Runs the 49 BM-14 acceptance tests against a real Supabase Postgres instance
+      # (each test runs in a transaction that is rolled back — no data is left behind).
+      # Requires a repo secret SUPABASE_DB_URL (Settings → Secrets and variables →
+      # Actions → New repository secret). Without it, this step is skipped rather
+      # than failing the whole pipeline, so forks/PRs from outside contributors
+      # still get typecheck + lint feedback.
+      - name: Check DB secret present
+        id: has_db
+        run: echo "ok=${{ secrets.SUPABASE_DB_URL != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Acceptance tests (BM-14, T1.1-T5.9)
+        if: steps.has_db.outputs.ok == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: npm run test:acceptance
+
+      - name: Acceptance tests skipped
+        if: steps.has_db.outputs.ok != 'true'
+        run: |
+          echo "::warning::SUPABASE_DB_URL repo secret not set — skipped the 49 acceptance tests (T1.1-T5.9)."
+          echo "Add it under Settings > Secrets and variables > Actions to run them in CI."
