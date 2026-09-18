@@ -2,6 +2,11 @@
 
 Mật khẩu mọi tài khoản: `Demo@123` (đăng nhập bằng `tên` hoặc `tên@erp.demo`, hoặc bấm tài khoản ở trang đăng nhập).
 
+**Chia sẻ link công khai (Vercel, v.v.)?** Trang đăng nhập hiện mật khẩu dùng chung và cho phép vào thẳng
+mọi vai trò kể cả CEO/CFO — chỉ phù hợp khi biết rõ ai sẽ xem link. Nếu chia sẻ rộng rãi, đặt biến môi trường
+`DEMO_GATE_CODE` (xem `.env.local.example`) để bật lớp hỏi mã truy cập trước khi thấy trang đăng nhập
+(`src/app/gate`). Không đặt biến này thì hành vi giữ nguyên như hiện tại.
+
 ## "Việc của ai, tiếp theo là ai" — luôn hiển thị sẵn trên UI
 
 Mọi trang chứng từ đều tự tính (từ `state_transitions` + `permission_matrix`, không hard-code) và hiển thị:

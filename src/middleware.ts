@@ -1,8 +1,26 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
+const GATE_COOKIE = "demo_gate"
+const GATE_PATHS = ["/gate", "/api/gate"]
+
 // Refreshes the Supabase session cookie and guards every page behind sign-in.
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+
+  // Optional outer gate for public demo deployments: when DEMO_GATE_CODE is set, every
+  // route (including /login, which shows the shared demo password) requires this code first.
+  // Disabled by default — set DEMO_GATE_CODE in the environment to turn it on.
+  const gateCode = process.env.DEMO_GATE_CODE
+  if (gateCode && !GATE_PATHS.includes(path)) {
+    if (request.cookies.get(GATE_COOKIE)?.value !== gateCode) {
+      const redirect = request.nextUrl.clone()
+      redirect.pathname = "/gate"
+      redirect.search = `?next=${encodeURIComponent(path + request.nextUrl.search)}`
+      return NextResponse.redirect(redirect)
+    }
+  }
+
   let response = NextResponse.next({ request })
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -25,7 +43,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const path = request.nextUrl.pathname
   if (!user && path !== "/login") {
     const redirect = request.nextUrl.clone()
     redirect.pathname = "/login"
