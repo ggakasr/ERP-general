@@ -47,7 +47,8 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
     return () => document.removeEventListener("mousedown", onDoc)
   }, [])
 
-  // poll notifications every 60s
+  // poll notifications every 60s; best-effort kick the email outbox too (real cron
+  // covers production — this just keeps local dev / no-cron deployments moving)
   useEffect(() => {
     const tick = async () => {
       const res = await rpc<{ ok: boolean; unread: number; rows: Notification[] }>("api_notifications", { p_limit: 20 })
@@ -55,6 +56,7 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
         setUnread(res.unread)
         setNotes(res.rows)
       }
+      fetch("/api/notifications/flush", { method: "POST" }).catch(() => {})
     }
     tick()
     const id = setInterval(tick, 60000)

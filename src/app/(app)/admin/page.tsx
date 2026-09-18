@@ -14,6 +14,7 @@ import { PermissionMatrixPanel } from "@/components/admin/permission-matrix-pane
 import { PeriodsPanel } from "@/components/admin/periods-panel"
 import { MasterCatalog } from "@/components/admin/master-catalog"
 import { DataDictionaryPanel } from "@/components/admin/data-dictionary-panel"
+import { EmailOutboxPanel } from "@/components/admin/email-outbox-panel"
 
 function AccessReviewTab() {
   const { can } = useSession()
@@ -83,6 +84,7 @@ export default function AdminPage() {
     { key: "master", label: "Thay đổi dữ liệu chủ (BM-08)", visible: true },
     { key: "periods", label: "Kỳ kế toán", visible: true },
     { key: "dictionary", label: "Từ điển dữ liệu (BM-07)", visible: true },
+    { key: "email", label: "Hàng đợi email", visible: can("USER_ADMIN", "VIEW") },
   ].filter((t) => t.visible)
 
   const [tab, setTab] = useState(tabs[0].key)
@@ -103,6 +105,7 @@ export default function AdminPage() {
         {active === "master" && <MasterDataTab />}
         {active === "periods" && <PeriodsPanel />}
         {active === "dictionary" && <DataDictionaryPanel />}
+        {active === "email" && <EmailOutboxPanel />}
       </div>
     </div>
   )
