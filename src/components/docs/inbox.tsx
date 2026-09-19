@@ -39,7 +39,7 @@ export function InboxList({ rows, limit, onReload }: { rows: InboxRow[] | null; 
     <div className="divide-y rounded-lg border bg-card">
       {onReload && (
         <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground">
-          <span>{rows.length} việc — sắp xếp theo mức cập nhật gần nhất</span>
+          <span>{rows.length} việc</span>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onReload}><RefreshCw className="h-3.5 w-3.5" /></Button>
         </div>
       )}

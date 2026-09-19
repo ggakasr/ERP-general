@@ -46,9 +46,6 @@ export default function DashboardPage() {
           <p className="text-sm text-muted-foreground">
             {me.user.position} · {me.user.department_name} · {me.user.branch_name}
           </p>
-          <div className="mt-2 flex flex-wrap gap-1">
-            {me.roles.map((r) => <span key={r.code} className="rounded bg-muted px-1.5 py-0.5 text-[11px]">{r.name}</span>)}
-          </div>
         </div>
         {creatable.length > 0 && (
           <div className="flex flex-wrap gap-2">
