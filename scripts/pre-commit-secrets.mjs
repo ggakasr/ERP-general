@@ -20,8 +20,9 @@ const PATTERNS = [
   { name: 'OpenAI-style API key', re: /sk-[A-Za-z0-9]{20,}/ },
   { name: 'generic secret assignment', re: /\b(?:api[_-]?key|secret|access[_-]?token)\s*[:=]\s*['"][A-Za-z0-9/+_-]{16,}['"]/i },
 ]
-// Placeholder values that would otherwise match "generic secret assignment" — never real leaks.
-const ALLOW_VALUES = ['your-anon-key', 'your-project', 'choose-a-code']
+// Placeholder values that would otherwise match a pattern — never real leaks.
+// 'user:pass@' is the documented placeholder connection string used in CLAUDE.md/AGENTS.md examples.
+const ALLOW_VALUES = ['your-anon-key', 'your-project', 'choose-a-code', 'user:pass@']
 
 function stagedFiles() {
   return execSync('git diff --cached --name-only --diff-filter=ACM').toString().trim().split('\n').filter(Boolean)
