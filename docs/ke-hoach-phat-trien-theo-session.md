@@ -101,7 +101,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 
 | Mã | Tên gói | Ưu tiên | Phụ thuộc | Ước lượng | Xong? |
 |---|---|---|---|---|---|
-| WP-A1 | 7 test còn thiếu + CI đếm test + sửa số liệu CLAUDE.md | P0 | — | 1 ngày | [ ] |
+| WP-A1 | 7 test còn thiếu + CI đếm test + sửa số liệu CLAUDE.md | P0 | — | 1 ngày | [x] |
 | WP-A2 | `docs/positioning.md` + sửa mô tả kiến trúc CLAUDE.md | P0 | — | 3 giờ | [ ] |
 | WP-A3 | Commit `AGENTS.md` (dọn git status) | P0 | — | 15 phút | [ ] |
 | WP-A4 | Viết đủ 16 file `docs/app-map/` | P0–P1 | — | 3–5 ngày | [ ] |
@@ -675,7 +675,7 @@ Cạm bẫy/nợ kỹ thuật còn lại (nếu có): ___
 
 | Mã | Ngày xong | Commit(s) | Test map tới | DoD đủ? | Ghi chú / nợ kỹ thuật |
 |---|---|---|---|---|---|
-| WP-A1 |  |  |  |  |  |
+| WP-A1 | 2026-09-20 | 1e5bbc6 | T5.1–T5.3, T5.7, T5.10–T5.12 | ✅ | — |
 | WP-A2 |  |  |  |  |  |
 | WP-A3 |  |  |  |  |  |
 | WP-A4 |  |  |  |  |  |
