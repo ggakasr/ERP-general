@@ -13,7 +13,7 @@ nguon: docs/phan-tich-canh-tranh-freightek.md (§5, §8, §9, §10, §12)
 > Claude Code riêng**. Khi mở session mới, chủ dự án chỉ cần dán **prompt mẫu** của gói đó
 > (hoặc ghi ngắn "làm gói WP-B1 theo `docs/ke-hoach-phat-trien-theo-session.md`").
 >
-> **Trạng thái**: BẢN NHÁP CHỜ DUYỆT. Chưa code gì. Chủ dự án đọc → nhận xét → duyệt → mới bắt đầu.
+> **Trạng thái**: ✅ ĐÃ DUYỆT (2026-09-20) — đang thực thi. Xem tiến độ ở §2 và bảng bàn giao §6.2.
 
 ---
 
@@ -160,7 +160,7 @@ Lý do làm trước: toàn bộ luận điểm bán hàng là "tôi chứng min
   > Làm gói **WP-A1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3. Đọc trước file kế hoạch đó
   > và `docs/phan-tich-canh-tranh-freightek.md` §5-T10. Viết 7 acceptance test N5 còn thiếu vào
   > `tests/acceptance.test.mjs` (T5.1, T5.2, T5.3, T5.7, T5.10, T5.11, T5.12), thêm CI đếm số test và
-  > fail nếu lệch con số trong `CLAUDE.md`, rồi cập nhật số test trong `CLAUDE.md` cho khớp. Commit ngay.
+  > fail nếu lệch con số trong `CLAUDE.md`, rồi cập nhật số test trong `CLAUDE.md` cho khớp. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-A2 — `docs/positioning.md` + sửa mô tả kiến trúc CLAUDE.md
 
@@ -177,7 +177,7 @@ Lý do làm trước: toàn bộ luận điểm bán hàng là "tôi chứng min
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-A2** theo `docs/ke-hoach-phat-trien-theo-session.md`. Viết `docs/positioning.md` dựa trên
   > §7 của `docs/phan-tich-canh-tranh-freightek.md` (chốt tổ hợp A chính / B demo / C nền tảng), và sửa
-  > `CLAUDE.md` §5–§7 để không mô tả kiến trúc NestJS/Prisma như thể đang dùng. Commit ngay.
+  > `CLAUDE.md` §5–§7 để không mô tả kiến trúc NestJS/Prisma như thể đang dùng. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-A3 — Commit AGENTS.md
 
@@ -227,7 +227,7 @@ ROI cao nhất trên mỗi giờ công: cảm nhận "chuyên nghiệp" đến t
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-B1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3. Cài recharts, viết 4 RPC tổng hợp
   > (`api_chart_*`) trong migration mới `supabase/migrations/012_charts.sql` (tôn trọng `fn_perm_scope`),
-  > dựng 7 widget dashboard + bộ lọc thời gian dùng chung. Thêm test scope cho RPC chart. Commit ngay.
+  > dựng 7 widget dashboard + bộ lọc thời gian dùng chung. Thêm test scope cho RPC chart. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-B2 — PWA + bottom nav + Web Push
 
@@ -240,7 +240,7 @@ ROI cao nhất trên mỗi giờ công: cảm nhận "chuyên nghiệp" đến t
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-B2** theo `docs/ke-hoach-phat-trien-theo-session.md`. Biến web thành PWA (manifest + service
   > worker + icon), thêm bottom nav 4 mục dùng lại `api_inbox`/`api_notifications`, thêm Web Push. Không viết
-  > app native. Commit ngay.
+  > app native. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 ---
 
@@ -274,7 +274,7 @@ state machine / SoD / audit / handoff / trace / permission.
   > Làm gói **WP-C1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3 và `docs/phan-tich-canh-tranh-freightek.md`
   > §5-T1. Thêm thực thể SHIPMENT (+BOOKING/HBL/DO/DNOTE/CNOTE) hoàn toàn qua cấu hình trong migration mới
   > `011_shipment.sql`, cấu hình UI trong `src/lib/doc-config.ts`, bảng `containers` + `shipment_charges`, mã
-  > job cấu trúc qua `fn_next_number`, seed mẫu, test T7.x. Không hard-code vào `004_engine.sql`. Commit ngay.
+  > job cấu trúc qua `fn_next_number`, seed mẫu, test T7.x. Không hard-code vào `004_engine.sql`. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-C2 — Rate & Charge engine + trang `/pricing`
 
@@ -288,7 +288,7 @@ state machine / SoD / audit / handoff / trace / permission.
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-C2** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-C1 đã xong). Viết Rate & Charge
   > engine trong migration mới (`rates`, `charge_codes`, `api_rate_search/quote_build/rate_import`), cảnh báo
-  > rate sắp hết hạn qua email_outbox, trang `/pricing`. Commit ngay.
+  > rate sắp hết hạn qua email_outbox, trang `/pricing`. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-C3 — Danh mục cảng/hãng tàu + timeline tracking
 
@@ -302,7 +302,7 @@ state machine / SoD / audit / handoff / trace / permission.
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-C3** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-C1). Thêm danh mục
   > `carriers/ports/vessels/vessel_schedules/tracking_events` (nhập tay + import CSV), trang `/schedule`, và
-  > tab Tracking timeline trong chi tiết shipment. Không gọi HTTP từ Postgres. Commit ngay.
+  > tab Tracking timeline trong chi tiết shipment. Không gọi HTTP từ Postgres. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 ---
 
@@ -352,7 +352,7 @@ theo bình phương số bảng × bản ghi). **Rủi ro cao nhất — cần t
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-E1** theo `docs/ke-hoach-phat-trien-theo-session.md`. Thêm lưu trữ chứng từ: Supabase Storage
   > bucket + bảng `attachments` + `api_attach_file`, hiển thị ở `/documents/[id]`, cảnh báo chứng từ thiếu file
-  > ở `/controls`. Commit ngay.
+  > ở `/controls`. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-E2 — AI ingestion pipeline
 
@@ -369,7 +369,7 @@ theo bình phương số bảng × bản ghi). **Rủi ro cao nhất — cần t
   > Làm gói **WP-E2** theo `docs/ke-hoach-phat-trien-theo-session.md` §3 và file phân tích §5-T5 (cần WP-E1).
   > Dựng pipeline AI ingestion: `/api/ingest` + bảng `ingest_jobs`, AI chỉ tạo DRAFT với `ai_extracted`+`confidence`,
   > người duyệt bắt buộc, sai lệch master data → sinh EXC. Viết test: AI không gọi được SUBMIT/APPROVE/POST và
-  > chứng từ AI tạo vẫn qua SoD. Commit ngay.
+  > chứng từ AI tạo vẫn qua SoD. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 ---
 
@@ -384,7 +384,7 @@ theo bình phương số bảng × bản ghi). **Rủi ro cao nhất — cần t
   `api_add_comment`; hiển thị ở `/documents/[id]`; `@mention` → `fn_notify`.
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-F1** theo `docs/ke-hoach-phat-trien-theo-session.md`. Thêm comment trên chứng từ: bảng
-  > `comments` + `api_add_comment` + hiển thị ở `/documents/[id]` + `@mention` gọi `fn_notify`. Commit ngay.
+  > `comments` + `api_add_comment` + hiển thị ở `/documents/[id]` + `@mention` gọi `fn_notify`. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-F2 — Nâng cấp task queue theo vai trò
 
@@ -392,7 +392,7 @@ theo bình phương số bảng × bản ghi). **Rủi ro cao nhất — cần t
 - **Phụ thuộc**: không. Ít bảng mới.
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-F2** theo `docs/ke-hoach-phat-trien-theo-session.md`. Nâng `/tasks` thành hàng đợi công việc
-  > theo vai trò, dựa trên `handoff_records` và `fn_available_actions`. Commit ngay.
+  > theo vai trò, dựa trên `handoff_records` và `fn_available_actions`. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-F3 — Client Portal + Agent Portal
 
@@ -405,7 +405,7 @@ theo bình phương số bảng × bản ghi). **Rủi ro cao nhất — cần t
   > Làm gói **WP-F3** theo `docs/ke-hoach-phat-trien-theo-session.md` §3 và file phân tích §5-T6 (cần WP-D1 và
   > WP-C1). Thêm vai trò `PORTAL_CUSTOMER`/`PARTNER_AGENT` trong `permission_matrix` (scope OWN theo partner_id),
   > cho phép xem lô hàng/tracking/tải chứng từ/xác nhận báo giá; đại lý nhập debit/credit note. Dùng chung
-  > `fn_perm_scope`/`fn_doc_in_scope`, không mở bảng riêng, không cho tạo chứng từ tài chính. Commit ngay.
+  > `fn_perm_scope`/`fn_doc_in_scope`, không mở bảng riêng, không cho tạo chứng từ tài chính. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 ---
 
@@ -424,7 +424,7 @@ Làm điểm mạnh mạnh hơn — đây là thứ Freightek không có và kh�
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-G1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3 và file phân tích §6.2. Viết
   > `api_audit_pack(from,to,scope)` kết xuất bộ bằng chứng + manifest hash từng tệp + hash tổng, tôn trọng
-  > `fn_doc_in_scope`. Viết test: hash ổn định khi dữ liệu bất biến, lệch khi sửa. Commit ngay.
+  > `fn_doc_in_scope`. Viết test: hash ổn định khi dữ liệu bất biến, lệch khi sửa. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-G2 — Audit trail tamper-evident (hash-chain)
 
@@ -433,7 +433,7 @@ Làm điểm mạnh mạnh hơn — đây là thứ Freightek không có và kh�
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-G2** theo `docs/ke-hoach-phat-trien-theo-session.md` và file phân tích §9.1. Nâng audit trail
   > thành tamper-evident: thêm `prev_hash`+`row_hash` tạo hash-chain trong trigger ghi audit; thêm hàm kiểm tra
-  > tính toàn vẹn chuỗi. Commit ngay.
+  > tính toàn vẹn chuỗi. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-G3 — Duyệt đa cấp + SoD theo mức rủi ro + delegation
 
@@ -445,7 +445,7 @@ Làm điểm mạnh mạnh hơn — đây là thứ Freightek không có và kh�
   > Làm gói **WP-G3** theo `docs/ke-hoach-phat-trien-theo-session.md` và file phân tích §9.1. Thêm chuỗi duyệt
   > đa cấp (`approval_chain`) theo loại chứng từ + giá trị, ngưỡng SoD theo mức rủi ro qua
   > `state_transitions.conditions`, và bảng `delegations` (uỷ quyền có hạn, chặn uỷ quyền cho người vi phạm SoD).
-  > Giữ T3.1–T3.4 PASS. Commit ngay.
+  > Giữ T3.1–T3.4 PASS. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-G4 — Widget phát hiện bất thường
 
@@ -454,7 +454,7 @@ Làm điểm mạnh mạnh hơn — đây là thứ Freightek không có và kh�
 - **Phụ thuộc**: **WP-B1** (để hiển thị chart).
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-G4** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-B1). Thêm RPC + widget "cảnh báo
-  > rủi ro" ở `/controls`: phát hiện bất thường từ dữ liệu SoD/exception/thời gian tạo/số tiền. Commit ngay.
+  > rủi ro" ở `/controls`: phát hiện bất thường từ dữ liệu SoD/exception/thời gian tạo/số tiền. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 ---
 
@@ -469,7 +469,7 @@ Nguyên tắc: mọi tích hợp đi qua adapter ở tầng Next.js, **không** 
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-H1** theo `docs/ke-hoach-phat-trien-theo-session.md` và file phân tích §5-T11. Thêm adapter hoá
   > đơn điện tử ở tầng Next.js (≥2 nhà cung cấp VN) + bảng `einvoice_log`, gắn vào transition `INV→ISSUED`.
-  > Không gọi HTTP từ Postgres. Commit ngay.
+  > Không gọi HTTP từ Postgres. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-H2 — Import & đối chiếu sao kê ngân hàng
 
@@ -477,7 +477,7 @@ Nguyên tắc: mọi tích hợp đi qua adapter ở tầng Next.js, **không** 
   `api_bankrec_suggest(p_period)`.
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-H2** theo `docs/ke-hoach-phat-trien-theo-session.md`. Thêm import sao kê ngân hàng (CSV/OFX)
-  > cho `BANKREC` + matching tự động (số tiền/ngày/nội dung) + `api_bankrec_suggest(period)`. Commit ngay.
+  > cho `BANKREC` + matching tự động (số tiền/ngày/nội dung) + `api_bankrec_suggest(period)`. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-H3 — Deploy/backup/DR + health check + CI gate
 
@@ -487,7 +487,7 @@ Nguyên tắc: mọi tích hợp đi qua adapter ở tầng Next.js, **không** 
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-H3** theo `docs/ke-hoach-phat-trien-theo-session.md` và file phân tích §5-T12, §9.3. Viết
   > `docs/deployment.md` + chính sách backup/DR + health check RPC trọng yếu + CI gate chặn phát hành khi
-  > T3.1–T3.4 fail. Commit ngay.
+  > T3.1–T3.4 fail. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 ---
 
@@ -500,7 +500,7 @@ Nguyên tắc: mọi tích hợp đi qua adapter ở tầng Next.js, **không** 
   đóng gói Starter / Professional / Enterprise (theo file phân tích §5-T9). Chưa cần cổng thanh toán.
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-I1** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-D1). Thêm bảng `subscriptions` +
-  > đếm usage + đóng gói Starter/Professional/Enterprise. Chưa tích hợp cổng thanh toán. Commit ngay.
+  > đếm usage + đóng gói Starter/Professional/Enterprise. Chưa tích hợp cổng thanh toán. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-I2 — Landing page + Help Center + onboarding demo
 
@@ -509,7 +509,7 @@ Nguyên tắc: mọi tích hợp đi qua adapter ở tầng Next.js, **không** 
   + form đăng ký demo; cấp tenant tự động + dữ liệu mẫu (sau khi có WP-D1).
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-I2** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-A4). Dựng landing page theo
-  > `docs/positioning.md`, Help Center từ bộ `docs/app-map/`, form đăng ký demo + onboarding. Commit ngay.
+  > `docs/positioning.md`, Help Center từ bộ `docs/app-map/`, form đăng ký demo + onboarding. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 ---
 
@@ -541,7 +541,7 @@ thể** — thứ mà B1/B2 và các gói nghiệp vụ không tự đảm bảo
   > Làm gói **WP-J1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3, Nhóm J. Gọi skill `ui-design-logic`.
   > Dựng design system (tokens màu/typography/spacing/radius/shadow, light+dark), bộ component shadcn/ui chuẩn,
   > và app shell (sidebar gom module có badge + topbar + breadcrumb). Chỉ đổi trình bày, không đụng RPC/logic.
-  > Chạy vòng screenshot QA của skill. Commit ngay.
+  > Chạy vòng screenshot QA của skill. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-J2 — Thiết kế hành vi & ma trận trạng thái cho màn cốt lõi
 
@@ -557,7 +557,7 @@ thể** — thứ mà B1/B2 và các gói nghiệp vụ không tự đảm bảo
   > Làm gói **WP-J2** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-J1). Gọi skill `ui-design-logic`.
   > Thiết kế hành vi + ma trận trạng thái (đăng nhập/chưa, role, empty, loading, error, thành công) cho các màn
   > cốt lõi (dashboard, list & chi tiết chứng từ, tasks, trace, controls, exceptions): thêm skeleton, empty state
-  > có hướng dẫn, error state có cách khắc phục, toast. Commit ngay.
+  > có hướng dẫn, error state có cách khắc phục, toast. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-J3 — Vòng QA/triage UX toàn bộ màn hiện có
 
@@ -570,7 +570,7 @@ thể** — thứ mà B1/B2 và các gói nghiệp vụ không tự đảm bảo
 - **📋 PROMPT MẪU**:
   > Làm gói **WP-J3** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-J1, WP-J2). Gọi skill `ui-ux-triage`.
   > Rà toàn bộ page trong `src/app/(app)/` bằng vòng screenshot, phân loại & sửa defect UI đạt design-spec, dọn
-  > AI-slop. Không đụng DB. Commit sau khi tôi xác nhận.
+  > AI-slop. Không đụng DB. Commit sau khi tôi xác nhận. Trước đó, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 #### WP-J4 — UI Shipment/Operations ngang mobile Freightek
 
@@ -586,7 +586,7 @@ thể** — thứ mà B1/B2 và các gói nghiệp vụ không tự đảm bảo
   > Làm gói **WP-J4** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-C1, WP-J1). Gọi skill `ui-design-logic`.
   > Dựng danh sách shipment dạng card (mã job, tuyến POL→POD, ETD/carrier, chips container, badge trạng thái +
   > "Lãi hết hạn") và chi tiết shipment nhiều tab (Overview/Charges/Containers/Tracking/Documents). Dữ liệu từ RPC
-  > thật, không bịa số. Commit ngay.
+  > thật, không bịa số. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
 
 ---
 
