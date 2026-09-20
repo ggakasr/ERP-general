@@ -24,17 +24,28 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Runs the 49 BM-14 acceptance tests against a real Supabase Postgres instance
+      # Runs the 63 BM-14 acceptance tests against a real Supabase Postgres instance
       # (each test runs in a transaction that is rolled back — no data is left behind).
       # Requires a repo secret SUPABASE_DB_URL (Settings → Secrets and variables →
       # Actions → New repository secret). Without it, this step is skipped rather
       # than failing the whole pipeline, so forks/PRs from outside contributors
       # still get typecheck + lint feedback.
+      - name: Verify acceptance test count matches CLAUDE.md
+        run: |
+          ACTUAL=$(grep -c "^t('" tests/acceptance.test.mjs || true)
+          EXPECTED=$(grep -oP "\d+(?= test, chạy)" CLAUDE.md || echo "0")
+          echo "Actual test count: $ACTUAL"
+          echo "CLAUDE.md declares: $EXPECTED"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::Test count mismatch: tests/acceptance.test.mjs has $ACTUAL tests but CLAUDE.md declares $EXPECTED. Update CLAUDE.md or add/remove tests."
+            exit 1
+          fi
+
       - name: Check DB secret present
         id: has_db
         run: echo "ok=${{ secrets.SUPABASE_DB_URL != '' }}" >> "$GITHUB_OUTPUT"
 
-      - name: Acceptance tests (BM-14, T1.1-T5.9)
+      - name: Acceptance tests (BM-14, T1.1-T5.12)
         if: steps.has_db.outputs.ok == 'true'
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
@@ -43,5 +54,5 @@ jobs:
       - name: Acceptance tests skipped
         if: steps.has_db.outputs.ok != 'true'
         run: |
-          echo "::warning::SUPABASE_DB_URL repo secret not set — skipped the 49 acceptance tests (T1.1-T5.9)."
+          echo "::warning::SUPABASE_DB_URL repo secret not set — skipped the 63 acceptance tests (T1.1-T5.12)."
           echo "Add it under Settings > Secrets and variables > Actions to run them in CI."
