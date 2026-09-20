@@ -1,0 +1,708 @@
+---
+covers: docs/, supabase/migrations/, src/, tests/
+last_verified: 2026-09-20
+ttl_days: 60
+status: KẾ HOẠCH PHÁT TRIỂN CHIA THEO SESSION (ĐÃ DUYỆT 2026-09-20)
+nguon: docs/phan-tich-canh-tranh-freightek.md (§5, §8, §9, §10, §12)
+---
+
+# Kế hoạch phát triển ERP-General — chia theo gói việc cho từng session
+
+> **Mục đích của file này**: biến kế hoạch nâng cấp trong `phan-tich-canh-tranh-freightek.md`
+> thành **các gói việc độc lập (WP = Work Package)**. Mỗi gói đủ ngữ cảnh để giao cho **một session
+> Claude Code riêng**. Khi mở session mới, chủ dự án chỉ cần dán **prompt mẫu** của gói đó
+> (hoặc ghi ngắn "làm gói WP-B1 theo `docs/ke-hoach-phat-trien-theo-session.md`").
+>
+> **Trạng thái**: BẢN NHÁP CHỜ DUYỆT. Chưa code gì. Chủ dự án đọc → nhận xét → duyệt → mới bắt đầu.
+
+---
+
+## 0. CÁCH DÙNG FILE NÀY
+
+1. Mỗi gói có mã cố định: `WP-<Nhóm><Số>` (ví dụ `WP-C1` = Shipment).
+2. Khi bắt đầu một gói ở session mới, **dán khối "📋 PROMPT MẪU"** của gói đó vào ô chat.
+   Prompt đã trỏ sẵn tới file này + file phân tích gốc, nên session mới sẽ tự nạp đủ ngữ cảnh.
+3. **Đọc cột "Phụ thuộc" trước.** Không mở gói khi gói phụ thuộc chưa xong (sẽ phải làm lại).
+4. Mỗi gói kết thúc bằng: code + test map được tới acceptance test + cập nhật app-map + commit ngay,
+   **rồi điền checklist bàn giao §6.1 và thêm dòng vào bảng §6.2** (để chủ dự án khỏi kiểm tra lại).
+5. File này là tài liệu sống. Gói nào xong (đủ §6.1) → đánh dấu `[x]` ở §2 và ghi ngày.
+
+### Quy tắc chung áp cho MỌI session (trích `CLAUDE.md`)
+
+- **Không** viết lại sang NestJS/Prisma. Kiến trúc Postgres-centric hiện tại là lợi thế — giữ nguyên.
+- **Không** hard-code nghiệp vụ vào `004_engine.sql`. Thực thể/trạng thái/quyền mới → đi qua **dữ liệu cấu hình**
+  (`003_config.sql` hoặc migration mới) + `src/lib/doc-config.ts`.
+- **Không** cấp quyền đọc/ghi bảng nghiệp vụ cho `authenticated`. Mọi truy cập qua hàm `api_*` (xem `006_security.sql`).
+- **Không** sửa/xoá audit trail. AI không được gọi transition `SUBMIT/APPROVE/POST`.
+- SoD là **absolute blocker** — không bao giờ bypass. Test `T3.1–T3.4` phải luôn PASS.
+- Trước commit: `npm run typecheck`, `npx next lint`, `npm run test:acceptance`.
+- Mỗi thay đổi map được tới ≥1 acceptance test. Commit ngay khi thay đổi, không dồn cuối.
+- Sửa hàm khi dev: `node scripts/db.mjs functions`. Đổi schema: tạo migration mới (không sửa migration cũ đã chạy).
+
+---
+
+## 1. BẢN ĐỒ CÁC NHÓM & THỨ TỰ
+
+```
+NHÓM A  Nền tảng trung thực & định vị      (P0 — làm TRƯỚC MỌI THỨ, độc lập)
+NHÓM B  Lớp hiển thị (chart, PWA)          (P1 — rẻ nhất, làm sớm để có demo; độc lập)
+NHÓM C  Nghiệp vụ ngành logistics          (P1 — Shipment → Rate → Lịch tàu; nội bộ tuần tự)
+NHÓM D  Multi-tenant                       (P2 — chặn cứng thương mại; làm TRƯỚC khách thứ hai)
+NHÓM E  Số hoá chứng từ & AI ingestion     (P2 — Storage → AI; điểm bán số 1)
+NHÓM F  Cộng tác & cổng ngoài              (P2–P3 — Comment → Task → Portal)
+NHÓM G  Kiểm soát nâng cao (bảo vệ lợi thế)(P2 — Audit Pack, hash-chain, duyệt đa cấp)
+NHÓM H  Tích hợp & vận hành                (P2 — hoá đơn ĐT, sao kê NH, backup/DR)
+NHÓM I  Thương mại hoá                     (P3 — billing, landing, help center)
+NHÓM J  Lớp trải nghiệm (UX/UI)            (P1–P2 — design system, hành vi màn, QA UX; để BẰNG/HƠN Freightek)
+```
+
+### Sơ đồ phụ thuộc (mũi tên = "phải xong trước")
+
+```
+A (P0) ─── không phụ thuộc gì, mở khoá niềm tin cho tất cả
+
+B1 chart ─── độc lập
+B2 PWA   ─── độc lập
+
+C1 Shipment ──► C2 Rate ─┐
+             └► C3 Lịch tàu/Tracking
+C1 cũng làm giàu dữ liệu cho B1 (thêm widget shipment)
+
+D1 Multi-tenant ─── nên làm trước F3 (Portal) và I1 (Billing)
+
+E1 Storage ──► E2 AI ingestion
+F1 Comment ─── độc lập ;  F2 Task queue ─── độc lập
+F3 Portal ──► cần D1 (multi-tenant) + C1 (shipment) để có ý nghĩa
+
+G1 Audit Pack ─── độc lập ;  G2 hash-chain ─── độc lập
+G3 duyệt đa cấp ─── độc lập ;  G4 anomaly ─── cần B1 (để hiển thị)
+
+J1 design system ─── nền cho MỌI màn; làm sớm (frontend-only, không đụng schema)
+J2 hành vi/trạng thái ──► cần J1
+J3 QA UX toàn bộ ──► cần J1+J2 ; chạy gần cuối (khi phần lớn màn đã có)
+J4 UI shipment ──► cần C1 + J1
+(B1 chart nên dựng SAU J1 để ăn theo design system; C1/C2/C3 & mọi màn mới nên theo chuẩn J1)
+
+H1/H2/H3 ─── độc lập với nhau
+I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) làm nền
+```
+
+### Có thể chạy SONG SONG (nhiều session cùng lúc) — nếu có nhiều người/nhiều máy
+
+- Đợt 1 (song song được): **WP-A1, WP-A2/A3, WP-A4, WP-B1, WP-B2**
+- Đợt 2 (sau khi A xong, song song được): **WP-C1**, **WP-D1**, **WP-E1**, **WP-F1**, **WP-G1**
+- ⚠️ **WP-D1 (multi-tenant) đụng gần như mọi bảng** → khi đang chạy D1, tránh chạy song song
+  gói khác có thêm bảng mới (C1, E1). Ưu tiên xong D1 rồi mới thêm bảng, HOẶC xong bảng mới rồi mới D1.
+  Nếu buộc song song, gói thêm bảng phải tự thêm `tenant_id` theo chuẩn D1 đặt ra.
+
+---
+
+## 2. DANH SÁCH GÓI (checklist tiến độ)
+
+| Mã | Tên gói | Ưu tiên | Phụ thuộc | Ước lượng | Xong? |
+|---|---|---|---|---|---|
+| WP-A1 | 7 test còn thiếu + CI đếm test + sửa số liệu CLAUDE.md | P0 | — | 1 ngày | [ ] |
+| WP-A2 | `docs/positioning.md` + sửa mô tả kiến trúc CLAUDE.md | P0 | — | 3 giờ | [ ] |
+| WP-A3 | Commit `AGENTS.md` (dọn git status) | P0 | — | 15 phút | [ ] |
+| WP-A4 | Viết đủ 16 file `docs/app-map/` | P0–P1 | — | 3–5 ngày | [ ] |
+| WP-B1 | Chart layer (recharts) + 7 widget + bộ lọc thời gian | P1 | — | 1–2 tuần | [ ] |
+| WP-B2 | PWA + bottom nav + Web Push | P1 | — | 1 tuần | [ ] |
+| WP-C1 | Thực thể SHIPMENT qua config (`011_shipment.sql`) | P1 | — | 2–3 tuần | [ ] |
+| WP-C2 | Rate & Charge engine + trang `/pricing` | P1 | WP-C1 | 2–3 tuần | [ ] |
+| WP-C3 | Danh mục cảng/hãng tàu + timeline tracking | P1 | WP-C1 | 1 tuần | [ ] |
+| WP-D1 | Multi-tenant + RLS theo tenant + provisioning | P2 | — | 4–6 tuần | [ ] |
+| WP-E1 | Lưu trữ chứng từ (Storage + `attachments`) | P2 | — | 1 tuần | [ ] |
+| WP-E2 | AI ingestion pipeline (`/api/ingest` + `ingest_jobs`) | P2 | WP-E1 | 2–3 tuần | [ ] |
+| WP-F1 | Comment trên chứng từ + `@mention` | P2 | — | 1–2 tuần | [ ] |
+| WP-F2 | Nâng cấp task queue theo vai trò | P2 | — | 1 tuần | [ ] |
+| WP-F3 | Client Portal + Agent Portal | P3 | WP-D1, WP-C1 | 5–6 tuần | [ ] |
+| WP-G1 | Audit Pack + manifest hash | P2 | — | 2 tuần | [ ] |
+| WP-G2 | Audit trail tamper-evident (hash-chain) | P2 | — | 1 tuần | [ ] |
+| WP-G3 | Duyệt đa cấp + SoD theo mức rủi ro + delegation | P2 | — | 2–3 tuần | [ ] |
+| WP-G4 | Widget phát hiện bất thường (risk alerts) | P2 | WP-B1 | 1 tuần | [ ] |
+| WP-H1 | Hoá đơn điện tử (adapter + `einvoice_log`) | P2 | — | 2–3 tuần | [ ] |
+| WP-H2 | Import & đối chiếu sao kê ngân hàng | P2 | — | 1–2 tuần | [ ] |
+| WP-H3 | `docs/deployment.md` + backup/DR + health check + CI gate | P2 | — | 3–5 ngày | [ ] |
+| WP-I1 | Billing/subscription + đóng gói theo gói | P3 | WP-D1 | 2–3 tuần | [ ] |
+| WP-I2 | Landing page + Help Center + onboarding demo | P3 | WP-A4 | 2 tuần | [ ] |
+| WP-J1 | Design system & app shell (nền UX/UI) | P1 | — | 1–2 tuần | [ ] |
+| WP-J2 | Hành vi + ma trận trạng thái màn cốt lõi | P1 | WP-J1 | 1–2 tuần | [ ] |
+| WP-J3 | Vòng QA/triage UX toàn bộ màn hiện có | P2 | WP-J1, WP-J2 | 1 tuần | [ ] |
+| WP-J4 | UI Shipment/Operations ngang mobile Freightek | P1 | WP-C1, WP-J1 | 1–2 tuần | [ ] |
+
+---
+
+## 3. CHI TIẾT TỪNG GÓI
+
+> Mỗi gói có: **Mục tiêu · Phụ thuộc · File đụng tới · Các bước · Tiêu chí nghiệm thu · Ràng buộc · 📋 Prompt mẫu.**
+
+---
+
+### NHÓM A — Nền tảng trung thực & định vị (P0)
+
+Lý do làm trước: toàn bộ luận điểm bán hàng là "tôi chứng minh được". Nếu tài liệu tự nói sai
+(claim 63 test nhưng có 56), người đánh giá kỹ thuật mất niềm tin vào mọi con số khác.
+
+#### WP-A1 — Viết 7 acceptance test còn thiếu + CI đếm test
+
+- **Mục tiêu**: đưa `npm run test:acceptance` từ 56 → 63 test; thêm CI fail nếu số test lệch tài liệu.
+- **Phụ thuộc**: không.
+- **File đụng tới**: `tests/acceptance.test.mjs`, `.github/workflows/ci.yml` (tạo nếu chưa có), `CLAUDE.md` (số test).
+- **Các bước**:
+  1. Đọc 56 test hiện có để nắm khung (transaction rồi rollback, ghi kết quả BM-14).
+  2. Viết 7 test N5 còn thiếu: `T5.1` (concurrent tạo PO), `T5.2` (bulk import 10.000 master data —
+     có thể giảm quy mô số liệu nhưng giữ **ngữ nghĩa**), `T5.3` (báo cáo trên tập lớn), `T5.7` (chuỗi
+     duyệt ≥5 cấp), `T5.10` (rate limiting 429), `T5.11` (file 50MB), `T5.12` (session expiry / auto-save draft).
+  3. Thêm bước CI: đếm test thực tế, **fail nếu lệch** số ghi trong `CLAUDE.md` §11.
+- **Tiêu chí nghiệm thu**: `test:acceptance` báo 63/63, không skip; CI fail khi số lệch; `T3.1–T3.4` vẫn PASS.
+- **Ràng buộc**: không nới lỏng ngữ nghĩa test để cho dễ pass; test chạy trong transaction rồi rollback.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-A1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3. Đọc trước file kế hoạch đó
+  > và `docs/phan-tich-canh-tranh-freightek.md` §5-T10. Viết 7 acceptance test N5 còn thiếu vào
+  > `tests/acceptance.test.mjs` (T5.1, T5.2, T5.3, T5.7, T5.10, T5.11, T5.12), thêm CI đếm số test và
+  > fail nếu lệch con số trong `CLAUDE.md`, rồi cập nhật số test trong `CLAUDE.md` cho khớp. Commit ngay.
+
+#### WP-A2 — `docs/positioning.md` + sửa mô tả kiến trúc CLAUDE.md
+
+- **Mục tiêu**: chốt định vị (Hướng A/B/C, xem file phân tích §7) để không tiêu tán nguồn lực đua feature;
+  sửa `CLAUDE.md` §5–§7 đang mô tả kiến trúc NestJS/Prisma **không tồn tại** như thể đang dùng.
+- **Phụ thuộc**: không.
+- **File đụng tới**: `docs/positioning.md` (mới), `CLAUDE.md`.
+- **Các bước**:
+  1. Viết `docs/positioning.md`: tóm tắt 3 hướng, chọn tổ hợp khuyến nghị (A chính / B demo / C nền tảng),
+     nêu rõ khách mục tiêu và điều không làm.
+  2. Trong `CLAUDE.md`, ghi rõ ở đầu §5–§7 rằng đây là kiến trúc tham chiếu **chưa dùng** (đồng bộ với §0),
+     hoặc chuyển các mục đó thành phụ lục "kiến trúc tham chiếu".
+- **Tiêu chí nghiệm thu**: `positioning.md` tồn tại, nêu rõ hướng chính; `CLAUDE.md` không còn tự mâu thuẫn.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-A2** theo `docs/ke-hoach-phat-trien-theo-session.md`. Viết `docs/positioning.md` dựa trên
+  > §7 của `docs/phan-tich-canh-tranh-freightek.md` (chốt tổ hợp A chính / B demo / C nền tảng), và sửa
+  > `CLAUDE.md` §5–§7 để không mô tả kiến trúc NestJS/Prisma như thể đang dùng. Commit ngay.
+
+#### WP-A3 — Commit AGENTS.md
+
+- **Mục tiêu**: dọn `git status` (đang treo `AGENTS.md` + file phân tích chưa commit).
+- **Phụ thuộc**: không. Có thể gộp vào cuối WP-A1/A2.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-A3**: review nội dung `AGENTS.md` và `docs/phan-tich-canh-tranh-freightek.md`, rồi commit
+  > cả hai với message rõ ràng. Không đụng file khác.
+
+#### WP-A4 — Viết đủ 16 file `docs/app-map/`
+
+- **Mục tiêu**: `docs/app-map/` hiện có 1/16 file (`CLAUDE.md` §14 quy định 16). Đây vừa đúng nguyên tắc P2,
+  vừa là nền cho Help Center (WP-I2).
+- **Phụ thuộc**: không (nhưng nên làm sau khi C1/C2/C3 xong thì thêm file cho các luồng mới).
+- **File đụng tới**: `docs/app-map/002..020-*.md`.
+- **Các bước**: theo format frontmatter `covers/last_verified/ttl_days` (xem `001-system-overview.md`),
+  viết cho từng luồng: API architecture, DB schema, auth/permission, state machines, và 11 luồng nghiệp vụ.
+- **Tiêu chí nghiệm thu**: đủ file theo danh sách `CLAUDE.md` §14.2; mỗi file có `covers` trỏ đúng đường dẫn thật.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-A4** theo `docs/ke-hoach-phat-trien-theo-session.md`. Viết đủ các file `docs/app-map/`
+  > còn thiếu theo danh sách `CLAUDE.md` §14.2, dựa trên mã nguồn thực tế trong `supabase/migrations/` và
+  > `src/`. Dùng đúng format frontmatter như `001-system-overview.md`. Commit theo từng file.
+
+---
+
+### NHÓM B — Lớp hiển thị (P1)
+
+ROI cao nhất trên mỗi giờ công: cảm nhận "chuyên nghiệp" đến từ tầng hiển thị trước khi người mua kịp
+đánh giá tầng kiểm soát. Đây là bộ chart mà Freightek **không** copy được (họ không có dữ liệu SoD/SLA/exception).
+
+#### WP-B1 — Chart layer + 7 widget + bộ lọc thời gian
+
+- **Mục tiêu**: cài `recharts`, thêm RPC tổng hợp, dựng dashboard có donut/bar/pie + thẻ pipeline + bộ lọc thời gian.
+- **Phụ thuộc**: không.
+- **File đụng tới**: `package.json`, `supabase/migrations/012_charts.sql` (mới), `src/app/(app)/dashboard/*`,
+  `src/components/*` (component chart mới), `src/lib/api.ts`.
+- **Các bước**:
+  1. Cài `recharts` (nhẹ, hợp React 18/Next 14). Không dùng thư viện nặng.
+  2. Viết RPC tổng hợp **ở DB** (không kéo dữ liệu thô về client): `api_chart_pipeline(p_doc_type)`,
+     `api_chart_by_status(p_resource)`, `api_chart_series(p_metric,p_from,p_to,p_group_by)`, `api_chart_by_owner(p_metric)`.
+     Mọi RPC phải tôn trọng `fn_perm_scope`.
+  3. Dựng 7 widget: pipeline chứng từ theo trạng thái · vi phạm SoD theo tuần · ngoại lệ quá hạn SLA ·
+     bàn giao AT_RISK/BREACHED · top khách theo lãi gộp · dòng tiền vào/ra · số dư kho theo mặt hàng.
+  4. Bộ lọc thời gian dùng chung ("3 tháng gần nhất"…) áp nhất quán cho mọi widget.
+- **Tiêu chí nghiệm thu**: bundle tăng < 200KB gzip; dữ liệu từ RPC (không thô về client); người scope BRANCH
+  chỉ thấy số của chi nhánh mình; có test khẳng định người không quyền không đọc được số tổng hợp.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-B1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3. Cài recharts, viết 4 RPC tổng hợp
+  > (`api_chart_*`) trong migration mới `supabase/migrations/012_charts.sql` (tôn trọng `fn_perm_scope`),
+  > dựng 7 widget dashboard + bộ lọc thời gian dùng chung. Thêm test scope cho RPC chart. Commit ngay.
+
+#### WP-B2 — PWA + bottom nav + Web Push
+
+- **Mục tiêu**: cài được lên màn hình chính điện thoại, bottom nav 4 mục, push notification — **không** viết app native.
+- **Phụ thuộc**: không.
+- **File đụng tới**: `public/manifest.json`, service worker, `src/app/(app)/layout.tsx`, `src/components/*`.
+- **Các bước**: thêm manifest + icon + service worker; bottom nav (Việc của tôi · Chứng từ · Thông báo · Tài khoản)
+  dùng lại `api_inbox`/`api_notifications`; Web Push (bổ sung cho `email_outbox`).
+- **Tiêu chí nghiệm thu**: Lighthouse PWA pass; cài được lên home screen; push chạy trên 1 thiết bị thật/emulator.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-B2** theo `docs/ke-hoach-phat-trien-theo-session.md`. Biến web thành PWA (manifest + service
+  > worker + icon), thêm bottom nav 4 mục dùng lại `api_inbox`/`api_notifications`, thêm Web Push. Không viết
+  > app native. Commit ngay.
+
+---
+
+### NHÓM C — Nghiệp vụ ngành logistics (P1)
+
+Chứng minh kiến trúc data-driven thắng: thêm thực thể ngành **hoàn toàn qua cấu hình**, tự thừa hưởng
+state machine / SoD / audit / handoff / trace / permission.
+
+#### WP-C1 — Thực thể SHIPMENT qua config
+
+- **Mục tiêu**: thêm `SHIPMENT` (+ `BOOKING/HBL/DO/DNOTE/CNOTE`) làm đối tượng trung tâm ngành logistics.
+- **Phụ thuộc**: không (nhưng đọc kỹ cảnh báo song song với WP-D1 ở §1).
+- **File đụng tới**: `supabase/migrations/011_shipment.sql` (mới), `004_engine.sql` (chỉ thêm nhánh
+  `fn_apply_effects`/`fn_next_number`, không viết lại), `src/lib/doc-config.ts`, `src/app/(app)/operations/*` (mới),
+  `supabase/seed/seed.sql`, `tests/acceptance.test.mjs`.
+- **Các bước**:
+  1. `011_shipment.sql`: dùng cột `documents.data` chứa header ngành (`job_no, mode, shipment_type, pol, pod,
+     etd, eta, carrier, vessel, voyage, shipper, consignee, incoterm, gross_weight, cbm, chargeable_weight`).
+  2. Thêm `doc_types` (SHIPMENT module `operations`, flow `L12`; BOOKING/HBL/DO/DNOTE/CNOTE);
+     `state_transitions` cho SHIPMENT (`DRAFT→BOOKED→CONFIRMED→IN_TRANSIT→ARRIVED→CUSTOMS→DELIVERED→CLOSED`, nhánh `CANCELLED`);
+     `doc_child_rules` (`QUOT→SHIPMENT`, `SHIPMENT→BOOKING/HBL/DO/SINV/DNOTE/CNOTE`).
+  3. Bảng `containers` + `shipment_charges` (charge_code, charge_type AR|AP, qty, rate, currency, amount, is_billable)
+     — cốt lõi tính lãi/lỗ theo lô.
+  4. Mở rộng `fn_next_number` sinh mã cấu trúc kiểu `F-EX-FC-FR-TIA-2309-1826` (cấu hình qua `doc_sequences`).
+  5. UI: thêm block SHIPMENT trong `doc-config.ts` (lineMode `"container"` và `"charge"`); trang `/operations`.
+  6. Seed vài shipment mẫu; viết test `T7.x` (cùng user không thể vừa tạo vừa duyệt cùng SHIPMENT).
+- **Tiêu chí nghiệm thu**: SHIPMENT tự thừa hưởng SoD/audit/handoff/trace **không viết lại**; mã job đúng định
+  dạng, không trùng khi chạy song song; `api_trace_goods` truy được SHIPMENT→container→INV.
+- **Ràng buộc**: không hard-code logistics vào engine; chỉ thêm nhánh cần thiết.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-C1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3 và `docs/phan-tich-canh-tranh-freightek.md`
+  > §5-T1. Thêm thực thể SHIPMENT (+BOOKING/HBL/DO/DNOTE/CNOTE) hoàn toàn qua cấu hình trong migration mới
+  > `011_shipment.sql`, cấu hình UI trong `src/lib/doc-config.ts`, bảng `containers` + `shipment_charges`, mã
+  > job cấu trúc qua `fn_next_number`, seed mẫu, test T7.x. Không hard-code vào `004_engine.sql`. Commit ngay.
+
+#### WP-C2 — Rate & Charge engine + trang `/pricing`
+
+- **Mục tiêu**: rate sheet spot/contract, phụ phí, cảnh báo hết hạn, báo giá tự động + margin.
+- **Phụ thuộc**: **WP-C1** (rate gắn vào shipment/quote).
+- **File đụng tới**: `supabase/migrations/013_rates.sql` (mới), `010_email_outbox.sql` (cảnh báo), `src/app/(app)/pricing/*` (mới).
+- **Các bước**: bảng `rates` + `charge_codes`; RPC `api_rate_search`, `api_quote_build`, `api_rate_import` (bulk có
+  báo dòng lỗi); cron/outbox cảnh báo rate `valid_to` sắp hết; trang `/pricing` (bộ lọc tuyến/hãng tàu, badge cảnh báo).
+- **Tiêu chí nghiệm thu**: rate hết hạn không dùng được để báo giá; import bulk có kiểm tra + báo lỗi từng dòng,
+  không nhập nửa vời; margin theo lô khớp `api_product_profit` khi cùng tập dữ liệu.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-C2** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-C1 đã xong). Viết Rate & Charge
+  > engine trong migration mới (`rates`, `charge_codes`, `api_rate_search/quote_build/rate_import`), cảnh báo
+  > rate sắp hết hạn qua email_outbox, trang `/pricing`. Commit ngay.
+
+#### WP-C3 — Danh mục cảng/hãng tàu + timeline tracking
+
+- **Mục tiêu**: dữ liệu tham chiếu ngành (cảng, hãng tàu, lịch tàu) + timeline tracking nhập được từ nhiều nguồn.
+- **Phụ thuộc**: **WP-C1**.
+- **File đụng tới**: `supabase/migrations/014_reference.sql` (mới), `src/app/(app)/schedule/*` (mới), tab Tracking trong chi tiết shipment.
+- **Các bước**: bảng `carriers`, `ports` (UN/LOCODE), `vessels`, `vessel_schedules`, `tracking_events`;
+  giai đoạn 1 nhập tay/import CSV; UI `/schedule` (tìm chuyến) + timeline sự kiện trong shipment.
+- **Tiêu chí nghiệm thu**: coi tracking là **dữ liệu nhập nhiều nguồn** (luôn có đường nhập tay); không gọi HTTP
+  từ Postgres (adapter ở tầng Next.js nếu sau này tích hợp API thật — đó là WP-P3, ngoài gói này).
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-C3** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-C1). Thêm danh mục
+  > `carriers/ports/vessels/vessel_schedules/tracking_events` (nhập tay + import CSV), trang `/schedule`, và
+  > tab Tracking timeline trong chi tiết shipment. Không gọi HTTP từ Postgres. Commit ngay.
+
+---
+
+### NHÓM D — Multi-tenant (P2, chặn cứng thương mại)
+
+Điều kiện để bán cho khách thứ hai. Làm **trước** khi có khách — càng muộn càng đắt (chi phí migrate tăng
+theo bình phương số bảng × bản ghi). **Rủi ro cao nhất — cần test cô lập riêng.**
+
+#### WP-D1 — Multi-tenant + RLS theo tenant + provisioning
+
+- **Mục tiêu**: nhiều công ty trên một hạ tầng, cô lập tuyệt đối dữ liệu giữa các tenant.
+- **Phụ thuộc**: không (nhưng nên làm trước WP-F3, WP-I1). ⚠️ Đụng gần như mọi bảng — xem cảnh báo song song §1.
+- **File đụng tới**: `supabase/migrations/015_multitenant.sql` (mới), `006_security.sql` (RLS), **mọi** RPC `api_*`, seed.
+- **Các bước**:
+  1. Bảng `tenants` (code, name, plan, status, settings jsonb).
+  2. Thêm cột `tenant_id` vào **mọi** bảng nghiệp vụ (branches, departments, app_users, partners, products,
+     warehouses, documents, gl_entries, audit_trail, sod_check_log, handoff_records, notifications, và các bảng
+     do nhóm C/E thêm nếu đã có).
+  3. `fn_current_tenant()` suy từ JWT claim (Supabase custom claim) hoặc `app_users.tenant_id`.
+  4. RLS: thay `USING (true)` bằng `USING (tenant_id = fn_current_tenant())`; mọi RPC lọc theo tenant.
+  5. Cấu hình dùng cơ chế `tenant_id NULL = mặc định hệ thống` để tránh nhân bản `003_config.sql`.
+  6. `api_admin_create_tenant` + seed mẫu theo gói.
+- **Tiêu chí nghiệm thu**: **mọi** bảng nghiệp vụ có `tenant_id`; không còn `USING (true)`; test bắt buộc:
+  user tenant A **không** đọc được dữ liệu tenant B trên bảng, mọi RPC, trace, export, email outbox; RPC trọng
+  yếu vẫn < 500ms.
+- **Ràng buộc**: viết test tenant isolation **trước khi** migrate dữ liệu; không nới lỏng RLS để cho tiện.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-D1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3 và `docs/phan-tich-canh-tranh-freightek.md`
+  > §5-T4. Thêm multi-tenant: bảng `tenants`, cột `tenant_id` vào **mọi** bảng nghiệp vụ, `fn_current_tenant()`,
+  > RLS theo tenant (bỏ `USING (true)`), lọc tenant trong mọi RPC, `api_admin_create_tenant` + seed. Viết bộ test
+  > cô lập tenant (A không đọc được B trên bảng/RPC/trace/export) TRƯỚC. Commit theo từng bước.
+
+---
+
+### NHÓM E — Số hoá chứng từ & AI ingestion (P2)
+
+Điểm bán số 1 hiện nay, và đáp ứng NT2 "Chứng từ là sự thật". Điểm khác biệt: **AI nhập liệu nhưng không phá kiểm soát**.
+
+#### WP-E1 — Lưu trữ chứng từ
+
+- **Mục tiêu**: đính kèm & lưu file gốc cho chứng từ.
+- **Phụ thuộc**: không (nếu làm SaaS thì nên sau WP-D1 để có `tenant_id`).
+- **File đụng tới**: Supabase Storage bucket `documents`, `supabase/migrations/016_attachments.sql`, `src/app/(app)/documents/[id]/*`, `/controls`.
+- **Các bước**: bảng `attachments` (document_id, tenant_id, file_name, mime, size, storage_path, checksum, uploaded_by);
+  RPC `api_attach_file`; hiển thị ở `/documents/[id]`; cảnh báo ở `/controls` khi chứng từ đã ghi audit mà thiếu file.
+- **Tiêu chí nghiệm thu**: upload/tải qua RPC (không mở bảng); checksum lưu; cảnh báo thiếu file hoạt động.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-E1** theo `docs/ke-hoach-phat-trien-theo-session.md`. Thêm lưu trữ chứng từ: Supabase Storage
+  > bucket + bảng `attachments` + `api_attach_file`, hiển thị ở `/documents/[id]`, cảnh báo chứng từ thiếu file
+  > ở `/controls`. Commit ngay.
+
+#### WP-E2 — AI ingestion pipeline
+
+- **Mục tiêu**: OCR/model thị giác trích Booking/HBL/Invoice → **bản nháp DRAFT**; người duyệt bắt buộc.
+- **Phụ thuộc**: **WP-E1**.
+- **File đụng tới**: `src/app/api/ingest/route.ts` (mới), `supabase/migrations/017_ingest.sql`, `004_engine.sql` (cờ `ai_extracted`).
+- **Các bước**: route `/api/ingest` nhận file/email → trích JSON có schema; bảng `ingest_jobs` (source_type,
+  attachment_id, status, extracted jsonb, confidence, created_document_id, error); AI chỉ tạo `DRAFT` +
+  `ai_extracted=true` + `confidence` trong audit; đối chiếu master data, sai lệch → sinh `EXC` tự động.
+- **Tiêu chí nghiệm thu**: không dữ liệu nào do AI tạo mà không qua người xác nhận; AI **không** gọi được
+  `SUBMIT/APPROVE/POST` (có test); chứng từ AI tạo vẫn qua đầy đủ SoD (có test); sai lệch → `EXC` tự động.
+- **Ràng buộc**: dùng model Claude mới nhất khi cần vision (xem quy tắc model ở môi trường); không gọi HTTP từ Postgres.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-E2** theo `docs/ke-hoach-phat-trien-theo-session.md` §3 và file phân tích §5-T5 (cần WP-E1).
+  > Dựng pipeline AI ingestion: `/api/ingest` + bảng `ingest_jobs`, AI chỉ tạo DRAFT với `ai_extracted`+`confidence`,
+  > người duyệt bắt buộc, sai lệch master data → sinh EXC. Viết test: AI không gọi được SUBMIT/APPROVE/POST và
+  > chứng từ AI tạo vẫn qua SoD. Commit ngay.
+
+---
+
+### NHÓM F — Cộng tác & cổng ngoài (P2–P3)
+
+#### WP-F1 — Comment trên chứng từ + `@mention`
+
+- **Mục tiêu**: chat **có ngữ cảnh chứng từ** (mạnh hơn chat rời vì gắn audit trail).
+- **Phụ thuộc**: không.
+- **File đụng tới**: `supabase/migrations/018_comments.sql`, `src/app/(app)/documents/[id]/*`.
+- **Các bước**: bảng `comments` (document_id, tenant_id, user_id, body, mentions uuid[], created_at);
+  `api_add_comment`; hiển thị ở `/documents/[id]`; `@mention` → `fn_notify`.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-F1** theo `docs/ke-hoach-phat-trien-theo-session.md`. Thêm comment trên chứng từ: bảng
+  > `comments` + `api_add_comment` + hiển thị ở `/documents/[id]` + `@mention` gọi `fn_notify`. Commit ngay.
+
+#### WP-F2 — Nâng cấp task queue theo vai trò
+
+- **Mục tiêu**: nâng `/tasks` thành hàng đợi công việc theo vai trò, dựa trên `handoff_records` + `fn_available_actions` (đã có).
+- **Phụ thuộc**: không. Ít bảng mới.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-F2** theo `docs/ke-hoach-phat-trien-theo-session.md`. Nâng `/tasks` thành hàng đợi công việc
+  > theo vai trò, dựa trên `handoff_records` và `fn_available_actions`. Commit ngay.
+
+#### WP-F3 — Client Portal + Agent Portal
+
+- **Mục tiêu**: khách tự tra lô hàng/tracking/tải chứng từ/xác nhận báo giá; đại lý nhập debit/credit note.
+- **Phụ thuộc**: **WP-D1** (multi-tenant) + **WP-C1** (shipment).
+- **Ràng buộc quan trọng**: portal dùng **cùng** `fn_perm_scope`/`fn_doc_in_scope`, chỉ khác scope
+  (`PORTAL_CUSTOMER`/`PARTNER_AGENT`, scope OWN giới hạn theo `partner_id`). **Tuyệt đối không** mở đường đọc
+  bảng riêng cho portal; **không** cho portal tạo chứng từ tài chính.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-F3** theo `docs/ke-hoach-phat-trien-theo-session.md` §3 và file phân tích §5-T6 (cần WP-D1 và
+  > WP-C1). Thêm vai trò `PORTAL_CUSTOMER`/`PARTNER_AGENT` trong `permission_matrix` (scope OWN theo partner_id),
+  > cho phép xem lô hàng/tracking/tải chứng từ/xác nhận báo giá; đại lý nhập debit/credit note. Dùng chung
+  > `fn_perm_scope`/`fn_doc_in_scope`, không mở bảng riêng, không cho tạo chứng từ tài chính. Commit ngay.
+
+---
+
+### NHÓM G — Kiểm soát nâng cao (P2, bảo vệ & mở rộng lợi thế)
+
+Làm điểm mạnh mạnh hơn — đây là thứ Freightek không có và khó copy.
+
+#### WP-G1 — Audit Pack + manifest hash
+
+- **Mục tiêu**: gói bằng chứng dùng cho kiểm toán/ngân hàng/nhà đầu tư — thứ Freightek không làm được.
+- **Phụ thuộc**: không.
+- **Các bước**: RPC `api_audit_pack(p_from,p_to,p_scope)` kết xuất `audit_trail + sod_check_log + document_links +
+  handoff_records + exception_register + gl_entries` + manifest có hash từng tệp + hash tổng.
+- **Tiêu chí nghiệm thu**: chạy lại 2 lần trên cùng kỳ bất biến → hash khớp; sửa 1 bản ghi (giả lập) → hash lệch
+  và phát hiện được; kết xuất tôn trọng `fn_doc_in_scope`.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-G1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3 và file phân tích §6.2. Viết
+  > `api_audit_pack(from,to,scope)` kết xuất bộ bằng chứng + manifest hash từng tệp + hash tổng, tôn trọng
+  > `fn_doc_in_scope`. Viết test: hash ổn định khi dữ liệu bất biến, lệch khi sửa. Commit ngay.
+
+#### WP-G2 — Audit trail tamper-evident (hash-chain)
+
+- **Mục tiêu**: mỗi bản ghi audit có `prev_hash` + `row_hash` tạo chuỗi → admin DB cũng không sửa lịch sử mà không bị phát hiện.
+- **Phụ thuộc**: không (nhưng phối hợp với WP-G1 để Audit Pack kiểm chứng chuỗi hash).
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-G2** theo `docs/ke-hoach-phat-trien-theo-session.md` và file phân tích §9.1. Nâng audit trail
+  > thành tamper-evident: thêm `prev_hash`+`row_hash` tạo hash-chain trong trigger ghi audit; thêm hàm kiểm tra
+  > tính toàn vẹn chuỗi. Commit ngay.
+
+#### WP-G3 — Duyệt đa cấp + SoD theo mức rủi ro + delegation
+
+- **Mục tiêu**: chuỗi duyệt nhiều cấp có thứ tự theo loại chứng từ + giá trị; ngưỡng giá trị cho số cấp duyệt;
+  uỷ quyền có thời hạn (không uỷ quyền cho người vi phạm SoD).
+- **Phụ thuộc**: không (tận dụng `state_transitions.conditions` + `fn_check_condition` sẵn có).
+- **Ràng buộc**: `T3.1–T3.4` phải vẫn PASS sau thay đổi.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-G3** theo `docs/ke-hoach-phat-trien-theo-session.md` và file phân tích §9.1. Thêm chuỗi duyệt
+  > đa cấp (`approval_chain`) theo loại chứng từ + giá trị, ngưỡng SoD theo mức rủi ro qua
+  > `state_transitions.conditions`, và bảng `delegations` (uỷ quyền có hạn, chặn uỷ quyền cho người vi phạm SoD).
+  > Giữ T3.1–T3.4 PASS. Commit ngay.
+
+#### WP-G4 — Widget phát hiện bất thường
+
+- **Mục tiêu**: cảnh báo rủi ro từ dữ liệu sẵn có (cùng người tạo+duyệt ở chứng từ khác trong thời gian ngắn;
+  tần suất ngoại lệ tăng; chứng từ tạo ngoài giờ; số tiền lệch phân phối chuẩn).
+- **Phụ thuộc**: **WP-B1** (để hiển thị chart).
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-G4** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-B1). Thêm RPC + widget "cảnh báo
+  > rủi ro" ở `/controls`: phát hiện bất thường từ dữ liệu SoD/exception/thời gian tạo/số tiền. Commit ngay.
+
+---
+
+### NHÓM H — Tích hợp & vận hành (P2)
+
+Nguyên tắc: mọi tích hợp đi qua adapter ở tầng Next.js, **không** gọi HTTP từ Postgres.
+
+#### WP-H1 — Hoá đơn điện tử
+
+- **File đụng tới**: `src/app/api/einvoice/*` (mới), `supabase/migrations/0xx_einvoice.sql` (`einvoice_log`).
+- **Các bước**: adapter ≥2 nhà cung cấp phổ biến VN; bảng `einvoice_log`; gắn vào transition `INV → ISSUED`.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-H1** theo `docs/ke-hoach-phat-trien-theo-session.md` và file phân tích §5-T11. Thêm adapter hoá
+  > đơn điện tử ở tầng Next.js (≥2 nhà cung cấp VN) + bảng `einvoice_log`, gắn vào transition `INV→ISSUED`.
+  > Không gọi HTTP từ Postgres. Commit ngay.
+
+#### WP-H2 — Import & đối chiếu sao kê ngân hàng
+
+- **Các bước**: mở rộng `BANKREC` — import CSV/OFX; matching tự động theo số tiền + ngày + nội dung;
+  `api_bankrec_suggest(p_period)`.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-H2** theo `docs/ke-hoach-phat-trien-theo-session.md`. Thêm import sao kê ngân hàng (CSV/OFX)
+  > cho `BANKREC` + matching tự động (số tiền/ngày/nội dung) + `api_bankrec_suggest(period)`. Commit ngay.
+
+#### WP-H3 — Deploy/backup/DR + health check + CI gate
+
+- **Các bước**: `docs/deployment.md` (kiến trúc/phát hành/rollback); chính sách backup (Supabase PITR hoặc
+  `pg_dump` định kỳ + kiểm tra phục hồi có biên bản); health check RPC trọng yếu; CI gate: chạy toàn bộ 63 test
+  trên staging trước production, chặn nếu `T3.1–T3.4` fail; công bố RPO/RTO + cách kiểm chứng.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-H3** theo `docs/ke-hoach-phat-trien-theo-session.md` và file phân tích §5-T12, §9.3. Viết
+  > `docs/deployment.md` + chính sách backup/DR + health check RPC trọng yếu + CI gate chặn phát hành khi
+  > T3.1–T3.4 fail. Commit ngay.
+
+---
+
+### NHÓM I — Thương mại hoá (P3)
+
+#### WP-I1 — Billing/subscription + đóng gói
+
+- **Phụ thuộc**: **WP-D1**.
+- **Các bước**: bảng `subscriptions` (tenant_id, plan, seats, valid_from, valid_to, status) + đếm usage;
+  đóng gói Starter / Professional / Enterprise (theo file phân tích §5-T9). Chưa cần cổng thanh toán.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-I1** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-D1). Thêm bảng `subscriptions` +
+  > đếm usage + đóng gói Starter/Professional/Enterprise. Chưa tích hợp cổng thanh toán. Commit ngay.
+
+#### WP-I2 — Landing page + Help Center + onboarding demo
+
+- **Phụ thuộc**: **WP-A4** (app-map làm nền Help Center).
+- **Các bước**: landing giới thiệu định vị (dùng `positioning.md`); Help Center từ bộ app-map; mở rộng `/gate`
+  + form đăng ký demo; cấp tenant tự động + dữ liệu mẫu (sau khi có WP-D1).
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-I2** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-A4). Dựng landing page theo
+  > `docs/positioning.md`, Help Center từ bộ `docs/app-map/`, form đăng ký demo + onboarding. Commit ngay.
+
+---
+
+### NHÓM J — Lớp trải nghiệm (UX/UI) — để BẰNG hoặc HƠN Freightek
+
+Freightek ăn điểm ở *cảm giác chuyên nghiệp* (sidebar 14 mục gọn có badge, dashboard donut/bar/pie, thẻ
+pipeline, card shipment mobile, chat trong đơn, banner free-trial). Nhóm này lo **chất lượng giao diện tổng
+thể** — thứ mà B1/B2 và các gói nghiệp vụ không tự đảm bảo được. Dùng 2 skill sẵn có của project:
+**`ui-design-logic`** (thiết kế) và **`ui-ux-triage`** (rà + sửa defect).
+
+**Vì sao có cửa HƠN, không chỉ bằng**: giao diện của ta có dữ liệu Freightek không có (SoD/SLA/exception/trace)
+→ dựng đúng thì mỗi màn vừa đẹp vừa nói được câu chuyện "kiểm soát" — thứ họ không trình bày được.
+
+#### WP-J1 — Design system & app shell (nền thiết kế)
+
+- **Mục tiêu**: hệ thống thiết kế thống nhất + khung app chuyên nghiệp, làm nền cho mọi màn.
+- **Phụ thuộc**: không. **Nên làm sớm** (frontend-only, không đụng schema → an toàn chạy trước cả WP-D1,
+  không làm tăng chi phí D1).
+- **File đụng tới**: `src/app/globals.css` (design tokens), `tailwind.config.*`, `src/components/ui/*` (shadcn/ui),
+  `src/app/(app)/layout.tsx` (sidebar + topbar + breadcrumb), `src/lib/labels.ts`.
+- **Các bước** (gọi skill `ui-design-logic`):
+  1. Design tokens: màu (light/dark), typography scale, spacing, radius, shadow — định nghĩa 1 nơi, cấm hard-code rải rác.
+  2. Bộ component chuẩn shadcn/ui: Button, Badge/Tag, Card, Table, Dialog vs Drawer vs Page (theo bảng quyết định của skill), Toast, Skeleton, EmptyState.
+  3. App shell: sidebar gom theo module có badge số liệu (kiểu "Customers 12"), topbar (search + thông báo + tài khoản), breadcrumb.
+  4. Dark mode nhất quán; focus ring giữ nguyên (a11y); responsive phone width; grid/spacing budget theo skill.
+- **Tiêu chí nghiệm thu**: mọi màn dùng chung token (không màu rời rạc); qua QA anti-AI-slop của skill; dark/light
+  đồng nhất; không vỡ layout ở bề rộng điện thoại; không đổi logic/RPC (thuần trình bày).
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-J1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3, Nhóm J. Gọi skill `ui-design-logic`.
+  > Dựng design system (tokens màu/typography/spacing/radius/shadow, light+dark), bộ component shadcn/ui chuẩn,
+  > và app shell (sidebar gom module có badge + topbar + breadcrumb). Chỉ đổi trình bày, không đụng RPC/logic.
+  > Chạy vòng screenshot QA của skill. Commit ngay.
+
+#### WP-J2 — Thiết kế hành vi & ma trận trạng thái cho màn cốt lõi
+
+- **Mục tiêu**: mỗi màn chính có entry point / mục tiêu / bước tiếp theo + ma trận trạng thái đầy đủ
+  (đăng nhập/chưa, theo role, empty, loading, error) — hết cảnh "màn trắng khó hiểu".
+- **Phụ thuộc**: **WP-J1**.
+- **Màn cốt lõi**: dashboard, danh sách chứng từ, chi tiết chứng từ, inbox/tasks, trace, controls, exceptions.
+- **Các bước** (skill `ui-design-logic`): với từng màn định nghĩa state matrix; thêm skeleton loader, empty state
+  có hướng dẫn hành động, error state có cách khắc phục, toast xác nhận; văn phạm nhãn & nhãn ngang hàng nhất quán.
+- **Tiêu chí nghiệm thu**: mỗi màn cốt lõi có đủ 6 trạng thái (logged-in/out · role · empty · loading · error · thành công);
+  không nhãn mâu thuẫn; đúng ngân sách mật độ thông tin của skill.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-J2** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-J1). Gọi skill `ui-design-logic`.
+  > Thiết kế hành vi + ma trận trạng thái (đăng nhập/chưa, role, empty, loading, error, thành công) cho các màn
+  > cốt lõi (dashboard, list & chi tiết chứng từ, tasks, trace, controls, exceptions): thêm skeleton, empty state
+  > có hướng dẫn, error state có cách khắc phục, toast. Commit ngay.
+
+#### WP-J3 — Vòng QA/triage UX toàn bộ màn hiện có
+
+- **Mục tiêu**: rà toàn bộ ~24 page bằng vòng screenshot, phân loại defect, sửa đạt design-spec; dọn "AI slop"
+  (số liệu bịa, khoảng cách lệch, nhãn không đồng nhất, giả lập khung trình duyệt).
+- **Phụ thuộc**: **WP-J1, WP-J2** (làm oracle giao diện). Nên chạy **gần cuối**, sau khi phần lớn màn đã tồn tại.
+- **Các bước** (skill `ui-ux-triage`): auto-discover màn → chụp → triage RED/vàng → sửa qua cổng → chỉ escalate RED.
+- **Tiêu chí nghiệm thu**: không còn defect RED; mọi màn khớp design-spec của J1/J2; không đụng DB, không auto-commit
+  (theo ràng buộc skill — người xác nhận rồi mới commit).
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-J3** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-J1, WP-J2). Gọi skill `ui-ux-triage`.
+  > Rà toàn bộ page trong `src/app/(app)/` bằng vòng screenshot, phân loại & sửa defect UI đạt design-spec, dọn
+  > AI-slop. Không đụng DB. Commit sau khi tôi xác nhận.
+
+#### WP-J4 — UI Shipment/Operations ngang mobile Freightek
+
+- **Mục tiêu**: dựng danh sách shipment dạng **card** như ảnh mobile Freightek + màn chi tiết nhiều tab — điểm
+  trực quan dễ "hơn" Freightek vì gắn thêm lớp kiểm soát.
+- **Phụ thuộc**: **WP-C1** (shipment) + **WP-J1** (design system).
+- **Các bước**: card list (mã job cấu trúc `F-EX-FC-FR-TIA-…`, tuyến `VNSGN → USHOU`, ETD/carrier, chips container
+  `20DC×5`, badge trạng thái + cảnh báo "Lãi hết hạn"); chi tiết shipment tab Overview/Charges/Containers/Tracking/Documents;
+  bản mobile hợp WP-B2 (PWA).
+- **Tiêu chí nghiệm thu**: card đọc được trên điện thoại; số liệu lấy từ RPC thật (không bịa); tab Charges hiển thị
+  đúng lãi/lỗ theo lô từ `shipment_charges`; badge cảnh báo tính từ dữ liệu thật.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-J4** theo `docs/ke-hoach-phat-trien-theo-session.md` (cần WP-C1, WP-J1). Gọi skill `ui-design-logic`.
+  > Dựng danh sách shipment dạng card (mã job, tuyến POL→POD, ETD/carrier, chips container, badge trạng thái +
+  > "Lãi hết hạn") và chi tiết shipment nhiều tab (Overview/Charges/Containers/Tracking/Documents). Dữ liệu từ RPC
+  > thật, không bịa số. Commit ngay.
+
+---
+
+## 4. THỨ TỰ CHẠY ĐÃ CHỐT (tuần tự một mình — theo quyết định §5)
+
+> Đã chọn: **định vị tổ hợp A+B+C · có làm SaaS đa khách (D1 sớm) · chạy tuần tự · demo không gấp.**
+> Vì có SaaS + demo không gấp → làm **WP-D1 ngay sau nhóm A, TRƯỚC khi C/E thêm bảng mới**. Lúc đó schema
+> còn nhỏ nên thêm `tenant_id` rẻ nhất, và mọi bảng mới về sau sinh ra đã có `tenant_id` (không phải retrofit).
+
+```
+Tuần 1        WP-A1 → WP-A3 → WP-A2            (niềm tin + định vị; A4 xen kẽ khi chờ review)
+Tuần 2–3      WP-J1                            (design system + app shell — frontend, an toàn chạy trước D1)
+Tuần 4–9      WP-D1                            (multi-tenant SỚM — làm trên schema còn nhỏ, rẻ nhất)
+Tuần 9–10     WP-B1                            (chart — dựng trên design system, tenant-aware)
+Tuần 10–11    WP-J2                            (hành vi + ma trận trạng thái màn cốt lõi)
+Tuần 11–14    WP-C1 → WP-C2 → WP-C3            (nghiệp vụ logistics; bảng mới có sẵn tenant_id)
+Tuần 14–15    WP-J4 ; WP-B2                    (UI shipment card + PWA — dùng trên điện thoại)
+Tuần 15–18    WP-E1 → WP-E2                    (lưu trữ + AI ingestion — điểm bán số 1)
+Tuần 18–20    WP-F1, WP-F2 ; WP-G1, WP-G2, WP-G3
+Tuần 20–21    WP-J3                            (QA/triage UX toàn bộ — chạy khi phần lớn màn đã tồn tại)
+Tuần 21–23    WP-H1, WP-H2, WP-H3
+Sau đó        WP-F3 → WP-I1 → WP-I2 ; WP-G4    (khi có cam kết/khách trả tiền; F3/I1 cần D1 đã xong)
+```
+
+**Nguyên tắc thứ tự**: (1) sửa tính trung thực tài liệu trước tiên; (2) **multi-tenant làm sớm** vì đã chốt SaaS
+và schema hiện còn nhỏ; (3) sau D1 mọi bảng mới phải có `tenant_id`; (4) không bắt đầu nhóm P3 trước khi có khách
+trả tiền hoặc hợp đồng thử nghiệm.
+
+> **Lưu ý cân nhắc**: WP-D1 dài 4–6 tuần và không tạo tính năng nhìn thấy được. Nếu giữa chừng cần một "thắng
+> lợi nhanh" để lấy tinh thần/khoe tiến độ, có thể chèn **WP-B1 (chart)** vào trước D1 — B1 chủ yếu là RPC đọc,
+> chỉ tốn ít công thêm `tenant_id` cho 4 hàm chart sau khi D1 xong. Mặc định kế hoạch để D1 trước cho gọn.
+
+---
+
+## 5. QUYẾT ĐỊNH CỦA CHỦ DỰ ÁN (đã chốt 2026-09-20)
+
+1. **Định vị**: ✅ **Tổ hợp A+B+C** — A (Compliance Layer) chính · B (ERP logistics có kiểm soát) làm demo ·
+   C (ERP ngang ngành) nền tảng. (Xem `docs/positioning.md` sẽ tạo ở WP-A2.)
+2. **SaaS đa khách**: ✅ **CÓ** → **WP-D1 làm sớm**, đặt ngay sau nhóm A và trước WP-C/WP-E. WP-E1/F3/I1 nằm sau D1.
+3. **Cách chạy**: ✅ **Tuần tự một mình** — theo thứ tự §4; ít lo xung đột merge.
+4. **Demo logistics**: ✅ **Không gấp** → không đẩy C1 lên quá sớm; ưu tiên nền tảng (D1) trước.
+
+> **Trạng thái duyệt**: ✅ **ĐÃ DUYỆT (2026-09-20)** — bắt đầu bằng session đầu tiên với prompt mẫu của **WP-A1**.
+> (Thứ tự chạy theo §4. Mỗi session xong điền checklist bàn giao §6.)
+
+---
+
+## 6. CHECKLIST BÀN GIAO KHI KẾT THÚC MỖI SESSION
+
+> **Mục đích**: session nào làm xong gói thì **tự điền checklist này kèm bằng chứng** rồi dán vào chat +
+> ghi vào bảng §6.2. Nhờ vậy chủ dự án **chỉ cần đọc, không phải mở code kiểm tra lại**.
+>
+> Một gói **chỉ được coi là XONG** khi: (a) đủ *Tiêu chí nghiệm thu riêng* của gói ở §3, **VÀ** (b) tick đủ
+> *Definition of Done chung* ở §6.1. Thiếu một dòng = chưa xong, không được tick `[x]` ở §2.
+
+### 6.1 Definition of Done chung (mọi session phải điền trước khi báo xong)
+
+Sao chép khối này, thay `___` bằng bằng chứng thật (số liệu/mã test/commit hash), rồi dán vào chat:
+
+```
+### Bàn giao WP-___  (ngày ___)
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [ ] <chép từng dòng tiêu chí riêng của gói vào đây> — kết quả: ___
+
+Definition of Done chung:
+- [ ] npm run typecheck ....................... SẠCH
+- [ ] npx next lint .......................... SẠCH
+- [ ] npm run test:acceptance ................ ___/___ PASS, 0 skip
+- [ ] T3.1–T3.4 (SoD blocker) ................ PASS
+- [ ] Acceptance test map tới thay đổi ....... mã test: ___
+- [ ] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [ ] (Nếu đụng DB) không cấp quyền bảng cho authenticated; chỉ qua api_*
+- [ ] (Nếu thêm bảng SAU khi WP-D1 xong) mọi bảng mới có tenant_id + RLS theo tenant
+- [ ] docs/app-map/NNN-*.md liên quan đã cập nhật (last_verified mới): ___
+- [ ] Đã commit ngay theo từng thay đổi (không dồn). Commit(s): ___
+- [ ] Đã tick [x] gói này ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại (nếu có): ___
+Ảnh hưởng gói sau (nếu có): ___
+```
+
+> Bước **cuối cùng bắt buộc** của mọi session: dán khối đã điền ở trên vào chat, cập nhật `[x]` ở §2, và
+> thêm một dòng vào §6.2. Nếu có dòng nào không PASS → ghi rõ lý do và **không** đánh dấu gói là xong.
+
+### 6.2 Bảng bàn giao (sign-off log — điền dần khi từng gói xong)
+
+| Mã | Ngày xong | Commit(s) | Test map tới | DoD đủ? | Ghi chú / nợ kỹ thuật |
+|---|---|---|---|---|---|
+| WP-A1 |  |  |  |  |  |
+| WP-A2 |  |  |  |  |  |
+| WP-A3 |  |  |  |  |  |
+| WP-A4 |  |  |  |  |  |
+| WP-D1 |  |  |  |  |  |
+| WP-B1 |  |  |  |  |  |
+| WP-C1 |  |  |  |  |  |
+| WP-C2 |  |  |  |  |  |
+| WP-C3 |  |  |  |  |  |
+| WP-B2 |  |  |  |  |  |
+| WP-E1 |  |  |  |  |  |
+| WP-E2 |  |  |  |  |  |
+| WP-F1 |  |  |  |  |  |
+| WP-F2 |  |  |  |  |  |
+| WP-G1 |  |  |  |  |  |
+| WP-G2 |  |  |  |  |  |
+| WP-G3 |  |  |  |  |  |
+| WP-H1 |  |  |  |  |  |
+| WP-H2 |  |  |  |  |  |
+| WP-H3 |  |  |  |  |  |
+| WP-F3 |  |  |  |  |  |
+| WP-G4 |  |  |  |  |  |
+| WP-I1 |  |  |  |  |  |
+| WP-I2 |  |  |  |  |  |
+| WP-J1 |  |  |  |  |  |
+| WP-J2 |  |  |  |  |  |
+| WP-J3 |  |  |  |  |  |
+| WP-J4 |  |  |  |  |  |
+
+> **Cách chủ dự án dùng**: mở bảng này xem cột *DoD đủ?* = ✅ và *Commit(s)* có hash là biết gói đã xong &
+> có bằng chứng. Chỉ cần soi kỹ những dòng *Ghi chú / nợ kỹ thuật* có nội dung.
