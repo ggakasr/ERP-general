@@ -1,9 +1,11 @@
 # CLAUDE.md — ERP-General Universal ERP Project
 
 > **Mục đích**: File hướng dẫn toàn diện để Claude Code đọc, hiểu và thực thi xây dựng hệ thống ERP phổ quát.
+> **Stack thực tế**: Next.js 14 App Router + Supabase (Postgres + Auth) + Vercel — xem §0.
 > **Phương pháp luận**: AI Simple Framework for Coding (6 layers, 15 principles)
-> **Kế hoạch kinh doanh**: Kế hoạch ERP 8 điều kiện, 5 tầng, 7 giai đoạn, 11 luồng, 14 biểu mẫu, 63 test
-> **Kỹ năng bổ trợ**: AutoSkills.sh (NestJS, Prisma, Vitest, Playwright, Better Auth, v.v.)
+> **Kế hoạch kinh doanh**: 8 điều kiện, 5 tầng logic, 11 luồng, 14 biểu mẫu, 63 test
+> **Định vị**: `docs/positioning.md` — A (Compliance Layer) · B (demo logistics) · C (nền tảng ngang ngành)
+> **⚠️ Chú ý**: §5–§7 mô tả kiến trúc tham chiếu NestJS/Prisma **chưa được xây dựng** — không nhầm với stack thực tế.
 
 ---
 
@@ -364,6 +366,11 @@ type Permission = {
 
 ## 5. KIẾN TRÚC 5 TẦNG (L1–L5)
 
+> ⚠️ **Kiến trúc tham chiếu — chưa triển khai.** Phần này mô tả mô hình logic mục tiêu,
+> không phải hệ thống đang chạy. Hệ thống thực tế dùng Next.js 14 + Supabase — xem §0.
+> Các khái niệm tầng L1–L5 vẫn hợp lệ về mặt logic nhưng được thực thi bằng hàm PostgreSQL
+> (`002_core_schema.sql` → `006_security.sql`), không phải NestJS modules.
+
 ```
 L5: Analytics & Reporting     ← KPI, dashboards, trace paths
 L4: Controls & Compliance     ← SoD, audit trail, exception handling  
@@ -460,7 +467,13 @@ KPI categories:
 
 ## 6. TECH STACK & AUTOSKILLS
 
-### 6.1 Stack chính
+> ⚠️ **Kiến trúc tham chiếu — chưa triển khai.** Stack thực tế đang dùng là:
+> **Next.js 14 App Router + Supabase (Postgres 16 + Auth) + Vercel**.
+> Toàn bộ logic nằm trong `supabase/migrations/002–006` (PL/pgSQL).
+> Bảng §6.1 dưới đây mô tả stack mục tiêu cho kiến trúc monorepo NestJS+Prisma **nếu được xây dựng trong tương lai**,
+> và **không phản ánh cách hệ thống hoạt động hiện tại**. Xem §0 để biết stack thực tế.
+
+### 6.1 Stack tham chiếu (chưa dùng — xem §0 để biết stack thực tế)
 
 | Layer | Technology | AutoSkill | Lý do |
 |-------|-----------|-----------|-------|
@@ -548,90 +561,72 @@ npx ai-simple init
 
 ## 7. CẤU TRÚC THƯ MỤC DỰ ÁN
 
+> ⚠️ **Phụ lục kiến trúc tham chiếu — không phản ánh thực tế hiện tại.**
+> Cấu trúc `packages/api|web|shared` (monorepo NestJS+Prisma) **không tồn tại trong repo**.
+> Cấu trúc thực tế dùng Next.js App Router trong `src/`, Supabase migrations trong `supabase/migrations/`,
+> và test trong `tests/`. Xem §0 và `docs/app-map/001-system-overview.md` để biết layout thực.
+>
+> Phần dưới được giữ lại làm tài liệu tham chiếu nếu kiến trúc monorepo được xây dựng trong tương lai.
+
+### 7.1 Cấu trúc thực tế (đang dùng)
+
 ```
 ERP-general/
-├── CLAUDE.md                          ← FILE NÀY (root context)
+├── CLAUDE.md                          ← Root context (file này)
 ├── .claude/
-│   └── settings.json                  ← Claude Code settings
+│   └── settings.json
 ├── docs/
-│   ├── app-map/                       ← App-Map Pattern (P2)
-│   │   ├── 001-system-overview.md
-│   │   ├── 002-api-architecture.md
-│   │   ├── 003-database-schema.md
-│   │   ├── 004-auth-permission.md
-│   │   ├── 005-state-machines.md
-│   │   ├── 010-sales-flow.md
-│   │   ├── 011-procurement-flow.md
-│   │   ├── 012-inventory-flow.md
-│   │   ├── 013-production-flow.md
-│   │   ├── 014-hr-payroll-flow.md
-│   │   ├── 015-finance-flow.md
-│   │   ├── 016-assets-flow.md
-│   │   ├── 017-customer-service-flow.md
-│   │   ├── 018-planning-budget-flow.md
-│   │   ├── 019-system-admin-flow.md
-│   │   └── 020-reporting-flow.md
+│   ├── app-map/                       ← App-Map (hiện có: 001-system-overview.md)
 │   ├── adr/                           ← Architecture Decision Records
-│   ├── data-dictionary.yaml           ← Unified definitions (BM-07)
-│   ├── testing-strategy.md
-│   └── deployment.md
-├── packages/
-│   ├── api/                           ← NestJS Backend
-│   │   ├── CLAUDE.md                  ← Backend context
-│   │   ├── src/
-│   │   │   ├── modules/
-│   │   │   │   ├── foundation/        ← L1: org, user, master-data
-│   │   │   │   ├── transactions/      ← L2: sales, procurement, etc.
-│   │   │   │   ├── workflow/          ← L3: state-machine, approval
-│   │   │   │   ├── controls/         ← L4: sod, audit, exception
-│   │   │   │   └── analytics/        ← L5: kpi, reports, traces
-│   │   │   ├── common/
-│   │   │   │   ├── guards/            ← Auth, SoD, Permission guards
-│   │   │   │   ├── interceptors/      ← Audit trail interceptor
-│   │   │   │   ├── pipes/             ← Validation pipes
-│   │   │   │   └── filters/           ← Exception filters
-│   │   │   └── config/
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma
-│   │   │   ├── migrations/
-│   │   │   └── seed.ts
-│   │   └── test/
-│   ├── web/                           ← Next.js Frontend
-│   │   ├── CLAUDE.md                  ← Frontend context
-│   │   ├── src/
-│   │   │   ├── app/                   ← App Router pages
-│   │   │   ├── components/
-│   │   │   │   ├── forms/             ← 14 biểu mẫu components
-│   │   │   │   ├── layout/
-│   │   │   │   └── shared/
-│   │   │   ├── hooks/
-│   │   │   └── lib/
-│   │   └── test/
-│   └── shared/                        ← Shared types & utils
-│       ├── CLAUDE.md
-│       ├── src/
-│       │   ├── types/                 ← Shared TypeScript types
-│       │   ├── constants/             ← Business constants
-│       │   ├── validators/            ← Zod schemas
-│       │   └── state-machines/        ← State machine definitions
-│       └── package.json
-├── e2e/                               ← Playwright E2E tests
-│   ├── tests/
-│   │   ├── functional/                ← N1: 15 functional tests
-│   │   ├── controls/                  ← N2: 12 control tests
-│   │   ├── traceability/              ← N3: 12 traceability tests
-│   │   ├── end-to-end/                ← N4: 12 end-to-end tests
-│   │   └── load-edge/                 ← N5: 12 load/edge tests
-│   └── playwright.config.ts
+│   ├── positioning.md                 ← Định vị chiến lược (WP-A2)
+│   ├── phan-tich-canh-tranh-freightek.md
+│   ├── ke-hoach-phat-trien-theo-session.md
+│   └── demo-guide.md
+├── src/                               ← Next.js App Router
+│   ├── app/
+│   │   ├── (app)/                     ← Authenticated pages (24 pages)
+│   │   ├── (auth)/                    ← Auth pages
+│   │   └── api/                       ← API routes (Next.js)
+│   ├── components/
+│   └── lib/
+│       ├── doc-config.ts              ← UI config cho từng doc_type
+│       └── supabase.ts
+├── supabase/
+│   └── migrations/
+│       ├── 002_core_schema.sql        ← 38 bảng
+│       ├── 003_config.sql             ← Cấu hình nghiệp vụ (doc_types, state_transitions…)
+│       ├── 004_engine.sql             ← State machine, SoD, GL, kho, audit
+│       ├── 005_read_api.sql           ← ~35 hàm api_*
+│       ├── 006_security.sql           ← RLS, revoke, chỉ cấp EXECUTE cho api_*
+│       ├── 007_flow_ownership.sql
+│       ├── 008_product_profit.sql
+│       ├── 009_vat.sql
+│       └── 010_email_outbox.sql
+├── tests/
+│   └── acceptance.test.mjs            ← 63 acceptance tests (transaction+rollback)
 ├── scripts/
-│   ├── pre-commit.sh                  ← Pre-commit hook
-│   ├── seed-data.ts
-│   └── generate-docs.ts
-├── .husky/
-│   └── pre-commit                     ← Husky hook → scripts/pre-commit.sh
-├── turbo.json
-├── package.json
-└── docker-compose.yml
+│   └── db.mjs                         ← Công cụ push migration, reload functions
+└── package.json
+```
+
+### 7.2 Cấu trúc tham chiếu (monorepo NestJS+Prisma — chưa xây)
+
+```
+ERP-general/
+├── packages/
+│   ├── api/                           ← NestJS Backend (CHƯA TỒN TẠI)
+│   │   ├── src/modules/
+│   │   │   ├── foundation/            ← L1: org, user, master-data
+│   │   │   ├── transactions/          ← L2: sales, procurement, etc.
+│   │   │   ├── workflow/              ← L3: state-machine, approval
+│   │   │   ├── controls/             ← L4: sod, audit, exception
+│   │   │   └── analytics/            ← L5: kpi, reports, traces
+│   │   └── prisma/schema.prisma
+│   ├── web/                           ← Next.js Frontend (CHƯA TỒN TẠI — hiện dùng src/)
+│   └── shared/                        ← Shared types & utils (CHƯA TỒN TẠI)
+├── e2e/                               ← Playwright E2E (CHƯA TỒN TẠI — hiện dùng tests/)
+├── turbo.json                         ← (CHƯA TỒN TẠI)
+└── docker-compose.yml                 ← (CHƯA TỒN TẠI)
 ```
 
 ---
