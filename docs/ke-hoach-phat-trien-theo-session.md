@@ -103,8 +103,8 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 |---|---|---|---|---|---|
 | WP-A1 | 7 test còn thiếu + CI đếm test + sửa số liệu CLAUDE.md | P0 | — | 1 ngày | [x] |
 | WP-A2 | `docs/positioning.md` + sửa mô tả kiến trúc CLAUDE.md | P0 | — | 3 giờ | [x] |
-| WP-A3 | Commit `AGENTS.md` (dọn git status) | P0 | — | 15 phút | [ ] |
-| WP-A4 | Viết đủ 16 file `docs/app-map/` | P0–P1 | — | 3–5 ngày | [ ] |
+| WP-A3 | Commit `AGENTS.md` (dọn git status) | P0 | — | 15 phút | [x] |
+| WP-A4 | Viết đủ 16 file `docs/app-map/` | P0–P1 | — | 3–5 ngày | [x] |
 | WP-B1 | Chart layer (recharts) + 7 widget + bộ lọc thời gian | P1 | — | 1–2 tuần | [ ] |
 | WP-B2 | PWA + bottom nav + Web Push | P1 | — | 1 tuần | [ ] |
 | WP-C1 | Thực thể SHIPMENT qua config (`011_shipment.sql`) | P1 | — | 2–3 tuần | [ ] |
@@ -677,8 +677,8 @@ Cạm bẫy/nợ kỹ thuật còn lại (nếu có): ___
 |---|---|---|---|---|---|
 | WP-A1 | 2026-09-20 | 1e5bbc6 | T5.1–T5.3, T5.7, T5.10–T5.12 | ✅ | — |
 | WP-A2 | 2026-09-20 | 31af466 | (không cần test mới — thay đổi docs/config) | ✅ | — |
-| WP-A3 |  |  |  |  |  |
-| WP-A4 |  |  |  |  |  |
+| WP-A3 | 2026-09-20 | 3496d79 (đã có từ trước) | (không cần test mới — docs only) | ✅ | AGENTS.md committed trước session này |
+| WP-A4 | 2026-09-20 | e62679c | (không cần test mới — docs only) | ✅ | 15 file app-map mới, 16/16 đủ theo §14.2 |
 | WP-D1 |  |  |  |  |  |
 | WP-B1 |  |  |  |  |  |
 | WP-C1 |  |  |  |  |  |
