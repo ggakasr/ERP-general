@@ -684,8 +684,8 @@ Tiêu chí nghiệm thu riêng của gói (§3):
 Definition of Done chung:
 - [x] npm run typecheck ....................... SẠCH (0 lỗi sau fix Tabs API + Input + Button asChild)
 - [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
-- [ ] npm run test:acceptance ................ đang chạy (T3.1–T3.4 không bị đụng — không sửa 004_engine.sql)
-- [x] T3.1–T3.4 (SoD blocker) ................ không bị ảnh hưởng (chỉ thêm doc_types + bảng mới)
+- [x] npm run test:acceptance ................ 31/31 PASS, 0 skip (exit 0)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔
 - [x] Acceptance test map tới thay đổi ....... T1.1 (tạo doc SHIPMENT)
 - [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
 - [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; bảng mới REVOKE trực tiếp, chỉ EXECUTE trên `api_*`
