@@ -879,3 +879,146 @@ t('T5.12', 'Draft tự động giữ nguyên sau khi phiên hết hạn (đăng 
   assert.ok(fetched, 'document fetched after re-auth')
   assert.equal(fetched.status, 'DRAFT', 'document is still DRAFT — not lost on session expiry')
 })
+
+// ---------------------------------------------------------------- N6 tenant isolation (WP-D1)
+
+// Helper: provision an isolated tenant inside the current transaction.
+// Uses fixed UUIDs — safe because every test runs in BEGIN/ROLLBACK.
+// Returns { tid, brid, depid, userBId }.
+async function setupTenantB() {
+  const tid     = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+  const userBId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+
+  await sys(
+    `INSERT INTO tenants (id, code, name, plan) VALUES ($1, 'TEST-B', 'Test Tenant B', 'STARTER')`,
+    [tid]
+  )
+  const [{ id: brid }] = await sys(
+    `INSERT INTO branches (code, name, tenant_id) VALUES ('T-B-HQ', 'Tenant B HQ', $1) RETURNING id`,
+    [tid]
+  )
+  const [{ id: depid }] = await sys(
+    `INSERT INTO departments (code, name, branch_id, tenant_id) VALUES ('T-B-DEPT', 'Tenant B Dept', $1, $2) RETURNING id`,
+    [brid, tid]
+  )
+  await sys(
+    `INSERT INTO app_users (id, employee_code, full_name, email, branch_id, department_id, tenant_id, status)
+     VALUES ($1, 'EMP-B-001', 'User Tenant B', 'user-b@erp.test', $2, $3, $4, 'ACTIVE')`,
+    [userBId, brid, depid, tid]
+  )
+  // Mirror muahang's roles so tenant B user has equivalent permissions
+  await sys(
+    `INSERT INTO user_roles (user_id, role_code)
+     SELECT $1, role_code FROM user_roles WHERE user_id = (SELECT id FROM app_users WHERE email = 'muahang@erp.demo')`,
+    [userBId]
+  )
+  return { tid, brid, depid, userBId }
+}
+
+// Switch JWT context to an arbitrary user ID (not looked up by email)
+async function asUserId(userId) {
+  await db.query('RESET ROLE')
+  await db.query(
+    `SELECT set_config('request.jwt.claim.sub', $1, true), set_config('request.jwt.claims', $2, true)`,
+    [userId, JSON.stringify({ sub: userId, role: 'authenticated' })]
+  )
+  await db.query('SET LOCAL ROLE authenticated')
+  return userId
+}
+
+t('T6.1', 'Cô lập tenant: user B không đọc được document của tenant A qua api_list_documents', async () => {
+  // Create a PO in tenant A
+  const poId = await newPo('muahang')
+
+  // Provision tenant B
+  const { userBId } = await setupTenantB()
+
+  // Tenant B user lists POs — must not see tenant A's document
+  await asUserId(userBId)
+  const r = await call('api_list_documents', { p_doc_types: ['PO'], p_limit: 100 })
+  assert.ok(r.ok, `api_list_documents ok: ${JSON.stringify(r)}`)
+  const found = (r.rows ?? []).some((row) => row.id === poId)
+  assert.ok(!found, 'tenant B user cannot see tenant A documents in api_list_documents')
+})
+
+t('T6.2', 'Cô lập tenant: api_get_document từ chối user không cùng tenant', async () => {
+  const poId = await newPo('muahang')
+  const { userBId } = await setupTenantB()
+
+  await asUserId(userBId)
+  const r = await call('api_get_document', { p_id: poId })
+  assert.ok(!r.ok, `expected error but got ok=true: ${JSON.stringify(r)}`)
+  // code is either NOT_FOUND or FORBIDDEN — both acceptable
+  assert.ok(r.code === 'NOT_FOUND' || r.code === 'FORBIDDEN',
+    `expected NOT_FOUND or FORBIDDEN, got ${r.code}`)
+})
+
+t('T6.3', 'Cô lập tenant: api_master_data chỉ trả về data của tenant hiện tại', async () => {
+  const { tid, userBId } = await setupTenantB()
+
+  // Insert a product specifically for tenant B
+  await sys(
+    `INSERT INTO products (code, name, unit, product_type, tenant_id) VALUES ('B-PROD-UNIQUE', 'B Product', 'PCS', 'GOODS', $1)`,
+    [tid]
+  )
+
+  // Tenant A user must NOT see tenant B's product
+  await as('muahang')
+  const rA = await call('api_master_data', {})
+  assert.ok(rA.ok, 'tenant A master_data ok')
+  const leaked = (rA.products ?? []).find((p) => p.code === 'B-PROD-UNIQUE')
+  assert.ok(!leaked, 'tenant A user cannot see tenant B products in api_master_data')
+
+  // Tenant B user MUST see its own product
+  await asUserId(userBId)
+  const rB = await call('api_master_data', {})
+  assert.ok(rB.ok, 'tenant B master_data ok')
+  const ownProd = (rB.products ?? []).find((p) => p.code === 'B-PROD-UNIQUE')
+  assert.ok(ownProd, 'tenant B user sees their own product in api_master_data')
+})
+
+t('T6.4', 'Cô lập tenant: api_trace_responsibility từ chối truy vết document của tenant khác', async () => {
+  const poId = await newPo('muahang')
+  const { userBId } = await setupTenantB()
+
+  await asUserId(userBId)
+  const r = await call('api_trace_responsibility', { p_id: poId })
+  assert.ok(!r.ok, `expected error from cross-tenant trace, got ok=true: ${JSON.stringify(r)}`)
+})
+
+t('T6.5', 'Cô lập tenant: RLS chặn SELECT trực tiếp trên branches cho user khác tenant', async () => {
+  // Get tenant A's branch ID
+  const [{ branch_id: tenantABranch }] = await sys(
+    `SELECT branch_id FROM app_users WHERE email = 'muahang@erp.demo'`
+  )
+  const { userBId } = await setupTenantB()
+
+  // Switch to authenticated role as tenant B user
+  await asUserId(userBId)
+  // Direct SELECT on branches — RLS policy read_tenant must block tenant A's rows
+  const { rows } = await db.query(
+    `SELECT id FROM public.branches WHERE id = $1`, [tenantABranch]
+  )
+  assert.equal(rows.length, 0, 'RLS blocks direct SELECT on branches from a different tenant')
+})
+
+t('T6.6', 'Cô lập tenant: api_trial_balance không trả về GL entries của tenant khác', async () => {
+  // Create GL entries in tenant A by running a full GRN flow
+  const po = await approvedConfirmedPo()
+  await receiveAll(po)  // triggers GRN:store → fn_gl entries
+
+  const { userBId } = await setupTenantB()
+
+  // Tenant B user calls trial balance — must see 0 rows (no GL permission) or empty entries
+  await asUserId(userBId)
+  const r = await call('api_trial_balance', { p_from: '2026-01', p_to: '2026-12' })
+  if (r.ok) {
+    // Has GL VIEW permission but all rows should be empty (no tenant B entries)
+    const nonZero = (r.rows ?? []).filter((row) => row.debit !== 0 || row.credit !== 0 || row.opening !== 0)
+    assert.equal(nonZero.length, 0, 'tenant B user sees no GL entries from tenant A in trial balance')
+  } else {
+    // FORBIDDEN because tenant B user has no GL VIEW permission — also acceptable
+    assert.ok(r.code === 'FORBIDDEN' || r.code === 'UNAUTHENTICATED',
+      `expected FORBIDDEN or UNAUTHENTICATED for GL access, got ${r.code}`)
+  }
+})
