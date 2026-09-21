@@ -125,7 +125,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-H3 | `docs/deployment.md` + backup/DR + health check + CI gate | P2 | — | 3–5 ngày | [ ] |
 | WP-I1 | Billing/subscription + đóng gói theo gói | P3 | WP-D1 | 2–3 tuần | [ ] |
 | WP-I2 | Landing page + Help Center + onboarding demo | P3 | WP-A4 | 2 tuần | [ ] |
-| WP-J1 | Design system & app shell (nền UX/UI) | P1 | — | 1–2 tuần | [ ] |
+| WP-J1 | Design system & app shell (nền UX/UI) | P1 | — | 1–2 tuần | [x] |
 | WP-J2 | Hành vi + ma trận trạng thái màn cốt lõi | P1 | WP-J1 | 1–2 tuần | [ ] |
 | WP-J3 | Vòng QA/triage UX toàn bộ màn hiện có | P2 | WP-J1, WP-J2 | 1 tuần | [ ] |
 | WP-J4 | UI Shipment/Operations ngang mobile Freightek | P1 | WP-C1, WP-J1 | 1–2 tuần | [ ] |
@@ -699,7 +699,7 @@ Cạm bẫy/nợ kỹ thuật còn lại (nếu có): ___
 | WP-G4 |  |  |  |  |  |
 | WP-I1 |  |  |  |  |  |
 | WP-I2 |  |  |  |  |  |
-| WP-J1 |  |  |  |  |  |
+| WP-J1 | 2026-09-21 | 71aa36e | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | dark mode via @media; Inter font removed; Skeleton + Breadcrumb mới |
 | WP-J2 |  |  |  |  |  |
 | WP-J3 |  |  |  |  |  |
 | WP-J4 |  |  |  |  |  |
