@@ -12,6 +12,7 @@ import type { DocumentRow } from "@/lib/types"
 import { cn, downloadCsv, formatDate, formatMoney, formatNumber, getPath } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/form"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { Tabs } from "@/components/ui/tabs"
 import { EmptyState, ErrorBox, Masked, StatusBadge } from "@/components/shared/bits"
 
@@ -79,7 +80,7 @@ export function DocTable({
   }, [load])
 
   if (!type || !cfg) {
-    return <EmptyState>Bạn không có quyền xem các chứng từ trong phân hệ này.</EmptyState>
+    return <EmptyState>Bạn không có quyền xem chứng từ trong phân hệ này.</EmptyState>
   }
 
   const scope = scopeOf(type, "VIEW")
@@ -169,33 +170,50 @@ export function DocTable({
         </div>
       </div>
 
-      {error && <ErrorBox message={error} />}
+      {error && <ErrorBox message={error} onRetry={load} />}
 
-      <div className="overflow-x-auto rounded-lg border bg-card">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
-              {cfg.columns.map((c) => (
-                <th key={c.key} className={cn("whitespace-nowrap px-3 py-2 font-medium", c.align === "right" && "text-right")}>{c.label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && !loading && (
-              <tr><td colSpan={cfg.columns.length} className="px-3 py-8 text-center text-muted-foreground">Không có chứng từ trong phạm vi của bạn</td></tr>
-            )}
-            {rows.map((r) => (
-              <tr key={r.id} className="cursor-pointer border-b last:border-0 hover:bg-muted/30" onClick={() => router.push(`/documents/${r.id}`)}>
+      {loading && rows.length === 0 ? (
+        <SkeletonTable rows={5} cols={cfg.columns.length} />
+      ) : (
+        <div className="overflow-x-auto rounded-lg border bg-card">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
                 {cfg.columns.map((c) => (
-                  <td key={c.key} className={cn("px-3 py-2", c.align === "right" && "text-right", c.key === "title" && "max-w-[320px] truncate")}>
-                    {c.key === "number" ? <Link href={`/documents/${r.id}`} className="font-mono text-primary hover:underline" onClick={(e) => e.stopPropagation()}>{r.number}</Link> : renderCell(r, c)}
-                  </td>
+                  <th key={c.key} className={cn("whitespace-nowrap px-3 py-2 font-medium", c.align === "right" && "text-right")}>{c.label}</th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={cfg.columns.length} className="px-3 py-8 text-center text-muted-foreground">
+                    {canCreate ? (
+                      <span>
+                        Chưa có chứng từ.{" "}
+                        <Link href={`/documents/new?type=${type}`} className="text-primary hover:underline">
+                          Tạo {cfg.label.toLowerCase()} đầu tiên →
+                        </Link>
+                      </span>
+                    ) : (
+                      "Không có chứng từ trong phạm vi của bạn."
+                    )}
+                  </td>
+                </tr>
+              )}
+              {rows.map((r) => (
+                <tr key={r.id} className="cursor-pointer border-b last:border-0 hover:bg-muted/30" onClick={() => router.push(`/documents/${r.id}`)}>
+                  {cfg.columns.map((c) => (
+                    <td key={c.key} className={cn("px-3 py-2", c.align === "right" && "text-right", c.key === "title" && "max-w-[320px] truncate")}>
+                      {c.key === "number" ? <Link href={`/documents/${r.id}`} className="font-mono text-primary hover:underline" onClick={(e) => e.stopPropagation()}>{r.number}</Link> : renderCell(r, c)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {total > PAGE && (
         <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
           <span>{page * PAGE + 1}–{Math.min((page + 1) * PAGE, total)} / {total}</span>

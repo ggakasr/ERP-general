@@ -7,7 +7,8 @@ import { rpc } from "@/lib/api"
 import type { AvailableAction, DocumentRow } from "@/lib/types"
 import { cn, formatDateTime, formatMoney } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { EmptyState, Loading, SlaBadge, StatusBadge } from "@/components/shared/bits"
+import { SkeletonInbox } from "@/components/ui/skeleton"
+import { EmptyState, SlaBadge, StatusBadge } from "@/components/shared/bits"
 
 export interface InboxRow {
   document: DocumentRow
@@ -31,7 +32,7 @@ export function useInbox() {
 }
 
 export function InboxList({ rows, limit, onReload }: { rows: InboxRow[] | null; limit?: number; onReload?: () => void }) {
-  if (!rows) return <Loading label="Đang tìm việc cần xử lý…" />
+  if (!rows) return <SkeletonInbox />
   if (!rows.length) return <EmptyState>Không có việc nào đang chờ bạn.</EmptyState>
   const sorted = [...rows].sort((a, b) => Number(a.blocked_by_sod) - Number(b.blocked_by_sod))
   const shown = limit ? sorted.slice(0, limit) : sorted
