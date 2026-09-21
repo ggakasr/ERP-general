@@ -701,7 +701,7 @@ Cạm bẫy/nợ kỹ thuật còn lại (nếu có): ___
 | WP-I2 |  |  |  |  |  |
 | WP-J1 | 2026-09-21 | 71aa36e | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | dark mode via @media; Inter font removed; Skeleton + Breadcrumb mới |
 | WP-J2 | 2026-09-21 | 7df1587, cbe640d, 31d6f99, 53a128d, c35824e | (frontend-only — không đụng DB; T3.1–T3.12 PASS) | ✅ | Skeleton KPI/Inbox/DocDetail; EmptyState CTA; ErrorBox retry; state matrix §9 DESIGN-SPEC |
-| WP-J3 | 2026-09-21 | (pending confirm) | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | Chuyển tất cả màu hardcode Tailwind sang semantic token (success/warning/info/destructive/muted); dark mode đầy đủ |
+| WP-J3 | 2026-09-21 | 75c3cdd | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | Chuyển tất cả màu hardcode Tailwind sang semantic token (success/warning/info/destructive/muted); dark mode đầy đủ |
 | WP-J4 |  |  |  |  |  |
 
 > **Cách chủ dự án dùng**: mở bảng này xem cột *DoD đủ?* = ✅ và *Commit(s)* có hash là biết gói đã xong &
