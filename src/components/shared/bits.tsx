@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Lock } from "lucide-react"
+import { Lock, Plus } from "lucide-react"
 import { cn, formatMoney } from "@/lib/utils"
 import { SLA_LABELS, SOD_CLASS, SOD_LABELS, statusClass, statusLabel } from "@/lib/labels"
 
@@ -71,16 +71,35 @@ export function PageHeader({ title, subtitle, actions, badge }: { title: string;
   )
 }
 
-export function EmptyState({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">{children}</div>
+export function EmptyState({ children, cta }: { children: React.ReactNode; cta?: { href: string; label: string } }) {
+  return (
+    <div className="rounded-lg border border-dashed p-8 text-center">
+      <p className="text-sm text-muted-foreground">{children}</p>
+      {cta && (
+        <Link href={cta.href} className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+          <Plus className="h-3.5 w-3.5" />
+          {cta.label}
+        </Link>
+      )}
+    </div>
+  )
 }
 
 export function Loading({ label = "Đang tải…" }: { label?: string }) {
   return <div className="p-8 text-center text-sm text-muted-foreground">{label}</div>
 }
 
-export function ErrorBox({ message }: { message: string }) {
-  return <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{message}</div>
+export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+      <p>{message}</p>
+      {onRetry && (
+        <button onClick={onRetry} className="mt-2 text-xs font-medium underline hover:no-underline">
+          Thử lại
+        </button>
+      )}
+    </div>
+  )
 }
 
 export function Stat({ label, value, hint, tone }: { label: string; value: React.ReactNode; hint?: React.ReactNode; tone?: "default" | "good" | "warn" | "bad" }) {
