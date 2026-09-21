@@ -8,6 +8,15 @@
 --   api_chart_by_status  — single resource status / handoff SLA breakdown
 --   api_chart_series     — time-series: cash_flow | sod_violations | exceptions
 --   api_chart_by_owner   — top-N by partner/product/dept
+--
+-- NOTE: p_from / p_to use text (not date) so pg named-parameter notation resolves
+-- correctly from JS clients. Values must be 'YYYY-MM-DD' or NULL.
+
+-- Drop old date-typed overloads if they exist (from an earlier version of this file)
+DROP FUNCTION IF EXISTS api_chart_pipeline(text, date, date);
+DROP FUNCTION IF EXISTS api_chart_by_status(text, date, date);
+DROP FUNCTION IF EXISTS api_chart_series(text, date, date, text);
+DROP FUNCTION IF EXISTS api_chart_by_owner(text, date, date);
 
 -- ============================================================
 -- 1. api_chart_pipeline
@@ -17,13 +26,15 @@
 
 CREATE OR REPLACE FUNCTION api_chart_pipeline(
   p_doc_type text DEFAULT NULL,
-  p_from     date DEFAULT NULL,
-  p_to       date DEFAULT NULL
+  p_from     text DEFAULT NULL,
+  p_to       text DEFAULT NULL
 ) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_me    app_users := fn_current_user();
   v_types text[];
+  v_from  date := CASE WHEN p_from IS NOT NULL THEN p_from::date ELSE NULL END;
+  v_to    date := CASE WHEN p_to   IS NOT NULL THEN p_to::date   ELSE NULL END;
 BEGIN
   IF v_me.id IS NULL THEN
     RETURN fn_fail('UNAUTHENTICATED', 'Chưa đăng nhập');
@@ -58,8 +69,8 @@ BEGIN
         FROM documents d
         WHERE d.doc_type = ANY(v_types)
           AND d.tenant_id = fn_current_tenant()
-          AND (p_from IS NULL OR d.created_at >= p_from::timestamptz)
-          AND (p_to   IS NULL OR d.created_at <  (p_to + interval '1 day')::timestamptz)
+          AND (v_from IS NULL OR d.created_at >= v_from::timestamptz)
+          AND (v_to   IS NULL OR d.created_at <  (v_to + interval '1 day')::timestamptz)
           AND fn_doc_in_scope(v_me.id, d, d.doc_type, 'VIEW')
         GROUP BY d.doc_type, d.status
       ) x
@@ -76,13 +87,15 @@ END $$;
 
 CREATE OR REPLACE FUNCTION api_chart_by_status(
   p_resource text,
-  p_from     date DEFAULT NULL,
-  p_to       date DEFAULT NULL
+  p_from     text DEFAULT NULL,
+  p_to       text DEFAULT NULL
 ) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_me    app_users := fn_current_user();
   v_scope int;
+  v_from  date := CASE WHEN p_from IS NOT NULL THEN p_from::date ELSE NULL END;
+  v_to    date := CASE WHEN p_to   IS NOT NULL THEN p_to::date   ELSE NULL END;
 BEGIN
   IF v_me.id IS NULL THEN
     RETURN fn_fail('UNAUTHENTICATED', 'Chưa đăng nhập');
@@ -103,8 +116,8 @@ BEGIN
           FROM handoff_records hr
           WHERE hr.tenant_id = fn_current_tenant()
             AND hr.status NOT IN ('COMPLETED','CANCELLED')
-            AND (p_from IS NULL OR hr.initiated_at >= p_from::timestamptz)
-            AND (p_to   IS NULL OR hr.initiated_at <  (p_to + interval '1 day')::timestamptz)
+            AND (v_from IS NULL OR hr.initiated_at >= v_from::timestamptz)
+            AND (v_to   IS NULL OR hr.initiated_at <  (v_to + interval '1 day')::timestamptz)
             AND (
               v_scope >= 4
               OR (v_scope >= 3 AND EXISTS (
@@ -140,8 +153,8 @@ BEGIN
         FROM documents d
         WHERE d.doc_type = p_resource
           AND d.tenant_id = fn_current_tenant()
-          AND (p_from IS NULL OR d.created_at >= p_from::timestamptz)
-          AND (p_to   IS NULL OR d.created_at <  (p_to + interval '1 day')::timestamptz)
+          AND (v_from IS NULL OR d.created_at >= v_from::timestamptz)
+          AND (v_to   IS NULL OR d.created_at <  (v_to + interval '1 day')::timestamptz)
           AND fn_doc_in_scope(v_me.id, d, p_resource, 'VIEW')
         GROUP BY d.status
       ) x
@@ -159,8 +172,8 @@ END $$;
 
 CREATE OR REPLACE FUNCTION api_chart_series(
   p_metric   text,
-  p_from     date DEFAULT NULL,
-  p_to       date DEFAULT NULL,
+  p_from     text DEFAULT NULL,
+  p_to       text DEFAULT NULL,
   p_group_by text DEFAULT 'month'
 ) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
@@ -168,14 +181,15 @@ DECLARE
   v_me    app_users := fn_current_user();
   v_scope int;
   v_trunc text;
+  v_from  date := CASE WHEN p_from IS NOT NULL THEN p_from::date
+                       ELSE (CURRENT_DATE - interval '3 months')::date END;
+  v_to    date := CASE WHEN p_to IS NOT NULL THEN p_to::date ELSE CURRENT_DATE END;
 BEGIN
   IF v_me.id IS NULL THEN
     RETURN fn_fail('UNAUTHENTICATED', 'Chưa đăng nhập');
   END IF;
 
   v_trunc := CASE WHEN p_group_by IN ('day','week','month') THEN p_group_by ELSE 'month' END;
-  IF p_from IS NULL THEN p_from := (CURRENT_DATE - interval '3 months')::date; END IF;
-  IF p_to   IS NULL THEN p_to   := CURRENT_DATE; END IF;
 
   IF p_metric = 'cash_flow' THEN
     -- Permission: needs JV or BANKREC VIEW
@@ -199,7 +213,7 @@ BEGIN
           FROM gl_entries g
           WHERE g.tenant_id = fn_current_tenant()
             AND g.account_code IN ('111','112')
-            AND g.posting_date >= p_from AND g.posting_date <= p_to
+            AND g.posting_date >= v_from AND g.posting_date <= v_to
             AND (
               v_scope >= 4
               OR (v_scope >= 3 AND g.branch_id = v_me.branch_id)
@@ -229,7 +243,7 @@ BEGIN
           FROM sod_check_log s
           WHERE s.tenant_id = fn_current_tenant()
             AND s.result = 'BLOCKED'
-            AND s.checked_at::date >= p_from AND s.checked_at::date <= p_to
+            AND s.checked_at::date >= v_from AND s.checked_at::date <= v_to
             AND (
               v_scope >= 4
               OR (v_scope >= 3 AND EXISTS (
@@ -261,7 +275,7 @@ BEGIN
           FROM documents d
           WHERE d.doc_type = 'EXC'
             AND d.tenant_id = fn_current_tenant()
-            AND d.created_at::date >= p_from AND d.created_at::date <= p_to
+            AND d.created_at::date >= v_from AND d.created_at::date <= v_to
             AND fn_doc_in_scope(v_me.id, d, 'EXC', 'VIEW')
           GROUP BY date_trunc(v_trunc, d.created_at)
         ) x
@@ -283,13 +297,15 @@ END $$;
 
 CREATE OR REPLACE FUNCTION api_chart_by_owner(
   p_metric text,
-  p_from   date DEFAULT NULL,
-  p_to     date DEFAULT NULL
+  p_from   text DEFAULT NULL,
+  p_to     text DEFAULT NULL
 ) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_me    app_users := fn_current_user();
   v_scope int;
+  v_from  date := CASE WHEN p_from IS NOT NULL THEN p_from::date ELSE NULL END;
+  v_to    date := CASE WHEN p_to   IS NOT NULL THEN p_to::date   ELSE NULL END;
 BEGIN
   IF v_me.id IS NULL THEN
     RETURN fn_fail('UNAUTHENTICATED', 'Chưa đăng nhập');
@@ -315,8 +331,8 @@ BEGIN
           WHERE d.doc_type = 'INV'
             AND d.status IN ('POSTED','PARTIALLY_PAID','PAID')
             AND d.tenant_id = fn_current_tenant()
-            AND (p_from IS NULL OR d.created_at >= p_from::timestamptz)
-            AND (p_to   IS NULL OR d.created_at <  (p_to + interval '1 day')::timestamptz)
+            AND (v_from IS NULL OR d.created_at >= v_from::timestamptz)
+            AND (v_to   IS NULL OR d.created_at <  (v_to + interval '1 day')::timestamptz)
             AND fn_doc_in_scope(v_me.id, d, 'INV', 'VIEW')
           GROUP BY d.partner_id, p.name
           ORDER BY revenue DESC
@@ -346,8 +362,8 @@ BEGIN
           JOIN products pr ON pr.id = sm.product_id
           JOIN warehouses w ON w.id = sm.warehouse_id
           WHERE sm.tenant_id = fn_current_tenant()
-            AND (p_from IS NULL OR sm.created_at >= p_from::timestamptz)
-            AND (p_to   IS NULL OR sm.created_at <  (p_to + interval '1 day')::timestamptz)
+            AND (v_from IS NULL OR sm.created_at >= v_from::timestamptz)
+            AND (v_to   IS NULL OR sm.created_at <  (v_to + interval '1 day')::timestamptz)
             AND (
               v_scope >= 4
               OR (v_scope >= 3 AND w.branch_id = v_me.branch_id)
@@ -380,8 +396,8 @@ BEGIN
           LEFT JOIN departments dep ON dep.id = d.department_id
           WHERE d.doc_type = 'EXC'
             AND d.tenant_id = fn_current_tenant()
-            AND (p_from IS NULL OR d.created_at >= p_from::timestamptz)
-            AND (p_to   IS NULL OR d.created_at <  (p_to + interval '1 day')::timestamptz)
+            AND (v_from IS NULL OR d.created_at >= v_from::timestamptz)
+            AND (v_to   IS NULL OR d.created_at <  (v_to + interval '1 day')::timestamptz)
             AND fn_doc_in_scope(v_me.id, d, 'EXC', 'VIEW')
           GROUP BY dep.id, dep.name
           ORDER BY cnt DESC
@@ -395,3 +411,9 @@ BEGIN
       'p_metric không hợp lệ. Dùng: partner_revenue | inventory_balance | exceptions_by_dept');
   END IF;
 END $$;
+
+-- Grant EXECUTE to authenticated (pattern from 006_security.sql)
+GRANT EXECUTE ON FUNCTION api_chart_pipeline(text, text, text)    TO authenticated;
+GRANT EXECUTE ON FUNCTION api_chart_by_status(text, text, text)   TO authenticated;
+GRANT EXECUTE ON FUNCTION api_chart_series(text, text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION api_chart_by_owner(text, text, text)    TO authenticated;
