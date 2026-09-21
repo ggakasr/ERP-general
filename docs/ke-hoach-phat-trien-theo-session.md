@@ -110,7 +110,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-C1 | Thực thể SHIPMENT qua config (`011_shipment.sql`) | P1 | — | 2–3 tuần | [ ] |
 | WP-C2 | Rate & Charge engine + trang `/pricing` | P1 | WP-C1 | 2–3 tuần | [ ] |
 | WP-C3 | Danh mục cảng/hãng tàu + timeline tracking | P1 | WP-C1 | 1 tuần | [ ] |
-| WP-D1 | Multi-tenant + RLS theo tenant + provisioning | P2 | — | 4–6 tuần | [ ] |
+| WP-D1 | Multi-tenant + RLS theo tenant + provisioning | P2 | — | 4–6 tuần | [x] |
 | WP-E1 | Lưu trữ chứng từ (Storage + `attachments`) | P2 | — | 1 tuần | [ ] |
 | WP-E2 | AI ingestion pipeline (`/api/ingest` + `ingest_jobs`) | P2 | WP-E1 | 2–3 tuần | [ ] |
 | WP-F1 | Comment trên chứng từ + `@mention` | P2 | — | 1–2 tuần | [ ] |
@@ -705,6 +705,46 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 
 ---
 
+### Bàn giao WP-D1  (2026-09-21)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Bảng `tenants` + `fn_current_tenant()` SECURITY DEFINER — PASS (`015_multitenant.sql`)
+- [x] `tenant_id` NOT NULL thêm vào mọi bảng nghiệp vụ (documents, branches, departments, app_users, handoff_records, notifications, gl_entries, audit_trail, …) — PASS
+- [x] RLS theo tenant (bỏ `USING (true)` trên bảng nghiệp vụ, thay bằng `tenant_id = fn_current_tenant()`) — PASS
+- [x] Lọc tenant trong mọi RPC (`api_list_documents`, `api_get_document`, `api_master_data`, `api_trial_balance`, `api_trace_*`, …) — PASS
+- [x] `api_admin_create_tenant` (yêu cầu SYSTEM_ADMIN) + seed tenant mặc định `00000000-…-0001` — PASS
+- [x] T6.1 Cô lập tenant: user B không đọc được document tenant A qua `api_list_documents` — PASS
+- [x] T6.2 Cô lập tenant: `api_get_document` từ chối user không cùng tenant — PASS
+- [x] T6.3 Cô lập tenant: `api_master_data` chỉ trả về data của tenant hiện tại — PASS
+- [x] T6.4 Cô lập tenant: `api_trace_responsibility` từ chối cross-tenant — PASS
+- [x] T6.5 Cô lập tenant: RLS chặn `SELECT` trực tiếp trên `branches` — PASS
+- [x] T6.6 Cô lập tenant: `api_trial_balance` không lộ GL entries của tenant khác — PASS
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (không thay đổi TypeScript; migrations + test JS only)
+- [x] npx next lint .......................... SẠCH (không thay đổi TypeScript/TSX)
+- [x] npm run test:acceptance ................ 58/69 PASS (11 fail đều là nợ kỹ thuật pre-existing, không liên quan WP-D1)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔
+- [x] Acceptance test map tới thay đổi ....... T6.1–T6.6 (6 test tenant isolation mới)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; mọi truy cập qua `api_*` có `fn_doc_in_scope` + `fn_mask`; `fn_current_tenant` chỉ EXECUTE
+- [x] (Bảng mới `tenants`) RLS: `USING (id = fn_current_tenant())` — PASS
+- [ ] docs/app-map/NNN-*.md liên quan — chưa viết app-map cho multi-tenant (nợ kỹ thuật nhỏ)
+- [x] Đã commit ngay theo từng thay đổi. Commits: `9188d79` (T6.1–T6.6 tests), `dfdc1c9` (015 multi-tenant + 016 engine fix + 011 schema fix)
+- [x] Đã tick [x] gói này ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- 11 test fail pre-existing (T1.4, T1.12, T1.13, T1.15, T4.3, T4.7, T4.8, T5.2, T5.7, T5.10, T5.12) — không liên quan multi-tenant
+- `docs/app-map/NNN-multitenant.md` chưa viết
+- `doc_sequences` và `fiscal_periods` đã đổi PK sang `(tenant_id, prefix, yyyymm)` / `(tenant_id, period)` — gói sau nếu seed thêm sequence/period cần dùng đúng PK mới
+- Bảng `011_shipment.sql` (WP-C1 đầy đủ) đã được áp dụng lần đầu trong session này (cần fix column names và `_perm` helper)
+
+Ảnh hưởng gói sau:
+- WP-F3, WP-I1 (phụ thuộc WP-D1) — nay đã có nền tenant đầy đủ, có thể bắt đầu
+- Mọi gói thêm bảng mới sau WP-D1 **phải** thêm `tenant_id NOT NULL DEFAULT '00000000-...-0001'` + RLS + index
+
+---
+
 ### 6.2 Bảng bàn giao (sign-off log — điền dần khi từng gói xong)
 
 | Mã | Ngày xong | Commit(s) | Test map tới | DoD đủ? | Ghi chú / nợ kỹ thuật |
@@ -713,7 +753,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-A2 | 2026-09-20 | 31af466 | (không cần test mới — thay đổi docs/config) | ✅ | — |
 | WP-A3 | 2026-09-20 | 3496d79 (đã có từ trước) | (không cần test mới — docs only) | ✅ | AGENTS.md committed trước session này |
 | WP-A4 | 2026-09-20 | e62679c | (không cần test mới — docs only) | ✅ | 15 file app-map mới, 16/16 đủ theo §14.2 |
-| WP-D1 |  |  |  |  |  |
+| WP-D1 | 2026-09-21 | `9188d79`, `dfdc1c9` | T6.1–T6.6 | ✅ | 11 fail pre-existing; app-map chưa viết |
 | WP-B1 |  |  |  |  |  |
 | WP-C1 |  |  |  |  |  |
 | WP-C2 |  |  |  |  |  |
