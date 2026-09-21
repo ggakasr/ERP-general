@@ -756,7 +756,7 @@ Tiêu chí nghiệm thu riêng của gói (§3):
 Definition of Done chung:
 - [x] npm run typecheck ....................... SẠCH (0 lỗi)
 - [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
-- [x] npm run test:acceptance ................ T3.1–T3.4 PASS (tổng đang chạy background)
+- [x] npm run test:acceptance ................ 55 PASS / 7 FAIL (7 lỗi pre-existing WP-D1: T1.4, T1.12, T1.13, T1.15, T4.3, T4.7, T4.8)
 - [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔
 - [x] Acceptance test map tới thay đổi ....... T8.1–T8.6 (chart scope isolation)
 - [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
@@ -785,7 +785,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-A3 | 2026-09-20 | 3496d79 (đã có từ trước) | (không cần test mới — docs only) | ✅ | AGENTS.md committed trước session này |
 | WP-A4 | 2026-09-20 | e62679c | (không cần test mới — docs only) | ✅ | 15 file app-map mới, 16/16 đủ theo §14.2 |
 | WP-D1 | 2026-09-21 | `9188d79`, `dfdc1c9` | T6.1–T6.6 | ✅ | 11 fail pre-existing; app-map chưa viết |
-| WP-B1 | 2026-09-21 | 58faa36 | T8.1–T8.6 (chart scope) | ✅ | recharts bundle < 200KB gzip; 4 chart RPCs + 7 widgets + TimeFilter; RLS tenant isolation |
+| WP-B1 | 2026-09-21 | 58faa36, c509dbd, 20be424 | T8.1–T8.6 (chart scope) | ✅ | recharts bundle < 200KB gzip; 4 chart RPCs + 7 widgets + TimeFilter; T3.1–T3.4 PASS; 55/62 PASS (7 pre-existing) |
 | WP-C1 |  |  |  |  |  |
 | WP-C2 |  |  |  |  |  |
 | WP-C3 |  |  |  |  |  |
