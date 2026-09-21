@@ -8,10 +8,17 @@ export function cn(...inputs: ClassValue[]) {
 const moneyFmt = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 })
 const qtyFmt = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 })
 
-export function formatMoney(value: unknown): string {
+export function formatMoney(value: unknown, compact?: boolean): string {
   if (value === null || value === undefined || value === "") return "—"
   const n = Number(value)
   if (Number.isNaN(n)) return "—"
+  if (compact) {
+    const abs = Math.abs(n)
+    if (abs >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}T₫`
+    if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M₫`
+    if (abs >= 1_000) return `${(n / 1_000).toFixed(0)}K₫`
+    return `${n}₫`
+  }
   return `${moneyFmt.format(n)} ₫`
 }
 

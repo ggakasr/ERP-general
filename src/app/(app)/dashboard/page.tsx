@@ -15,9 +15,24 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { SkeletonKpiGrid } from "@/components/ui/skeleton"
 import { DocLink, SodBadge, StatusBadge } from "@/components/shared/bits"
 import { InboxList, useInbox } from "@/components/docs/inbox"
+import { TimeFilter, getDateRange, type TimeRange } from "@/components/charts/time-filter"
+import {
+  PipelineChart,
+  SodViolationsChart,
+  HandoffSlaChart,
+  ExcStatusChart,
+  PartnerRevenueChart,
+  CashFlowChart,
+  InventoryBalanceChart,
+} from "@/components/charts/dashboard-widgets"
 
 interface Kpi { code: string; name: string; category: string; value: number | null; target: number | null; unit: string; status: string }
 interface Activity { document_id: string; number: string; doc_type: string; label: string; to_status: string; user_name: string; department_name: string; sod_role: string | null; created_at: string }
+
+type PipelineRow = { doc_type: string; status: string; count: number }
+type SeriesRow   = { period: string; value?: number; cash_in?: number; cash_out?: number }
+type OwnerRow    = { label: string; value: number; value2?: number }
+type StatusRow   = { status: string; count: number }
 
 function kpiValue(k: Kpi) {
   if (k.value === null || k.value === undefined) return "—"
@@ -32,16 +47,57 @@ export default function DashboardPage() {
   const [kpis, setKpis] = useState<Kpi[] | null>(null)
   const [dash, setDash] = useState<{ activity: Activity[]; my_documents: DocRef[]; module_counts: Record<string, number>; sod_blocked_today: number } | null>(null)
 
+  // Chart state
+  const [timeRange, setTimeRange] = useState<TimeRange>("3m")
+  const [pipeline,  setPipeline]  = useState<PipelineRow[] | null>(null)
+  const [sodSeries, setSodSeries] = useState<SeriesRow[]   | null>(null)
+  const [excStatus, setExcStatus] = useState<StatusRow[]   | null>(null)
+  const [handoffSla,setHandoffSla]= useState<StatusRow[]   | null>(null)
+  const [partnerRev,setPartnerRev]= useState<OwnerRow[]    | null>(null)
+  const [cashFlow,  setCashFlow]  = useState<SeriesRow[]   | null>(null)
+  const [inventory, setInventory] = useState<OwnerRow[]    | null>(null)
+
   useEffect(() => {
     rpc<typeof dash & object>("api_dashboard").then((r) => r.ok && setDash(r as any))
     if (can("KPI", "VIEW")) rpc<{ rows: Kpi[] }>("api_kpis").then((r) => r.ok && setKpis(r.rows))
   }, [can])
+
+  // Reload all charts when time range changes
+  useEffect(() => {
+    const { from, to } = getDateRange(timeRange)
+    const args = { p_from: from, p_to: to }
+
+    setPipeline(null); setSodSeries(null); setExcStatus(null)
+    setHandoffSla(null); setPartnerRev(null); setCashFlow(null); setInventory(null)
+
+    rpc<{ rows: PipelineRow[] }>("api_chart_pipeline", args)
+      .then((r) => setPipeline(r.ok ? r.rows : []))
+
+    rpc<{ rows: SeriesRow[] }>("api_chart_series", { p_metric: "sod_violations", ...args, p_group_by: "week" })
+      .then((r) => setSodSeries(r.ok ? r.rows : []))
+
+    rpc<{ rows: StatusRow[] }>("api_chart_by_status", { p_resource: "EXC", ...args })
+      .then((r) => setExcStatus(r.ok ? r.rows : []))
+
+    rpc<{ rows: StatusRow[] }>("api_chart_by_status", { p_resource: "HANDOFF", ...args })
+      .then((r) => setHandoffSla(r.ok ? r.rows : []))
+
+    rpc<{ rows: OwnerRow[] }>("api_chart_by_owner", { p_metric: "partner_revenue", ...args })
+      .then((r) => setPartnerRev(r.ok ? r.rows : []))
+
+    rpc<{ rows: SeriesRow[] }>("api_chart_series", { p_metric: "cash_flow", ...args, p_group_by: "month" })
+      .then((r) => setCashFlow(r.ok ? r.rows : []))
+
+    rpc<{ rows: OwnerRow[] }>("api_chart_by_owner", { p_metric: "inventory_balance", ...args })
+      .then((r) => setInventory(r.ok ? r.rows : []))
+  }, [timeRange])
 
   const creatable = Object.values(DOC_TYPES).filter((t) => can(t.code, "CREATE") && !t.requiresParent)
   const pickKpis = kpis?.filter((k) => ["FIN-001", "FIN-002", "FIN-003", "OPS-001", "CMP-001", "CMP-002", "CMP-003", "CUS-001"].includes(k.code))
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
+      {/* ── Header ── */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">Xin chào, {me.user.full_name}</h1>
@@ -60,6 +116,7 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* ── SoD alert ── */}
       {dash && dash.sod_blocked_today > 0 && (
         <div className="flex items-center gap-2 rounded-lg border border-warning/50 bg-warning-subtle px-3 py-2 text-sm text-warning">
           <ShieldAlert className="h-4 w-4" />
@@ -67,6 +124,7 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* ── KPI tiles ── */}
       {can("KPI", "VIEW") && (kpis === null ? (
         <SkeletonKpiGrid />
       ) : pickKpis && pickKpis.length > 0 ? (
@@ -84,6 +142,88 @@ export default function DashboardPage() {
         </div>
       ) : null)}
 
+      {/* ── Chart section with shared time filter ── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Biểu đồ phân tích</h2>
+          <TimeFilter value={timeRange} onChange={setTimeRange} />
+        </div>
+
+        {/* Row 1: Pipeline + SoD violations */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Pipeline chứng từ theo trạng thái</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <PipelineChart data={pipeline} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Vi phạm SoD theo tuần</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <SodViolationsChart data={sodSeries} />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Row 2: Exceptions + Handoff SLA */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Ngoại lệ theo trạng thái</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ExcStatusChart data={excStatus} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Bàn giao theo SLA (đang mở)</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <HandoffSlaChart data={handoffSla} />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Row 3: Cash flow (full width) */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Dòng tiền vào / ra (TK 111, 112)</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <CashFlowChart data={cashFlow} />
+          </CardContent>
+        </Card>
+
+        {/* Row 4: Partner revenue + Inventory */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Top khách hàng theo doanh thu</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <PartnerRevenueChart data={partnerRev} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Số dư kho theo mặt hàng</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <InventoryBalanceChart data={inventory} />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* ── Existing: activity + my docs + modules ── */}
       <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
         <div className="space-y-5">
           <div>

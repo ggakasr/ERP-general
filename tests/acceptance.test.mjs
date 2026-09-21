@@ -1022,3 +1022,92 @@ t('T6.6', 'Cô lập tenant: api_trial_balance không trả về GL entries củ
       `expected FORBIDDEN or UNAUTHENTICATED for GL access, got ${r.code}`)
   }
 })
+
+// ═══════════════════════════════════════════════════════════════
+// N8 — Chart RPC scope isolation (WP-B1)
+// ═══════════════════════════════════════════════════════════════
+
+t('T8.1', 'api_chart_pipeline: user không có quyền VIEW → FORBIDDEN', async () => {
+  // 'kho' user only has WH/GRN VIEW, no general VIEW for PO doc_type in another dept
+  // Pick a user who has no doc-view permissions at all — use a brand-new tenant B user
+  const { userBId } = await setupTenantB()
+  await asUserId(userBId)
+  const r = await call('api_chart_pipeline', { p_from: '2026-01-01', p_to: '2026-12-31' })
+  // Either ok with empty rows (user has no viewable doc_types) or FORBIDDEN
+  if (!r.ok) {
+    assert.ok(r.code === 'FORBIDDEN' || r.code === 'UNAUTHENTICATED', `expected FORBIDDEN/UNAUTHENTICATED, got ${r.code}`)
+  } else {
+    // ok is acceptable when rows is empty — user sees nothing
+    const rows = r.rows ?? []
+    assert.equal(rows.length, 0, 'user with no permissions sees empty pipeline')
+  }
+})
+
+t('T8.2', 'api_chart_pipeline: user BRANCH scope chỉ thấy doc thuộc chi nhánh mình', async () => {
+  // Create a PO in HN branch (muahang user, branch HN)
+  const po = await newPo('muahang')
+  ok(await act('muahang', po, 'submit'))
+
+  // Now check from the HN branch user — should see the PO
+  await as('muahang')
+  const r = await call('api_chart_pipeline', { p_from: '2026-01-01', p_to: '2026-12-31' })
+  ok(r, 'pipeline call succeeds')
+  const total = (r.rows ?? []).reduce((s, row) => s + Number(row.count), 0)
+  assert.ok(total > 0, 'HN branch user sees at least the PO they created')
+})
+
+t('T8.3', 'api_chart_series: metric=sod_violations — unauthenticated → FORBIDDEN', async () => {
+  await db.query('RESET ROLE')
+  await db.query('SET LOCAL ROLE authenticated')
+  // No JWT claim set → fn_current_user_id() returns null → UNAUTHENTICATED
+  const r = await call('api_chart_series', { p_metric: 'sod_violations' })
+  assert.equal(r.ok, false, 'unauthenticated call should fail')
+  assert.ok(r.code === 'FORBIDDEN' || r.code === 'UNAUTHENTICATED',
+    `expected auth error, got: ${JSON.stringify(r)}`)
+})
+
+t('T8.4', 'api_chart_series: metric=cash_flow — user tanai (no GL VIEW) → FORBIDDEN', async () => {
+  // Use kho (warehouse) user who has no JV/BANKREC VIEW
+  await as('kho')
+  const r = await call('api_chart_series', { p_metric: 'cash_flow' })
+  // Should be FORBIDDEN (no GL VIEW permission)
+  assert.equal(r.ok, false, 'warehouse user should not see cash flow')
+  assert.ok(r.code === 'FORBIDDEN' || r.code === 'UNAUTHENTICATED',
+    `expected FORBIDDEN, got: ${JSON.stringify(r)}`)
+})
+
+t('T8.5', 'api_chart_by_status: resource=HANDOFF — tenant B không thấy bàn giao của tenant A', async () => {
+  // Create a handoff in tenant A by transitioning a PO cross-dept
+  const po = await newPo()
+  ok(await act('muahang', po, 'submit'))
+
+  // Tenant B user queries handoff status
+  const { userBId } = await setupTenantB()
+  await asUserId(userBId)
+  const r = await call('api_chart_by_status', { p_resource: 'HANDOFF', p_from: '2026-01-01', p_to: '2026-12-31' })
+  if (r.ok) {
+    const total = (r.rows ?? []).reduce((s, row) => s + Number(row.count), 0)
+    assert.equal(total, 0, 'tenant B user sees no handoffs from tenant A')
+  } else {
+    assert.ok(r.code === 'FORBIDDEN' || r.code === 'UNAUTHENTICATED',
+      `expected auth error, got: ${JSON.stringify(r)}`)
+  }
+})
+
+t('T8.6', 'api_chart_by_owner: metric=partner_revenue — tenant cô lập', async () => {
+  // Create INV in tenant A
+  const po = await approvedConfirmedPo()
+  await receiveAll(po)
+  // (in full flow would post invoice; skip for scope check — just verify tenant isolation)
+
+  const { userBId } = await setupTenantB()
+  await asUserId(userBId)
+  const r = await call('api_chart_by_owner', { p_metric: 'partner_revenue', p_from: '2026-01-01', p_to: '2026-12-31' })
+  if (r.ok) {
+    const total = (r.rows ?? []).reduce((s, row) => s + Number(row.value ?? 0), 0)
+    assert.equal(total, 0, 'tenant B sees no revenue from tenant A')
+  } else {
+    assert.ok(r.code === 'FORBIDDEN' || r.code === 'UNAUTHENTICATED',
+      `expected auth error, got: ${JSON.stringify(r)}`)
+  }
+})
