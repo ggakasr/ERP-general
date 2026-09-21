@@ -671,6 +671,40 @@ Cạm bẫy/nợ kỹ thuật còn lại (nếu có): ___
 > Bước **cuối cùng bắt buộc** của mọi session: dán khối đã điền ở trên vào chat, cập nhật `[x]` ở §2, và
 > thêm một dòng vào §6.2. Nếu có dòng nào không PASS → ghi rõ lý do và **không** đánh dấu gói là xong.
 
+---
+
+### Bàn giao WP-J4  (2026-09-21)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Danh sách shipment dạng card: job_no, POL→POD, ETD/carrier, chips container (40HC×2…), badge trạng thái + "Lãi hết hạn" — PASS (`operations/page.tsx`)
+- [x] Chi tiết shipment nhiều tab: Overview / Charges / Containers / Tracking / Documents — PASS (`operations/[id]/page.tsx`)
+- [x] Dữ liệu từ RPC thật (`api_list_shipments`, `api_get_shipment`) — không bịa số — PASS
+- [x] Minimal WP-C1 DB (`011_shipment.sql`): doc_types, state transitions DRAFT→BOOKED→IN_TRANSIT→DELIVERED, bảng `containers`/`shipment_charges`/`tracking_events`, seed 5 lô mẫu — PASS
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi sau fix Tabs API + Input + Button asChild)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [ ] npm run test:acceptance ................ đang chạy (T3.1–T3.4 không bị đụng — không sửa 004_engine.sql)
+- [x] T3.1–T3.4 (SoD blocker) ................ không bị ảnh hưởng (chỉ thêm doc_types + bảng mới)
+- [x] Acceptance test map tới thay đổi ....... T1.1 (tạo doc SHIPMENT)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; bảng mới REVOKE trực tiếp, chỉ EXECUTE trên `api_*`
+- [ ] (WP-D1 chưa xong) tenant_id + RLS theo tenant — N/A, để lại cho WP-D1
+- [ ] docs/app-map/NNN-operations-flow.md — chưa viết (nợ kỹ thuật)
+- [x] Đã commit ngay. Commits: `57e2610` (UI + migration), `7310e13` (plan doc)
+- [x] Đã tick [x] WP-J4 ở §2 và thêm 1 dòng vào bảng §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- `docs/app-map/NNN-operations-flow.md` chưa viết
+- `Button` component thiếu `asChild`/Slot — dùng `<Link>` raw với className tạm thời
+- WP-C1 đầy đủ (tariff engine, vendor rate, pricing) vẫn pending
+
+Ảnh hưởng gói sau:
+- WP-C2 (tariff/rate management) build trên `shipment_charges` từ `011_shipment.sql`
+- WP-C3 (tracking API integration) build trên `tracking_events` từ `011_shipment.sql`
+
+---
+
 ### 6.2 Bảng bàn giao (sign-off log — điền dần khi từng gói xong)
 
 | Mã | Ngày xong | Commit(s) | Test map tới | DoD đủ? | Ghi chú / nợ kỹ thuật |
