@@ -102,6 +102,7 @@ BEGIN
   END IF;
 
   -- Handoff SLA breakdown (special resource key)
+  -- handoff_records has no sla_status column; compute from sla_due_at vs now()
   IF p_resource = 'HANDOFF' THEN
     v_scope := fn_perm_scope(v_me.id, 'CONTROLS', 'VIEW');
     IF v_scope = 0 THEN v_scope := 1; END IF; -- fallback: own handoffs always visible
@@ -112,7 +113,14 @@ BEGIN
           ORDER BY cnt DESC
         )
         FROM (
-          SELECT hr.sla_status, count(*) AS cnt
+          SELECT
+            CASE
+              WHEN hr.sla_due_at IS NULL      THEN 'ON_TIME'
+              WHEN now() > hr.sla_due_at       THEN 'BREACHED'
+              WHEN now() > hr.sla_due_at - interval '2 hours' THEN 'AT_RISK'
+              ELSE 'ON_TIME'
+            END AS sla_status,
+            count(*) AS cnt
           FROM handoff_records hr
           WHERE hr.tenant_id = fn_current_tenant()
             AND hr.status NOT IN ('COMPLETED','CANCELLED')
@@ -130,7 +138,7 @@ BEGIN
               ))
               OR hr.from_user_id = v_me.id OR hr.to_user_id = v_me.id
             )
-          GROUP BY hr.sla_status
+          GROUP BY 1
         ) x
       ), '[]'::jsonb)
     );
