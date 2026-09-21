@@ -1,8 +1,8 @@
 ---
-covers: src/app/globals.css, src/components/layout/*, src/components/ui/*, src/app/(app)/layout.tsx
+covers: src/app/globals.css, src/components/layout/*, src/components/ui/*, src/components/shared/bits.tsx, src/app/(app)/**
 last_verified: 2026-09-21
 ttl_days: 180
-scope: WP-J1 design system & app shell
+scope: WP-J1 design system & app shell; WP-J2 state matrix & behaviour
 ---
 
 # DESIGN-SPEC — ERP General
@@ -118,3 +118,40 @@ Thang 4/8/12/16/24/32/48/64px (Tailwind `p-1` đến `p-16`). Cấm arbitrary `p
 - [ ] Focus ring nhìn thấy được (a11y)
 - [ ] Breadcrumb hiển thị đúng theo path
 - [ ] Module count badge ẩn khi = 0
+
+---
+
+## 9. State matrix — màn cốt lõi (WP-J2)
+
+Mỗi màn phải xử lý đủ 6 trạng thái: **loading · empty · error · role-gated · data · partial-data**.
+
+| Màn | Loading | Empty | Error | Role-gated | Data |
+|---|---|---|---|---|---|
+| Dashboard `/dashboard` | `SkeletonKpiGrid` (KPI) + skeleton rows (activity/my-docs) | "Chưa có hoạt động." — không CTA vì là tổng quan | Không hiển thị riêng; từng card ẩn nếu API lỗi | KPI grid chỉ hiện khi `can("KPI","VIEW")` | KPI grid + activity + inbox preview |
+| Danh sách chứng từ `/:module` | `SkeletonTable` khi `loading && rows.length === 0` | Link "Tạo X đầu tiên" nếu `canCreate`, "Không có chứng từ…" nếu không | `ErrorBox` + nút Thử lại (`onRetry={load}`) | `EmptyState` "Bạn không có quyền xem" | Table + pagination + filter chips |
+| Chi tiết `/documents/[id]` | `SkeletonDocDetail` giữ đúng layout header + tabs | — (luôn có doc hoặc hiện error) | `ErrorBox` + nút Thử lại + nút Quay lại | ActionBar ẩn action không có quyền; trường bị mask bằng `<Masked />` | Header + ActionBar + tabs nội dung |
+| Inbox `/tasks` | `SkeletonInbox` (4 rows giữ layout) | "Không có việc nào đang chờ bạn." — không CTA | `ErrorBox` + `onRetry={reload}` | — (tất cả việc đã qua filter phân quyền ở DB) | Danh sách việc với filter theo loại |
+| Trace `/trace` | `SkeletonTable` trong từng subtab (Money/Goods/Responsibility) | 3 card hướng trace + hướng dẫn tìm kiếm | `ErrorBox` + `onRetry` trong mỗi subtab | GL/kho ẩn nếu không có quyền (hiển thị ghi chú) | Cây chứng từ + bảng GL/kho + check |
+| Controls `/controls` | Ẩn/hiện theo quyền khi mount | "Không có dữ liệu trong phạm vi." per tab | — (dữ liệu tĩnh, ít lỗi API) | Tabs SoD Log/Handoff ẩn khi không có quyền; ghi chú hiển thị | Tabs với bảng ma trận + log + số liệu |
+| Exceptions `/exceptions` | `SkeletonTable` (qua DocTable) | Link tạo EXC đầu tiên nếu canCreate | `ErrorBox` + Thử lại (qua DocTable) | — | Table ngoại lệ |
+
+### Quy tắc chung (enforce bởi code — không phải convention)
+
+- `loading` → **Skeleton** giữ nguyên shape layout (không nhảy content khi data về)
+- `empty` → **1 câu ngắn + 1 CTA** (nếu user có thể tự giải quyết); cấm văn thuyết minh
+- `error` → **`ErrorBox`** hiện message + nút "Thử lại" (`onRetry`) — không ép reload trang
+- `role-gated` → Ẩn action/trường, **không ẩn màn hình** (user vẫn thấy cấu trúc)
+- `partial-data` → Hiện đủ shape; trường ẩn dùng `<Masked />` với tooltip giải thích
+- **Toast** (`useToast()`) → chỉ dùng cho mutation (success/error); không toast cho read-only loads
+
+### Component map
+
+| Trạng thái | Component | File |
+|---|---|---|
+| Loading — table | `SkeletonTable` | `components/ui/skeleton.tsx` |
+| Loading — KPI grid | `SkeletonKpiGrid` | `components/ui/skeleton.tsx` |
+| Loading — inbox list | `SkeletonInbox` | `components/ui/skeleton.tsx` |
+| Loading — doc detail | `SkeletonDocDetail` | `components/ui/skeleton.tsx` |
+| Empty — có CTA | `EmptyState` với prop `cta` | `components/shared/bits.tsx` |
+| Error — có retry | `ErrorBox` với prop `onRetry` | `components/shared/bits.tsx` |
+| Toast mutation | `useToast()` | `components/ui/toast.tsx` |
