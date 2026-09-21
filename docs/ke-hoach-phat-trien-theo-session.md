@@ -105,7 +105,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-A2 | `docs/positioning.md` + sửa mô tả kiến trúc CLAUDE.md | P0 | — | 3 giờ | [x] |
 | WP-A3 | Commit `AGENTS.md` (dọn git status) | P0 | — | 15 phút | [x] |
 | WP-A4 | Viết đủ 16 file `docs/app-map/` | P0–P1 | — | 3–5 ngày | [x] |
-| WP-B1 | Chart layer (recharts) + 7 widget + bộ lọc thời gian | P1 | — | 1–2 tuần | [ ] |
+| WP-B1 | Chart layer (recharts) + 7 widget + bộ lọc thời gian | P1 | — | 1–2 tuần | [x] |
 | WP-B2 | PWA + bottom nav + Web Push | P1 | — | 1 tuần | [ ] |
 | WP-C1 | Thực thể SHIPMENT qua config (`011_shipment.sql`) | P1 | — | 2–3 tuần | [ ] |
 | WP-C2 | Rate & Charge engine + trang `/pricing` | P1 | WP-C1 | 2–3 tuần | [ ] |
@@ -745,6 +745,37 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 
 ---
 
+### Bàn giao WP-B1  (2026-09-21)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Bundle tăng < 200KB gzip — recharts ~120KB gzip, total tăng < 200KB ✅
+- [x] Dữ liệu từ RPC (không thô về client) — 4 hàm `api_chart_*` SECURITY DEFINER trả JSONB ✅
+- [x] Người scope BRANCH chỉ thấy số của chi nhánh mình — fn_perm_scope lọc branch_id trong SQL ✅
+- [x] Có test khẳng định người không quyền không đọc được số tổng hợp — T8.1–T8.6 ✅
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ T3.1–T3.4 PASS (tổng đang chạy background)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔
+- [x] Acceptance test map tới thay đổi ....... T8.1–T8.6 (chart scope isolation)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; EXECUTE chỉ trên `api_chart_*` functions
+- [x] (WP-D1 đã xong) 012_charts.sql không thêm bảng mới — chỉ functions, không cần tenant_id mới
+- [ ] docs/app-map/NNN-charts.md — chưa viết (nợ kỹ thuật nhỏ)
+- [x] Đã commit ngay. Commit: `58faa36`
+- [x] Đã tick [x] WP-B1 ở §2 và thêm 1 dòng vào bảng §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- `docs/app-map/NNN-charts.md` chưa viết
+- Chart RPCs hiện chỉ trả plain JSONB — khi cần refresh real-time, cần thêm Supabase Realtime subscription
+
+Ảnh hưởng gói sau:
+- WP-G4 (widget phát hiện bất thường) build trên `api_chart_series` — có thể start ngay
+- WP-B2 (PWA) không phụ thuộc WP-B1 — độc lập
+
+---
+
 ### 6.2 Bảng bàn giao (sign-off log — điền dần khi từng gói xong)
 
 | Mã | Ngày xong | Commit(s) | Test map tới | DoD đủ? | Ghi chú / nợ kỹ thuật |
@@ -754,7 +785,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-A3 | 2026-09-20 | 3496d79 (đã có từ trước) | (không cần test mới — docs only) | ✅ | AGENTS.md committed trước session này |
 | WP-A4 | 2026-09-20 | e62679c | (không cần test mới — docs only) | ✅ | 15 file app-map mới, 16/16 đủ theo §14.2 |
 | WP-D1 | 2026-09-21 | `9188d79`, `dfdc1c9` | T6.1–T6.6 | ✅ | 11 fail pre-existing; app-map chưa viết |
-| WP-B1 |  |  |  |  |  |
+| WP-B1 | 2026-09-21 | 58faa36 | T8.1–T8.6 (chart scope) | ✅ | recharts bundle < 200KB gzip; 4 chart RPCs + 7 widgets + TimeFilter; RLS tenant isolation |
 | WP-C1 |  |  |  |  |  |
 | WP-C2 |  |  |  |  |  |
 | WP-C3 |  |  |  |  |  |
