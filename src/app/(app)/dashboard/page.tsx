@@ -11,6 +11,8 @@ import type { DocRef } from "@/lib/types"
 import { cn, formatDateTime, formatMoney, formatNumber } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { SkeletonKpiGrid } from "@/components/ui/skeleton"
 import { DocLink, SodBadge, StatusBadge } from "@/components/shared/bits"
 import { InboxList, useInbox } from "@/components/docs/inbox"
 
@@ -65,7 +67,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {pickKpis && pickKpis.length > 0 && (
+      {can("KPI", "VIEW") && (kpis === null ? (
+        <SkeletonKpiGrid />
+      ) : pickKpis && pickKpis.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {pickKpis.map((k) => (
             <Link key={k.code} href="/reports" className="rounded-lg border bg-card p-3 hover:shadow-sm">
@@ -78,7 +82,7 @@ export default function DashboardPage() {
             </Link>
           ))}
         </div>
-      )}
+      ) : null)}
 
       <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
         <div className="space-y-5">
@@ -93,7 +97,18 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Hoạt động gần đây trong phạm vi của bạn</CardTitle></CardHeader>
             <CardContent>
-              {!dash ? <p className="text-sm text-muted-foreground">Đang tải…</p> : dash.activity.length === 0 ? (
+              {!dash ? (
+                <div className="space-y-2.5">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-32" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="ml-auto h-3 w-28" />
+                    </div>
+                  ))}
+                </div>
+              ) : dash.activity.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Chưa có hoạt động.</p>
               ) : (
                 <ul className="space-y-2.5">
@@ -117,7 +132,17 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Chứng từ tôi lập đang xử lý</CardTitle></CardHeader>
             <CardContent>
-              {!dash?.my_documents.length ? <p className="text-sm text-muted-foreground">Không có.</p> : (
+              {!dash ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1.5">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 flex-1" />
+                      <Skeleton className="h-4 w-14" />
+                    </div>
+                  ))}
+                </div>
+              ) : !dash.my_documents.length ? <p className="text-sm text-muted-foreground">Không có.</p> : (
                 <ul className="divide-y">
                   {dash.my_documents.map((d) => (
                     <li key={d.id} className="flex items-center gap-2 py-1.5 text-sm">

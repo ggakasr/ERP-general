@@ -11,8 +11,9 @@ import type { DocumentDetail } from "@/lib/types"
 import { formatDateTime } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { SkeletonDocDetail } from "@/components/ui/skeleton"
 import { Tabs } from "@/components/ui/tabs"
-import { ErrorBox, Loading, StatusBadge } from "@/components/shared/bits"
+import { ErrorBox, StatusBadge } from "@/components/shared/bits"
 import { ActionBar } from "@/components/docs/action-bar"
 import {
   AuditTable, BudgetUsage, ChainCard, GlTable, HandoffList, InfoGrid, LinesTable, MatchResult, MdcPayload,
@@ -45,11 +46,11 @@ export default function DocumentPage() {
     return (
       <div className="space-y-3">
         <Button variant="ghost" size="sm" onClick={() => router.back()}><ArrowLeft className="mr-1 h-4 w-4" /> Quay lại</Button>
-        <ErrorBox message={error} />
+        <ErrorBox message={error} onRetry={load} />
       </div>
     )
   }
-  if (!detail) return <Loading />
+  if (!detail) return <SkeletonDocDetail />
 
   const doc = detail.document
   const cfg = DOC_TYPES[doc.doc_type]

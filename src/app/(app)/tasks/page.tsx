@@ -19,7 +19,7 @@ export default function TasksPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-4">
       <PageHeader title="Việc cần làm" />
-      {error && <ErrorBox message={error} />}
+      {error && <ErrorBox message={error} onRetry={reload} />}
       {rows && rows.length > 0 && (
         <div className="flex flex-wrap gap-1">
           <button onClick={() => setType(null)} className={cn("rounded-full px-2.5 py-1 text-xs", !type ? "bg-foreground text-background" : "bg-muted")}>Tất cả ({rows.length})</button>
