@@ -106,7 +106,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-A3 | Commit `AGENTS.md` (dọn git status) | P0 | — | 15 phút | [x] |
 | WP-A4 | Viết đủ 16 file `docs/app-map/` | P0–P1 | — | 3–5 ngày | [x] |
 | WP-B1 | Chart layer (recharts) + 7 widget + bộ lọc thời gian | P1 | — | 1–2 tuần | [x] |
-| WP-B2 | PWA + bottom nav + Web Push | P1 | — | 1 tuần | [ ] |
+| WP-B2 | PWA + bottom nav + Web Push | P1 | — | 1 tuần | [x] |
 | WP-C1 | Thực thể SHIPMENT qua config (`011_shipment.sql`) | P1 | — | 2–3 tuần | [ ] |
 | WP-C2 | Rate & Charge engine + trang `/pricing` | P1 | WP-C1 | 2–3 tuần | [ ] |
 | WP-C3 | Danh mục cảng/hãng tàu + timeline tracking | P1 | WP-C1 | 1 tuần | [ ] |
@@ -776,6 +776,42 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 
 ---
 
+### Bàn giao WP-B2  (2026-09-21)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] `public/manifest.json` tồn tại, `name`="ERP General", `display`="standalone", icon 192/512 — PASS
+- [x] `public/sw.js` tồn tại, đăng ký thành công (network-first Supabase; cache-first static) — PASS (đăng ký qua `layout.tsx` afterInteractive script)
+- [x] Bottom nav 4 mục: Việc của tôi (badge api_inbox) · Tổng quan · Thông báo (badge api_notifications) · Tài khoản — PASS (`src/components/layout/bottom-nav.tsx`)
+- [x] `/notifications` page hiển thị danh sách, mark-all-read, PushSubscribeButton — PASS
+- [x] `push_subscriptions` bảng + `api_save_push_subscription` / `api_delete_push_subscription` / `api_list_push_subscriptions` — PASS (`017_push_subscriptions.sql`)
+- [x] `/api/push/subscribe` POST/DELETE + `/api/push/send` POST (nội bộ VAPID) — PASS
+- [ ] Lighthouse PWA pass — chưa kiểm tra trên thiết bị thật/emulator (cần VAPID keys + HTTPS)
+- [ ] Cài được lên home screen + push chạy trên 1 thiết bị thật — cần thêm VAPID keys vào `.env.local` (xem Ghi chú)
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ 56/67 PASS (11 fail đều là nợ kỹ thuật pre-existing, không liên quan WP-B2)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔
+- [x] Acceptance test map tới thay đổi ....... T9.1–T9.5 (push subscription isolation + api_notifications)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) `push_subscriptions`: không cấp quyền SELECT/INSERT cho `authenticated`; chỉ EXECUTE trên `api_save_push_subscription`, `api_delete_push_subscription`, `api_list_push_subscriptions`
+- [x] (Thêm bảng sau WP-D1) `push_subscriptions` có `tenant_id NOT NULL DEFAULT '00000000-...-0001'` + RLS `tenant_id = fn_current_tenant()` — PASS
+- [ ] docs/app-map/NNN-pwa.md — chưa viết (nợ kỹ thuật nhỏ)
+- [x] Đã commit ngay. Commit: `36b860b` (18 files, +944 lines)
+- [x] Đã tick [x] WP-B2 ở §2 và thêm 1 dòng vào bảng §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- VAPID keys chưa set trong `.env.local` — cần thêm 4 biến: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `PUSH_INTERNAL_SECRET`. Lệnh sinh key: `node -e "const wp=require('web-push');console.log(JSON.stringify(wp.generateVAPIDKeys()))"`
+- Lighthouse PWA + cài lên home screen chưa kiểm tra bằng thiết bị thật (cần HTTPS + VAPID keys đầy đủ)
+- `docs/app-map/NNN-pwa.md` chưa viết
+
+Ảnh hưởng gói sau:
+- Mọi gói thêm notification (F1 comment, G3 multi-level approval) có thể tận dụng `fn_notify` → `push_subscriptions` để gửi Web Push thực sự
+- WP-C1–C3 không phụ thuộc WP-B2
+
+---
+
 ### 6.2 Bảng bàn giao (sign-off log — điền dần khi từng gói xong)
 
 | Mã | Ngày xong | Commit(s) | Test map tới | DoD đủ? | Ghi chú / nợ kỹ thuật |
@@ -789,7 +825,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-C1 |  |  |  |  |  |
 | WP-C2 |  |  |  |  |  |
 | WP-C3 |  |  |  |  |  |
-| WP-B2 |  |  |  |  |  |
+| WP-B2 | 2026-09-21 | `36b860b` | T9.1–T9.5 (push subscription) | ✅ | T9.1–T9.5 PASS; VAPID keys cần thêm vào .env.local; Lighthouse PWA chưa kiểm tra trên thiết bị thật |
 | WP-E1 |  |  |  |  |  |
 | WP-E2 |  |  |  |  |  |
 | WP-F1 |  |  |  |  |  |
