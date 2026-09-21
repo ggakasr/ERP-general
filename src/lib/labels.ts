@@ -66,13 +66,13 @@ const STATUS_TONE: Record<string, Tone> = {
 }
 
 const TONE_CLASS: Record<Tone, string> = {
-  gray: "bg-slate-100 text-slate-700 ring-slate-200",
-  blue: "bg-blue-50 text-blue-700 ring-blue-200",
-  amber: "bg-amber-50 text-amber-800 ring-amber-200",
-  green: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  red: "bg-red-50 text-red-700 ring-red-200",
-  violet: "bg-violet-50 text-violet-700 ring-violet-200",
-  teal: "bg-teal-50 text-teal-700 ring-teal-200",
+  gray: "bg-muted text-muted-foreground ring-border",
+  blue: "bg-info-subtle text-info ring-info/30",
+  amber: "bg-warning-subtle text-warning ring-warning/30",
+  green: "bg-success-subtle text-success ring-success/30",
+  red: "bg-destructive/10 text-destructive ring-destructive/30",
+  violet: "bg-violet-50 text-violet-700 ring-violet-200 dark:bg-violet-950/30 dark:text-violet-400 dark:ring-violet-700/40",
+  teal: "bg-primary/10 text-primary ring-primary/20",
 }
 
 export function statusLabel(status: string) {

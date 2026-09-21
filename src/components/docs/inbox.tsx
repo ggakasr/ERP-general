@@ -62,7 +62,7 @@ export function InboxList({ rows, limit, onReload }: { rows: InboxRow[] | null; 
           <div className="hidden max-w-[45%] flex-wrap justify-end gap-1 sm:flex">
             {r.actions.slice(0, 3).map((a, i) => (
               <span key={i} className={cn("inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs",
-                a.sod_conflict ? "bg-orange-50 text-orange-800 ring-1 ring-orange-200" : a.style === "success" ? "bg-emerald-50 text-emerald-800" : "bg-primary/10 text-primary")}>
+                a.sod_conflict ? "bg-warning-subtle text-warning ring-1 ring-warning/30" : a.style === "success" ? "bg-success-subtle text-success" : "bg-primary/10 text-primary")}>
                 {a.sod_conflict && <ShieldAlert className="h-3 w-3" />}
                 {a.label}
               </span>

@@ -313,7 +313,7 @@ function DocumentForm() {
                           <td className="px-2"><button onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} className="rounded p-1 text-muted-foreground hover:bg-accent"><Trash2 className="h-4 w-4" /></button></td>
                         </tr>
                       ))}
-                      <tr className={cn("font-medium", totals.debit === totals.credit && totals.debit > 0 ? "bg-emerald-50" : "bg-red-50")}>
+                      <tr className={cn("font-medium", totals.debit === totals.credit && totals.debit > 0 ? "bg-success-subtle text-success" : "bg-destructive/10 text-destructive")}>
                         <td className="px-3 py-2" colSpan={2}>{totals.debit === totals.credit && totals.debit > 0 ? "Cân đối Nợ = Có" : "Chưa cân đối — không thể gửi duyệt"}</td>
                         <td className="px-3 py-2 text-right">{formatMoney(totals.debit)}</td><td className="px-3 py-2 text-right">{formatMoney(totals.credit)}</td><td />
                       </tr>

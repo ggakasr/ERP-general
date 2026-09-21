@@ -105,7 +105,7 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <span className="hidden rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 md:inline">
+        <span className="hidden rounded-md bg-success-subtle px-2 py-1 text-[11px] font-medium text-success ring-1 ring-success/30 md:inline">
           {user.branch_code}
         </span>
 

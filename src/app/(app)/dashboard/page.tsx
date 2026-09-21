@@ -61,7 +61,7 @@ export default function DashboardPage() {
       </div>
 
       {dash && dash.sod_blocked_today > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-900">
+        <div className="flex items-center gap-2 rounded-lg border border-warning/50 bg-warning-subtle px-3 py-2 text-sm text-warning">
           <ShieldAlert className="h-4 w-4" />
           Trong 30 ngày qua, hệ thống đã chặn {dash.sod_blocked_today} thao tác của bạn do vi phạm tách biệt nhiệm vụ (SoD).
         </div>
@@ -75,7 +75,7 @@ export default function DashboardPage() {
             <Link key={k.code} href="/reports" className="rounded-lg border bg-card p-3 hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <p className="truncate text-xs text-muted-foreground">{k.name}</p>
-                <span className={cn("h-2 w-2 rounded-full", k.status === "GREEN" ? "bg-emerald-500" : k.status === "YELLOW" ? "bg-amber-500" : k.status === "RED" ? "bg-red-500" : "bg-slate-300")} />
+                <span className={cn("h-2 w-2 rounded-full", k.status === "GREEN" ? "bg-success" : k.status === "YELLOW" ? "bg-warning" : k.status === "RED" ? "bg-destructive" : "bg-muted-foreground")} />
               </div>
               <p className="mt-1 text-lg font-semibold tabular-nums">{kpiValue(k)}</p>
               <p className="text-[11px] text-muted-foreground">{k.code}{k.target !== null ? ` · mục tiêu ${k.unit === "VND" ? formatMoney(k.target) : `${formatNumber(k.target)}${k.unit === "%" ? "%" : " " + k.unit}`}` : ""}</p>

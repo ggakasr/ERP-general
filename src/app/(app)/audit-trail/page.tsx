@@ -174,7 +174,7 @@ export default function AuditTrailPage() {
         }
       />
 
-      <div className="flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+      <div className="flex items-start gap-2 rounded-md border bg-muted px-3 py-2 text-xs text-muted-foreground">
         <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         <span>Nhật ký này không thể sửa hoặc xóa.</span>
       </div>

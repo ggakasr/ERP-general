@@ -91,8 +91,8 @@ function MoneyTrace({ id }: { id: string }) {
             <span className="ml-auto flex flex-wrap items-center gap-3 text-xs">
               {n.partner_name && <span className="text-muted-foreground">{n.partner_name}</span>}
               {n.can_view && (n.amount === null ? <Masked /> : Number(n.amount) !== 0 && <span className="font-medium tabular-nums">{formatMoney(n.amount)}</span>)}
-              {n.paid_amount !== null && n.paid_amount !== undefined && <span className="tabular-nums text-emerald-700">đã TT {formatMoney(n.paid_amount)}</span>}
-              {glByDoc.has(n.id) && <span className="rounded bg-blue-50 px-1.5 text-blue-700">{glByDoc.get(n.id).entries.length} bút toán</span>}
+              {n.paid_amount !== null && n.paid_amount !== undefined && <span className="tabular-nums text-success">đã TT {formatMoney(n.paid_amount)}</span>}
+              {glByDoc.has(n.id) && <span className="rounded bg-info-subtle px-1.5 text-info">{glByDoc.get(n.id).entries.length} bút toán</span>}
             </span>
           </>
         )} />
@@ -142,7 +142,7 @@ function MoveTree({ node, depth, dir }: { node: any; depth: number; dir: "up" | 
     <div>
       <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card px-3 py-1.5 text-xs" style={{ marginLeft: depth * 22 }}>
         {depth > 0 && <ChevronRight className="-ml-1 h-3.5 w-3.5 text-muted-foreground" />}
-        <span className={cn("rounded px-1.5 py-0.5 font-medium", Number(node.qty) < 0 ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700")}>
+        <span className={cn("rounded px-1.5 py-0.5 font-medium", Number(node.qty) < 0 ? "bg-destructive/10 text-destructive" : "bg-success-subtle text-success")}>
           {MOVE_LABELS[node.move_type] || node.move_type}
         </span>
         <DocLink id={node.document_id} number={node.document_number} />
@@ -216,7 +216,7 @@ function ResponsibilityTrace({ id }: { id: string }) {
         <h3 className="mb-2 text-sm font-semibold">Những người tham gia chuỗi giao dịch & vai trò SoD</h3>
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {data.people.map((p: any) => (
-            <div key={p.user_id} className={cn("rounded-lg border bg-card p-3", p.conflict && "border-red-300 bg-red-50")}>
+            <div key={p.user_id} className={cn("rounded-lg border bg-card p-3", p.conflict && "border-destructive/40 bg-destructive/10")}>
               <p className="text-sm font-medium">{p.user_name}</p>
               <p className="text-xs text-muted-foreground">{p.position} · {p.department_name} · {p.action_count} thao tác</p>
               <div className="mt-1.5 flex flex-wrap gap-1">

@@ -90,7 +90,7 @@ export default function DocumentPage() {
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="font-mono text-2xl font-semibold">{doc.number}</h1>
           <StatusBadge status={doc.status} className="text-sm" />
-          {doc.data?.backorder && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800 ring-1 ring-amber-200">Backorder</span>}
+          {doc.data?.backorder && <span className="rounded-full bg-warning-subtle px-2 py-0.5 text-xs text-warning ring-1 ring-warning/30">Backorder</span>}
         </div>
         {doc.title && <p className="mt-1 text-base">{doc.title}</p>}
         <p className="mt-1 text-xs text-muted-foreground">
@@ -98,11 +98,11 @@ export default function DocumentPage() {
         </p>
         <p className="mt-1.5 text-sm">
           {detail.current_owner_label ? (
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-amber-900 ring-1 ring-inset ring-amber-200">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-warning-subtle px-2 py-1 text-warning ring-1 ring-inset ring-warning/30">
               <Clock3 className="h-3.5 w-3.5 shrink-0" /> Đang chờ xử lý: <b>{detail.current_owner_label}</b>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-emerald-900 ring-1 ring-inset ring-emerald-200">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-success-subtle px-2 py-1 text-success ring-1 ring-inset ring-success/30">
               <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> Đã kết thúc luồng xử lý — không cần thao tác thêm
             </span>
           )}
