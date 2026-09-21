@@ -1111,3 +1111,70 @@ t('T8.6', 'api_chart_by_owner: metric=partner_revenue — tenant cô lập', asy
       `expected auth error, got: ${JSON.stringify(r)}`)
   }
 })
+
+// ---------------------------------------------------------------- N9 PWA & Push (WP-B2)
+
+t('T9.1', 'push_subscriptions: bảng tồn tại + api_save_push_subscription lưu được', async () => {
+  await as('muahang')
+  // Bảng phải tồn tại
+  const tbl = await sys(`SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='push_subscriptions'`)
+  assert.equal(tbl.length, 1, 'push_subscriptions table exists')
+  // Lưu subscription
+  const r = await call('api_save_push_subscription', {
+    p_endpoint: 'https://push.example.com/test-endpoint-t9',
+    p_p256dh: 'AAAA_test_p256dh_key_AAAA',
+    p_auth: 'test_auth_t9',
+    p_user_agent: 'Test/1.0',
+  })
+  ok(r, 'api_save_push_subscription returns ok')
+  const rows = await sys(`SELECT id FROM public.push_subscriptions WHERE endpoint = 'https://push.example.com/test-endpoint-t9'`)
+  assert.equal(rows.length, 1, 'subscription persisted in DB')
+})
+
+t('T9.2', 'api_save_push_subscription: upsert cùng endpoint — không tạo bản ghi mới', async () => {
+  await as('muahang')
+  const ep = 'https://push.example.com/test-upsert-t9'
+  await call('api_save_push_subscription', { p_endpoint: ep, p_p256dh: 'KEY1', p_auth: 'AUTH1' })
+  await call('api_save_push_subscription', { p_endpoint: ep, p_p256dh: 'KEY2', p_auth: 'AUTH2' })
+  const rows = await sys(`SELECT p256dh FROM public.push_subscriptions WHERE endpoint = $1`, [ep])
+  assert.equal(rows.length, 1, 'upsert: only 1 row for same endpoint')
+  assert.equal(rows[0].p256dh, 'KEY2', 'key updated on upsert')
+})
+
+t('T9.3', 'push_subscriptions: user A không đọc được subscription của user B qua api_save (cô lập)', async () => {
+  // User B lưu subscription
+  await as('ketoan')
+  await call('api_save_push_subscription', {
+    p_endpoint: 'https://push.example.com/user-b-endpoint',
+    p_p256dh: 'KEY_B', p_auth: 'AUTH_B',
+  })
+  // API không lộ subscriptions user khác — kiểm tra qua api_list_push_subscriptions
+  await as('muahang')
+  const r = await call('api_list_push_subscriptions', {
+    p_user_id: (await sys(`SELECT id FROM public.app_users WHERE email = 'ketoan@erp.demo'`))[0].id,
+  })
+  assert.equal(r.ok, false, 'non-SYSTEM_ADMIN cannot call api_list_push_subscriptions')
+  assert.equal(r.code, 'FORBIDDEN', 'returns FORBIDDEN as expected')
+})
+
+t('T9.4', 'api_notifications: trả về đúng cấu trúc ok + unread + rows', async () => {
+  await as('muahang')
+  const r = await call('api_notifications', { p_limit: 10 })
+  ok(r, 'api_notifications returns ok')
+  assert.ok('unread' in r, 'has unread count')
+  assert.ok(Array.isArray(r.rows), 'rows is array')
+  assert.ok(typeof r.unread === 'number' || typeof r.unread === 'bigint' || Number(r.unread) >= 0, 'unread is numeric')
+})
+
+t('T9.5', 'api_delete_push_subscription: xóa đúng endpoint, không xóa endpoint khác', async () => {
+  await as('muahang')
+  const ep1 = 'https://push.example.com/del-t9-1'
+  const ep2 = 'https://push.example.com/del-t9-2'
+  await call('api_save_push_subscription', { p_endpoint: ep1, p_p256dh: 'K1', p_auth: 'A1' })
+  await call('api_save_push_subscription', { p_endpoint: ep2, p_p256dh: 'K2', p_auth: 'A2' })
+  ok(await call('api_delete_push_subscription', { p_endpoint: ep1 }), 'delete returns ok')
+  const rows = await sys(`SELECT endpoint FROM public.push_subscriptions WHERE endpoint IN ($1,$2)`, [ep1, ep2])
+  const endpoints = rows.map((r) => r.endpoint)
+  assert.ok(!endpoints.includes(ep1), 'ep1 deleted')
+  assert.ok(endpoints.includes(ep2), 'ep2 untouched')
+})

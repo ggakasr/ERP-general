@@ -6,6 +6,7 @@ import { ToastProvider } from "@/components/ui/toast"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { Breadcrumb } from "@/components/layout/breadcrumb"
+import { BottomNav } from "@/components/layout/bottom-nav"
 import { rpc } from "@/lib/api"
 
 function AppShell({ children }: { children: React.ReactNode }) {
@@ -30,8 +31,10 @@ function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenu={() => setMenuOpen(true)} />
         <Breadcrumb />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+        {/* pb-16 = space for bottom nav on mobile */}
+        <main className="flex-1 overflow-y-auto p-4 pb-20 lg:p-6 lg:pb-6">{children}</main>
       </div>
+      <BottomNav />
     </div>
   )
 }
