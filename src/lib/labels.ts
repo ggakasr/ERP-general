@@ -48,6 +48,14 @@ export const STATUS_LABELS: Record<string, string> = {
   UNDER_REVIEW: "Đang xem xét",
   SOFT_CLOSE: "Khóa sơ bộ",
   HARD_CLOSE: "Khóa sổ",
+  // Shipment
+  BOOKED: "Đã đặt chỗ",
+  ARRIVED: "Tàu đến",
+  CUSTOMS: "Làm hải quan",
+  DELIVERED: "Đã giao hàng",
+  // Booking/HBL/DO
+  ISSUED: "Đã phát hành",
+  APPLIED: "Đã áp dụng",
 }
 
 type Tone = "gray" | "blue" | "amber" | "green" | "red" | "violet" | "teal"
@@ -63,6 +71,9 @@ const STATUS_TONE: Record<string, Tone> = {
   RECEIVED: "green", STORED: "green", POSTED: "green", PAID: "green", SHIPPED: "green", COMPLETED: "green",
   ONBOARDED: "green", RESOLVED: "green", RECONCILED: "green", AUDITED: "green",
   CLOSED: "gray", DISPOSED: "gray", REVERSED: "red", REJECTED: "red", CANCELLED: "red", LOST: "red",
+  // Shipment tones
+  BOOKED: "teal", ARRIVED: "green", CUSTOMS: "amber", DELIVERED: "green",
+  ISSUED: "green", APPLIED: "green",
 }
 
 const TONE_CLASS: Record<Tone, string> = {

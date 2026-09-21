@@ -217,3 +217,98 @@ export interface DocumentDetail {
   /** vai trò đang "giữ bóng" ở trạng thái hiện tại; null nếu chứng từ đã kết thúc (terminal) */
   current_owner_label: string | null
 }
+
+// ── Shipment / Operations ─────────────────────────────────────
+
+export interface ContainerChip {
+  type: string
+  count: number
+}
+
+export interface ShipmentCard {
+  id: string
+  number: string
+  job_no: string
+  status: string
+  title: string | null
+  mode: string | null
+  shipment_type: string | null
+  pol: string | null
+  pod: string | null
+  etd: string | null
+  eta: string | null
+  carrier: string | null
+  vessel: string | null
+  voyage: string | null
+  incoterm: string | null
+  shipper: string | null
+  consignee: string | null
+  containers: ContainerChip[]
+  ar_total: number
+  ap_total: number
+  rate_expiring: boolean
+  created_by_name: string | null
+  created_at: string
+}
+
+export interface ShipmentListResponse {
+  ok: boolean
+  total: number
+  status_counts: Record<string, number>
+  rows: ShipmentCard[]
+}
+
+export interface ShipmentCharge {
+  id: string
+  charge_code: string
+  description: string | null
+  charge_type: "AR" | "AP"
+  qty: number
+  rate: number
+  currency: string
+  exchange_rate: number
+  amount_fc: number
+  amount_vnd: number
+  is_billable: boolean
+  rate_expires: string | null
+  partner_name: string | null
+}
+
+export interface ShipmentContainer {
+  id: string
+  container_no: string | null
+  container_type: string
+  seal_no: string | null
+  gross_weight: number | null
+  cbm: number | null
+  status: string
+}
+
+export interface TrackingEvent {
+  id: string
+  event_code: string
+  event_name: string
+  location: string | null
+  event_time: string | null
+  actual: boolean
+  notes: string | null
+  created_by: string | null
+}
+
+export interface ShipmentDetail {
+  ok: boolean
+  document: DocumentRow
+  shipper: { id: string; name: string; code: string } | null
+  consignee: { id: string; name: string; code: string } | null
+  charges: ShipmentCharge[]
+  containers: ShipmentContainer[]
+  tracking: TrackingEvent[]
+  child_docs: DocRef[]
+  profit: {
+    ar_total: number
+    ap_total: number
+    margin: number
+    margin_pct: number
+  }
+  actions: AvailableAction[]
+}

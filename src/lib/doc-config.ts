@@ -277,6 +277,81 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
     createVia: "access_review", header: [],
     columns: [...BASE_COLS, BY_COL, DATE_COL, STATUS_COL],
   },
+  // ── Operations / Logistics ────────────────────────────────
+  SHIPMENT: {
+    code: "SHIPMENT", label: "Lô hàng", plural: "Lô hàng (Shipment)", module: "operations", flow: "L12", lineMode: "none",
+    header: [
+      { key: "title",    label: "Diễn giải",       type: "text",   required: true },
+      { key: "mode",     label: "Phương thức",      type: "select", data: true, options: [
+        { value: "FCL", label: "FCL" }, { value: "LCL", label: "LCL" }, { value: "AIR", label: "Air" }, { value: "TRUCK", label: "Truck" },
+      ]},
+      { key: "shipment_type", label: "Loại",        type: "select", data: true, options: [
+        { value: "EXPORT", label: "Export" }, { value: "IMPORT", label: "Import" }, { value: "TRANSIT", label: "Transit" },
+      ]},
+      { key: "pol",      label: "Cảng đi (POL)",    type: "text",   data: true },
+      { key: "pod",      label: "Cảng đến (POD)",   type: "text",   data: true },
+      { key: "etd",      label: "ETD",               type: "date",   data: true },
+      { key: "eta",      label: "ETA",               type: "date",   data: true },
+      { key: "carrier",  label: "Hãng tàu",          type: "text",   data: true },
+      { key: "vessel",   label: "Tàu / chuyến bay",  type: "text",   data: true },
+      { key: "voyage",   label: "Chuyến số",         type: "text",   data: true },
+      { key: "incoterm", label: "Incoterm",          type: "select", data: true, options: [
+        { value: "EXW", label: "EXW" }, { value: "FOB", label: "FOB" }, { value: "CFR", label: "CFR" },
+        { value: "CIF", label: "CIF" }, { value: "DAP", label: "DAP" }, { value: "DDP", label: "DDP" },
+      ]},
+    ],
+    columns: [
+      { key: "number",    label: "Số lô hàng" },
+      { key: "data.mode", label: "Mode" },
+      { key: "data.pol",  label: "POL" },
+      { key: "data.pod",  label: "POD" },
+      { key: "data.etd",  label: "ETD", kind: "date" },
+      { key: "data.carrier", label: "Carrier" },
+      STATUS_COL,
+    ],
+  },
+  BOOKING: {
+    code: "BOOKING", label: "Booking", plural: "Booking", module: "operations", flow: "L12", lineMode: "none",
+    requiresParent: true,
+    header: [
+      { key: "title",    label: "Booking reference",  type: "text", required: true },
+      { key: "carrier",  label: "Hãng tàu",           type: "text", data: true },
+    ],
+    columns: [...BASE_COLS, BY_COL, DATE_COL, STATUS_COL],
+  },
+  HBL: {
+    code: "HBL", label: "House B/L", plural: "House Bills of Lading", module: "operations", flow: "L12", lineMode: "none",
+    requiresParent: true,
+    header: [
+      { key: "title", label: "HBL số",  type: "text", required: true },
+    ],
+    columns: [...BASE_COLS, BY_COL, DATE_COL, STATUS_COL],
+  },
+  DO: {
+    code: "DO", label: "Delivery Order", plural: "Delivery Orders", module: "operations", flow: "L12", lineMode: "none",
+    requiresParent: true,
+    header: [
+      { key: "title", label: "D/O number", type: "text", required: true },
+    ],
+    columns: [...BASE_COLS, BY_COL, DATE_COL, STATUS_COL],
+  },
+  DNOTE: {
+    code: "DNOTE", label: "Debit Note", plural: "Debit Notes", module: "operations", flow: "L12", lineMode: "product",
+    requiresParent: true,
+    header: [
+      { key: "title",         label: "Diễn giải",     type: "text",     required: true },
+      { key: "due_date",      label: "Ngày đến hạn",  type: "date",     data: true },
+    ],
+    columns: [...BASE_COLS, { key: "partner_name", label: "Khách hàng" }, AMOUNT_COL, DATE_COL, STATUS_COL],
+  },
+  CNOTE: {
+    code: "CNOTE", label: "Credit Note", plural: "Credit Notes", module: "operations", flow: "L12", lineMode: "product",
+    requiresParent: true,
+    header: [
+      { key: "title",   label: "Diễn giải",   type: "text", required: true },
+    ],
+    columns: [...BASE_COLS, { key: "partner_name", label: "Khách hàng" }, AMOUNT_COL, DATE_COL, STATUS_COL],
+  },
 }
 
 export interface ModuleConfig {
@@ -297,6 +372,7 @@ export const MODULES: ModuleConfig[] = [
   { key: "assets", href: "/assets", title: "Tài sản", docTypes: ["ASSET"] },
   { key: "customer-service", href: "/customer-service", title: "Dịch vụ khách hàng", docTypes: ["TICKET"] },
   { key: "exceptions", href: "/exceptions", title: "Ngoại lệ", docTypes: ["EXC"] },
+  { key: "operations", href: "/operations", title: "Vận hành Logistics", docTypes: ["SHIPMENT", "BOOKING", "HBL", "DO", "DNOTE", "CNOTE"] },
 ]
 
 export function docTypeLabel(code: string) {
