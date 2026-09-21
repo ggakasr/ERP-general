@@ -14,6 +14,22 @@ ON CONFLICT (code) DO NOTHING;
 -- ============================================================
 -- PERMISSIONS
 -- ============================================================
+-- Re-create _perm locally (_perm was dropped at the end of 003_config.sql)
+CREATE OR REPLACE FUNCTION _perm(p_role text, p_resources text, p_actions text, p_scope text, p_hidden text[] DEFAULT '{}')
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE r text; a text;
+BEGIN
+  FOREACH r IN ARRAY string_to_array(replace(p_resources, ' ', ''), ',') LOOP
+    FOREACH a IN ARRAY string_to_array(replace(p_actions, ' ', ''), ',') LOOP
+      INSERT INTO permission_matrix (role_code, resource, action, data_scope, field_restrictions)
+      VALUES (p_role, r, a, p_scope,
+              CASE WHEN a = 'VIEW' AND cardinality(p_hidden) > 0 THEN jsonb_build_object('hidden', to_jsonb(p_hidden)) ELSE '{}'::jsonb END)
+      ON CONFLICT (role_code, resource, action) DO UPDATE
+        SET data_scope = excluded.data_scope, field_restrictions = excluded.field_restrictions;
+    END LOOP;
+  END LOOP;
+END $$;
+
 DO $$
 DECLARE
   ops_docs text := 'SHIPMENT,BOOKING,HBL,DO,DNOTE,CNOTE';
@@ -31,13 +47,13 @@ END $$;
 -- ============================================================
 -- DOC TYPES  (BM-05)
 -- ============================================================
-INSERT INTO doc_types (code, name, prefix, flow, module, initial_state, terminal_states, requires_budget, sod_requester_role, sort) VALUES
-  ('SHIPMENT', 'Lô hàng (Shipment)',        'SPT',  'L12', 'operations', 'DRAFT',      '{CLOSED,CANCELLED}',   false, 'REQUESTER', 110),
-  ('BOOKING',  'Booking',                   'BKG',  'L12', 'operations', 'DRAFT',      '{CONFIRMED,CANCELLED}',false, 'REQUESTER', 111),
-  ('HBL',      'House Bill of Lading',      'HBL',  'L12', 'operations', 'DRAFT',      '{RELEASED,CANCELLED}', false, 'REQUESTER', 112),
-  ('DO',       'Delivery Order',            'DO',   'L12', 'operations', 'DRAFT',      '{ISSUED,CANCELLED}',   false, 'REQUESTER', 113),
-  ('DNOTE',    'Debit Note',                'DN',   'L12', 'operations', 'DRAFT',      '{PAID,CANCELLED}',     true,  'REQUESTER', 114),
-  ('CNOTE',    'Credit Note',               'CN',   'L12', 'operations', 'DRAFT',      '{APPLIED,CANCELLED}',  true,  'REQUESTER', 115)
+INSERT INTO doc_types (code, name, prefix, flow_code, module, initial_status, terminal_statuses, create_sod_role, sort) VALUES
+  ('SHIPMENT', 'Lô hàng (Shipment)',        'SPT',  'L12', 'operations', 'DRAFT',      '{CLOSED,CANCELLED}',   'REQUESTER', 110),
+  ('BOOKING',  'Booking',                   'BKG',  'L12', 'operations', 'DRAFT',      '{CONFIRMED,CANCELLED}','REQUESTER', 111),
+  ('HBL',      'House Bill of Lading',      'HBL',  'L12', 'operations', 'DRAFT',      '{RELEASED,CANCELLED}', 'REQUESTER', 112),
+  ('DO',       'Delivery Order',            'DO',   'L12', 'operations', 'DRAFT',      '{ISSUED,CANCELLED}',   'REQUESTER', 113),
+  ('DNOTE',    'Debit Note',                'DN',   'L12', 'operations', 'DRAFT',      '{PAID,CANCELLED}',     'REQUESTER', 114),
+  ('CNOTE',    'Credit Note',               'CN',   'L12', 'operations', 'DRAFT',      '{APPLIED,CANCELLED}',  'REQUESTER', 115)
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================================
@@ -86,18 +102,18 @@ INSERT INTO state_transitions (doc_type, from_status, to_status, action, label, 
 -- ============================================================
 -- DOC CHILD RULES: QUOT/SO → SHIPMENT → BOOKING/HBL/DO/DNOTE/CNOTE
 -- ============================================================
-INSERT INTO doc_child_rules (parent_type, child_type, label, match_fields, sort)
-  SELECT 'QUOT',    'SHIPMENT', 'Tạo Shipment',    '{}', 50 WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='QUOT' AND child_type='SHIPMENT');
-INSERT INTO doc_child_rules (parent_type, child_type, label, match_fields, sort)
-  SELECT 'SHIPMENT','BOOKING',  'Tạo Booking',     '{}', 1  WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='SHIPMENT' AND child_type='BOOKING');
-INSERT INTO doc_child_rules (parent_type, child_type, label, match_fields, sort)
-  SELECT 'SHIPMENT','HBL',      'Tạo House B/L',   '{}', 2  WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='SHIPMENT' AND child_type='HBL');
-INSERT INTO doc_child_rules (parent_type, child_type, label, match_fields, sort)
-  SELECT 'SHIPMENT','DO',       'Tạo D/O',         '{}', 3  WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='SHIPMENT' AND child_type='DO');
-INSERT INTO doc_child_rules (parent_type, child_type, label, match_fields, sort)
-  SELECT 'SHIPMENT','DNOTE',    'Tạo Debit Note',  '{}', 4  WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='SHIPMENT' AND child_type='DNOTE');
-INSERT INTO doc_child_rules (parent_type, child_type, label, match_fields, sort)
-  SELECT 'SHIPMENT','CNOTE',    'Tạo Credit Note', '{}', 5  WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='SHIPMENT' AND child_type='CNOTE');
+INSERT INTO doc_child_rules (parent_type, child_type, label, parent_statuses)
+  SELECT 'QUOT',    'SHIPMENT', 'Tạo Shipment',    '{DRAFT,SUBMITTED,SENT,ACCEPTED}' WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='QUOT' AND child_type='SHIPMENT');
+INSERT INTO doc_child_rules (parent_type, child_type, label, parent_statuses)
+  SELECT 'SHIPMENT','BOOKING',  'Tạo Booking',     '{DRAFT,BOOKED,CONFIRMED,IN_TRANSIT,ARRIVED,CUSTOMS}' WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='SHIPMENT' AND child_type='BOOKING');
+INSERT INTO doc_child_rules (parent_type, child_type, label, parent_statuses)
+  SELECT 'SHIPMENT','HBL',      'Tạo House B/L',   '{BOOKED,CONFIRMED,IN_TRANSIT,ARRIVED,CUSTOMS,DELIVERED}' WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='SHIPMENT' AND child_type='HBL');
+INSERT INTO doc_child_rules (parent_type, child_type, label, parent_statuses)
+  SELECT 'SHIPMENT','DO',       'Tạo D/O',         '{ARRIVED,CUSTOMS,DELIVERED}' WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='SHIPMENT' AND child_type='DO');
+INSERT INTO doc_child_rules (parent_type, child_type, label, parent_statuses)
+  SELECT 'SHIPMENT','DNOTE',    'Tạo Debit Note',  '{BOOKED,CONFIRMED,IN_TRANSIT,ARRIVED,CUSTOMS,DELIVERED,CLOSED}' WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='SHIPMENT' AND child_type='DNOTE');
+INSERT INTO doc_child_rules (parent_type, child_type, label, parent_statuses)
+  SELECT 'SHIPMENT','CNOTE',    'Tạo Credit Note', '{BOOKED,CONFIRMED,IN_TRANSIT,ARRIVED,CUSTOMS,DELIVERED,CLOSED}' WHERE NOT EXISTS (SELECT 1 FROM doc_child_rules WHERE parent_type='SHIPMENT' AND child_type='CNOTE');
 
 -- ============================================================
 -- CONTAINERS table  (nhiều container / lô hàng)
@@ -536,3 +552,6 @@ BEGIN
 
   RAISE NOTICE 'Seed OK: 5 shipment mẫu đã tạo';
 END $$;
+
+-- Clean up local _perm helper (defined above for this migration only)
+DROP FUNCTION IF EXISTS _perm(text, text, text, text, text[]);
