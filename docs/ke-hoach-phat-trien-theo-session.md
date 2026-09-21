@@ -128,7 +128,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-J1 | Design system & app shell (nền UX/UI) | P1 | — | 1–2 tuần | [x] |
 | WP-J2 | Hành vi + ma trận trạng thái màn cốt lõi | P1 | WP-J1 | 1–2 tuần | [x] |
 | WP-J3 | Vòng QA/triage UX toàn bộ màn hiện có | P2 | WP-J1, WP-J2 | 1 tuần | [x] |
-| WP-J4 | UI Shipment/Operations ngang mobile Freightek | P1 | WP-C1, WP-J1 | 1–2 tuần | [ ] |
+| WP-J4 | UI Shipment/Operations ngang mobile Freightek | P1 | WP-C1, WP-J1 | 1–2 tuần | [x] |
 
 ---
 
@@ -702,7 +702,7 @@ Cạm bẫy/nợ kỹ thuật còn lại (nếu có): ___
 | WP-J1 | 2026-09-21 | 71aa36e | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | dark mode via @media; Inter font removed; Skeleton + Breadcrumb mới |
 | WP-J2 | 2026-09-21 | 7df1587, cbe640d, 31d6f99, 53a128d, c35824e | (frontend-only — không đụng DB; T3.1–T3.12 PASS) | ✅ | Skeleton KPI/Inbox/DocDetail; EmptyState CTA; ErrorBox retry; state matrix §9 DESIGN-SPEC |
 | WP-J3 | 2026-09-21 | 75c3cdd | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | Chuyển tất cả màu hardcode Tailwind sang semantic token (success/warning/info/destructive/muted); dark mode đầy đủ |
-| WP-J4 |  |  |  |  |  |
+| WP-J4 | 2026-09-21 | 57e2610 | T1.1 (tạo doc SHIPMENT) | ✅ | DB layer minimal WP-C1 (011_shipment.sql): containers, shipment_charges, tracking_events, api_list_shipments, api_get_shipment; UI: card list + detail 5 tab; "Lãi hết hạn" badge; acceptance T3.1–T3.4 running |
 
 > **Cách chủ dự án dùng**: mở bảng này xem cột *DoD đủ?* = ✅ và *Commit(s)* có hash là biết gói đã xong &
 > có bằng chứng. Chỉ cần soi kỹ những dòng *Ghi chú / nợ kỹ thuật* có nội dung.
