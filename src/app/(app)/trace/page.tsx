@@ -8,6 +8,7 @@ import { MOVE_LABELS } from "@/lib/labels"
 import type { DocRef } from "@/lib/types"
 import { cn, formatDateTime, formatMoney, formatNumber } from "@/lib/utils"
 import { Input } from "@/components/ui/form"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { Tabs } from "@/components/ui/tabs"
 import { CheckList, DocLink, EmptyState, ErrorBox, Loading, Masked, PageHeader, SlaBadge, SodBadge, StatusBadge } from "@/components/shared/bits"
 
@@ -62,12 +63,10 @@ function NodeHead({ n }: { n: TraceNode }) {
 function MoneyTrace({ id }: { id: string }) {
   const [data, setData] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-  useEffect(() => {
-    setData(null)
-    rpc("api_trace_money", { p_id: id }).then((r) => (r.ok ? setData(r) : setError(r.error || "Lỗi")))
-  }, [id])
-  if (error) return <ErrorBox message={error} />
-  if (!data) return <Loading />
+  const load = () => { setData(null); setError(null); rpc("api_trace_money", { p_id: id }).then((r) => (r.ok ? setData(r) : setError(r.error || "Lỗi"))) }
+  useEffect(() => { load() }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (error) return <ErrorBox message={error} onRetry={load} />
+  if (!data) return <SkeletonTable rows={4} cols={4} />
   const nodes: TraceNode[] = data.nodes
   const glByDoc = new Map<string, any>((data.gl || []).map((g: any) => [g.document_id, g]))
   return (
@@ -167,12 +166,10 @@ function MoveTree({ node, depth, dir }: { node: any; depth: number; dir: "up" | 
 function GoodsTrace({ id }: { id: string }) {
   const [data, setData] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-  useEffect(() => {
-    setData(null)
-    rpc("api_trace_goods", { p_id: id }).then((r) => (r.ok ? setData(r) : setError(r.error || "Lỗi")))
-  }, [id])
-  if (error) return <ErrorBox message={error} />
-  if (!data) return <Loading />
+  const load = () => { setData(null); setError(null); rpc("api_trace_goods", { p_id: id }).then((r) => (r.ok ? setData(r) : setError(r.error || "Lỗi"))) }
+  useEffect(() => { load() }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (error) return <ErrorBox message={error} onRetry={load} />
+  if (!data) return <SkeletonTable rows={4} cols={4} />
   return (
     <div className="space-y-5">
       <div>
@@ -209,12 +206,10 @@ function GoodsTrace({ id }: { id: string }) {
 function ResponsibilityTrace({ id }: { id: string }) {
   const [data, setData] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-  useEffect(() => {
-    setData(null)
-    rpc("api_trace_responsibility", { p_id: id }).then((r) => (r.ok ? setData(r) : setError(r.error || "Lỗi")))
-  }, [id])
-  if (error) return <ErrorBox message={error} />
-  if (!data) return <Loading />
+  const load = () => { setData(null); setError(null); rpc("api_trace_responsibility", { p_id: id }).then((r) => (r.ok ? setData(r) : setError(r.error || "Lỗi"))) }
+  useEffect(() => { load() }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (error) return <ErrorBox message={error} onRetry={load} />
+  if (!data) return <SkeletonTable rows={4} cols={5} />
   return (
     <div className="space-y-5">
       <div>
@@ -332,17 +327,21 @@ function TraceView() {
       </div>
 
       {!id ? (
-        <div className="grid gap-3 md:grid-cols-3">
-          {[
-            { icon: Banknote, title: "Theo tiền" },
-            { icon: Package, title: "Theo hàng" },
-            { icon: UserCheck, title: "Theo trách nhiệm" },
-          ].map((c) => (
-            <div key={c.title} className="rounded-lg border bg-card p-4">
-              <c.icon className="h-5 w-5 text-primary" />
-              <p className="mt-2 font-medium">{c.title}</p>
-            </div>
-          ))}
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">Tìm chứng từ ở ô tìm kiếm bên trên để bắt đầu truy vết theo một trong ba hướng:</p>
+          <div className="grid gap-3 md:grid-cols-3">
+            {[
+              { icon: Banknote, title: "Theo tiền", desc: "Payment → Invoice → PO → PR → Ngân sách" },
+              { icon: Package, title: "Theo hàng", desc: "Phiếu xuất → Tồn kho → GRN → PO → PR" },
+              { icon: UserCheck, title: "Theo trách nhiệm", desc: "Hành động → Người dùng → Vai trò → Phòng ban" },
+            ].map((c) => (
+              <div key={c.title} className="rounded-lg border bg-card p-4">
+                <c.icon className="h-5 w-5 text-primary" />
+                <p className="mt-2 font-medium">{c.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{c.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <>
