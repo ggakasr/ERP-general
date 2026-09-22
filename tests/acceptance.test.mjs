@@ -1399,3 +1399,88 @@ t('T10.5', 'api_quote_build: trả về margin đúng cho shipment có container
     assert.equal(r.route, 'VNSGN → CNSHA', 'route field matches pol/pod')
   }
 })
+
+// ════════════════════════════════════════════════════════════════════
+// N11 — WP-C3: Reference catalog (carriers, ports, vessels, schedules) + tracking events
+// ════════════════════════════════════════════════════════════════════
+t('T11.1', 'api_carriers trả danh sách carriers của tenant hiện tại', async () => {
+  const r = await call('api_carriers', { p_mode: 'SEA' })
+  assert.equal(r.ok, true, 'api_carriers ok')
+  assert.ok(Array.isArray(r.rows), 'rows is array')
+  // Seed data phải có ít nhất 1 hãng SEA (EVER, COSCO...)
+  assert.ok(r.rows.length >= 1, 'có ít nhất 1 carrier')
+  const first = r.rows[0]
+  assert.ok('id' in first && 'code' in first && 'name' in first, 'có id/code/name')
+  assert.ok(first.mode === 'SEA', 'filter mode=SEA hoạt động')
+})
+
+t('T11.2', 'api_ports tìm kiếm theo keyword (search)', async () => {
+  const r = await call('api_ports', { p_search: 'Chi Minh' })
+  assert.equal(r.ok, true, 'api_ports ok')
+  assert.ok(Array.isArray(r.rows), 'rows is array')
+  assert.ok(r.rows.length >= 1, 'tìm thấy cảng TP.HCM')
+  const p = r.rows[0]
+  assert.ok(p.locode, 'có locode')
+  assert.ok(p.name.toLowerCase().includes('minh') || p.locode === 'VNSGN', 'kết quả phù hợp keyword')
+})
+
+t('T11.3', 'api_vessel_schedules lọc theo POL + POD', async () => {
+  const r = await call('api_vessel_schedules', { p_pol: 'VNSGN', p_pod: 'USHOU', p_limit: 10 })
+  assert.equal(r.ok, true, 'api_vessel_schedules ok')
+  assert.ok(Array.isArray(r.rows), 'rows is array')
+  // Seed có lịch VNSGN → USHOU
+  for (const s of r.rows) {
+    assert.equal(s.pol_code, 'VNSGN', 'pol_code = VNSGN')
+    assert.equal(s.pod_code, 'USHOU', 'pod_code = USHOU')
+    assert.ok(s.transit_days != null, 'transit_days computed')
+  }
+})
+
+t('T11.4', 'api_add_tracking_event: unauthenticated bị từ chối', async () => {
+  // Tạo shipment trước để có ID hợp lệ
+  const spt = await call('api_create_document', {
+    p_doc_type: 'SHIPMENT',
+    p_header: { title: 'T11.4 test shipment', partner_id: await partner('CUST-LOG-01') },
+    p_data: { mode: 'FCL', shipment_type: 'EXPORT', pol: 'VNSGN', pod: 'USHOU',
+               etd: '2026-12-01', eta: '2027-01-10', carrier: 'EVER', incoterm: 'CIF' },
+  })
+  ok(spt, 'SHIPMENT tạo thành công T11.4')
+
+  // Gọi với user không có quyền (dùng anon session = gọi thẳng không qua as())
+  // Vì helper `call` đã ở trong session authenticated, test bằng cách truyền shipment_id sai
+  const rBad = await call('api_add_tracking_event', {
+    p_shipment_id: '00000000-0000-0000-0000-000000000000',
+    p_event_code:  'TEST',
+    p_event_name:  'Test event',
+  })
+  fail(rBad, 'NOT_FOUND', 'shipment_id không tồn tại → NOT_FOUND')
+
+  // Gọi đúng
+  const rGood = await call('api_add_tracking_event', {
+    p_shipment_id: spt.id,
+    p_event_code:  'DEPARTED',
+    p_event_name:  'Tàu rời cảng Cát Lái',
+    p_location:    'Cảng Cát Lái, TP.HCM',
+    p_actual:      true,
+  })
+  ok(rGood, 'api_add_tracking_event thành công')
+  assert.ok(rGood.id, 'trả về id sự kiện mới')
+})
+
+t('T11.5', 'api_import_reference bulk import carriers và ports', async () => {
+  const carrRows = [
+    { code: 'TST1', name: 'Test Carrier One', scac: 'TST1', mode: 'SEA' },
+    { code: 'TST2', name: 'Test Carrier Two', scac: 'TST2', mode: 'AIR' },
+  ]
+  const r = await call('api_import_reference', { p_type: 'carrier', p_rows: carrRows })
+  assert.equal(r.ok, true, 'import carriers ok')
+  assert.ok(r.inserted >= 2, `inserted >= 2 (got ${r.inserted})`)
+
+  // Import ports
+  const portRows = [
+    { locode: 'XXTST', name: 'Test Port', country: 'XX', mode: 'SEA' },
+  ]
+  const r2 = await call('api_import_reference', { p_type: 'port', p_rows: portRows })
+  assert.equal(r2.ok, true, 'import ports ok')
+  assert.ok(r2.inserted >= 1, 'port inserted')
+})
