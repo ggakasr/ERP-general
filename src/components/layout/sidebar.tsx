@@ -39,6 +39,7 @@ const GROUPS: { label: string; items: Item[] }[] = [
       { name: "Tài sản", href: "/assets", icon: Building2, resources: ["ASSET"], moduleKey: "assets" },
       { name: "Dịch vụ KH", href: "/customer-service", icon: Headphones, resources: ["TICKET"], moduleKey: "customer-service" },
       { name: "Vận hành",   href: "/operations", icon: Ship, resources: ["SHIPMENT","BOOKING","HBL","DO","DNOTE","CNOTE"], moduleKey: "operations" },
+      { name: "Lịch tàu",  href: "/schedule",   icon: CalendarClock, resources: ["CARRIER","PORT","VESSEL"], moduleKey: "schedule" },
       { name: "Bảng giá",  href: "/pricing",    icon: Tag,  resources: ["RATE","CHARGE_CODE"], moduleKey: "pricing" },
     ],
   },
