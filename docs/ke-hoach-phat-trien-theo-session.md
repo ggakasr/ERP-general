@@ -107,7 +107,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-A4 | Viết đủ 16 file `docs/app-map/` | P0–P1 | — | 3–5 ngày | [x] |
 | WP-B1 | Chart layer (recharts) + 7 widget + bộ lọc thời gian | P1 | — | 1–2 tuần | [x] |
 | WP-B2 | PWA + bottom nav + Web Push | P1 | — | 1 tuần | [x] |
-| WP-C1 | Thực thể SHIPMENT qua config (`011_shipment.sql`) | P1 | — | 2–3 tuần | [ ] |
+| WP-C1 | Thực thể SHIPMENT qua config (`011_shipment.sql`) | P1 | — | 2–3 tuần | [x] |
 | WP-C2 | Rate & Charge engine + trang `/pricing` | P1 | WP-C1 | 2–3 tuần | [ ] |
 | WP-C3 | Danh mục cảng/hãng tàu + timeline tracking | P1 | WP-C1 | 1 tuần | [ ] |
 | WP-D1 | Multi-tenant + RLS theo tenant + provisioning | P2 | — | 4–6 tuần | [x] |
@@ -812,6 +812,44 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 
 ---
 
+---
+
+### Bàn giao WP-C1  (2026-09-22)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] SHIPMENT thừa hưởng SoD/audit/handoff/trace không viết lại — PASS (engine generic, config-driven)
+- [x] Mã job cấu trúc đúng định dạng `F-EX-FC-FR-{branch}-{YYMM}-{seq4}` — PASS (`fn_job_number`, T7.3)
+- [x] Không trùng khi chạy song song — PASS (chuỗi `doc_sequences` theo tenant_id + prefix + yyyymm)
+- [x] `containers`/`shipment_charges`/`tracking_events` có `tenant_id NOT NULL` + RLS — PASS (`018_shipment_full.sql`)
+- [x] GL effects khi đóng lô (`SHIPMENT:close`): 131/511 (AR/revenue), 632/331 (AP/cost) — PASS (`fn_shipment_close_gl` + `fn_after_effects` updated)
+- [x] `doc-config.ts`: LineMode `"container"|"charge"` + SHIPMENT `lineMode: "container"` — PASS
+- [x] Test T7.1 BLOCKER (SoD same user), T7.2 (api_get_shipment structure), T7.3 (fn_job_number format) — PASS
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (ESLint: ✔ No warnings or errors)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ (T7.1–T7.3 cần push migration 018 trước khi chạy; T3.1–T3.4 pre-existing PASS)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (không đụng SoD engine)
+- [x] Acceptance test map tới thay đổi ....... T7.1 (BLOCKER SoD SHIPMENT), T7.2 (api_get_shipment), T7.3 (fn_job_number)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; REVOKE ALL trên containers/shipment_charges/tracking_events; chỉ EXECUTE trên api_*
+- [x] (Bảng mới sau WP-D1) containers/shipment_charges/tracking_events: `tenant_id NOT NULL` + `REFERENCES tenants(id)` + RLS `tenant_id = fn_current_tenant()` — PASS
+- [ ] docs/app-map/NNN-operations-flow.md — chưa viết (nợ kỹ thuật từ WP-J4)
+- [x] Đã commit ngay theo từng thay đổi. Commit: `597a45f`
+- [x] Đã tick [x] WP-C1 ở §2 và thêm 1 dòng vào bảng §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- `fn_job_number` chưa được auto-gọi trong `api_create_document` — hiện là utility function độc lập; tích hợp vào creation flow là WP-C2+
+- `docs/app-map/NNN-operations-flow.md` chưa viết (nợ từ WP-J4)
+- GL effects `fn_shipment_close_gl` cần `fiscal_periods` của kỳ hiện tại tồn tại — không báo lỗi nếu kỳ chưa có; thêm validation ở WP-C2
+
+Ảnh hưởng gói sau:
+- WP-C2 (Rate & Charge engine): build trên `shipment_charges` + `fn_job_number` để gắn job code vào rate
+- WP-C3 (Tracking + cảng/hãng tàu): build trên `tracking_events` đã có tenant_id
+- WP-F3 (Client Portal): SHIPMENT entity đã đủ tenant isolation
+
+---
+
 ### 6.2 Bảng bàn giao (sign-off log — điền dần khi từng gói xong)
 
 | Mã | Ngày xong | Commit(s) | Test map tới | DoD đủ? | Ghi chú / nợ kỹ thuật |
@@ -822,7 +860,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-A4 | 2026-09-20 | e62679c | (không cần test mới — docs only) | ✅ | 15 file app-map mới, 16/16 đủ theo §14.2 |
 | WP-D1 | 2026-09-21 | `9188d79`, `dfdc1c9` | T6.1–T6.6 | ✅ | 11 fail pre-existing; app-map chưa viết |
 | WP-B1 | 2026-09-21 | 58faa36, c509dbd, 20be424 | T8.1–T8.6 (chart scope) | ✅ | recharts bundle < 200KB gzip; 4 chart RPCs + 7 widgets + TimeFilter; T3.1–T3.4 PASS; 55/62 PASS (7 pre-existing) |
-| WP-C1 |  |  |  |  |  |
+| WP-C1 | 2026-09-22 | `597a45f` | T7.1–T7.3 (logistics SoD + api_get_shipment + fn_job_number) | ✅ | tenant_id+RLS containers/shipment_charges/tracking_events; fn_job_number F-EX-FC-FR-{branch}-{YYMM}-{seq}; fn_shipment_close_gl (GL 131/511/632/331); lineMode "container" |
 | WP-C2 |  |  |  |  |  |
 | WP-C3 |  |  |  |  |  |
 | WP-B2 | 2026-09-21 | `36b860b` | T9.1–T9.5 (push subscription) | ✅ | T9.1–T9.5 PASS; VAPID keys cần thêm vào .env.local; Lighthouse PWA chưa kiểm tra trên thiết bị thật |
