@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   AlertTriangle, BarChart3, Building2, CalendarClock, ClipboardCheck, Factory, FileSearch, Headphones,
-  Inbox, Landmark, LayoutDashboard, Package, Route, Settings, Shield, Ship, ShoppingBag, ShoppingCart, Users,
+  Inbox, Landmark, LayoutDashboard, Package, Route, Settings, Shield, Ship, ShoppingBag, ShoppingCart, Tag, Users,
 } from "lucide-react"
 import { useSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
@@ -39,6 +39,7 @@ const GROUPS: { label: string; items: Item[] }[] = [
       { name: "Tài sản", href: "/assets", icon: Building2, resources: ["ASSET"], moduleKey: "assets" },
       { name: "Dịch vụ KH", href: "/customer-service", icon: Headphones, resources: ["TICKET"], moduleKey: "customer-service" },
       { name: "Vận hành",   href: "/operations", icon: Ship, resources: ["SHIPMENT","BOOKING","HBL","DO","DNOTE","CNOTE"], moduleKey: "operations" },
+      { name: "Bảng giá",  href: "/pricing",    icon: Tag,  resources: ["RATE","CHARGE_CODE"], moduleKey: "pricing" },
     ],
   },
   {

@@ -312,3 +312,54 @@ export interface ShipmentDetail {
   }
   actions: AvailableAction[]
 }
+
+// ── WP-C3 Reference catalog types ────────────────────────────────
+export interface Carrier {
+  id: string
+  code: string
+  name: string
+  scac: string | null
+  iata: string | null
+  country: string | null
+  mode: "SEA" | "AIR" | "RAIL" | "TRUCK" | "ALL"
+  status: "ACTIVE" | "INACTIVE"
+}
+
+export interface Port {
+  id: string
+  locode: string
+  name: string
+  country: string | null
+  timezone: string | null
+  mode: "SEA" | "AIR" | "RAIL" | "LAND" | "ALL"
+  status: "ACTIVE" | "INACTIVE"
+}
+
+export interface Vessel {
+  id: string
+  name: string
+  imo_no: string | null
+  carrier_id: string | null
+  carrier_name: string | null
+  flag: string | null
+  vessel_type: "CONTAINER" | "BULK" | "TANKER" | "RORO" | "AIRCRAFT" | "OTHER"
+  status: "ACTIVE" | "INACTIVE"
+}
+
+export interface VesselSchedule {
+  id: string
+  vessel_name: string | null
+  carrier_name: string | null
+  carrier_code: string | null
+  pol_code: string
+  pol_name: string | null
+  pod_code: string
+  pod_name: string | null
+  voyage_no: string | null
+  etd: string
+  eta: string
+  transit_days: number | null
+  cutoff_date: string | null
+  status: "OPEN" | "CLOSED" | "CANCELLED"
+  notes: string | null
+}

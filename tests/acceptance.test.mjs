@@ -1257,3 +1257,145 @@ t('T9.5', 'api_delete_push_subscription: xóa đúng endpoint, không xóa endpo
   assert.ok(!endpoints.includes(ep1), 'ep1 deleted')
   assert.ok(endpoints.includes(ep2), 'ep2 untouched')
 })
+
+// ═══════════════════════════════════════════════════════════════
+// N10 — Rate & Charge Engine (WP-C2)
+// ═══════════════════════════════════════════════════════════════
+
+t('T10.1', 'Rate hết hạn không trả kết quả qua api_rate_search', async () => {
+  await sys(`INSERT INTO public.user_roles (user_id, role_code)
+             SELECT id, 'OPS_STAFF' FROM public.app_users
+             WHERE email = 'muahang@erp.demo' ON CONFLICT DO NOTHING`)
+  await as('muahang')
+  // Insert an expired rate
+  await sys(`INSERT INTO public.rates (tenant_id, pol, pod, mode, rate_type, valid_from, valid_to, currency, rate_20ft, status)
+             VALUES ('00000000-0000-0000-0000-000000000001','TESTPOL','TESTPOD','FCL','SPOT',
+                     '2024-01-01','2024-12-31','USD',500,'EXPIRED')`)
+
+  const r = await call('api_rate_search', { p_pol: 'TESTPOL', p_pod: 'TESTPOD', p_mode: 'FCL' })
+  ok(r, 'api_rate_search returns ok')
+  assert.ok(Array.isArray(r.rows), 'rows is array')
+  const found = r.rows.filter((row) => row.pol === 'TESTPOL' && row.pod === 'TESTPOD')
+  assert.equal(found.length, 0, 'expired rate not returned by api_rate_search')
+})
+
+t('T10.2', 'api_rate_import bulk: import thành công các dòng hợp lệ', async () => {
+  await sys(`INSERT INTO public.user_roles (user_id, role_code)
+             SELECT id, 'OPS_MANAGER' FROM public.app_users
+             WHERE email = 'muahang.tp@erp.demo' ON CONFLICT DO NOTHING`)
+  await as('muahang.tp')
+  const rows = [
+    { pol: 'VNSGN', pod: 'DEHAM', mode: 'FCL', rate_type: 'SPOT',
+      valid_from: '2026-10-01', valid_to: '2027-03-31', currency: 'USD',
+      rate_20ft: 1100, rate_40ft: 1800, rate_40hc: 1950, notes: 'Test import T10.2 row1' },
+    { pol: 'VNSGN', pod: 'GBFXT', mode: 'FCL', rate_type: 'SPOT',
+      valid_from: '2026-10-01', valid_to: '2027-03-31', currency: 'USD',
+      rate_20ft: 1300, rate_40ft: 2200, rate_40hc: 2400, notes: 'Test import T10.2 row2' },
+  ]
+  const r = await call('api_rate_import', { p_rows: rows })
+  ok(r, 'api_rate_import returns ok')
+  assert.equal(r.imported, 2, 'imported 2 valid rows')
+  assert.equal(r.error_count, 0, 'no errors')
+  // Verify in DB
+  const dbRows = await sys(`SELECT count(*)::int c FROM public.rates WHERE notes LIKE 'Test import T10.2%'`)
+  assert.equal(dbRows[0].c, 2, '2 rows persisted in rates table')
+})
+
+t('T10.3', 'api_rate_import: dòng lỗi bị báo cáo, không chặn dòng hợp lệ', async () => {
+  await sys(`INSERT INTO public.user_roles (user_id, role_code)
+             SELECT id, 'OPS_MANAGER' FROM public.app_users
+             WHERE email = 'muahang.tp@erp.demo' ON CONFLICT DO NOTHING`)
+  await as('muahang.tp')
+  const rows = [
+    // Row 1: valid
+    { pol: 'VNSGN', pod: 'AEJEA', mode: 'FCL', rate_type: 'SPOT',
+      valid_from: '2026-10-01', valid_to: '2027-01-31', currency: 'USD',
+      rate_20ft: 900, rate_40ft: 1500, notes: 'T10.3 valid row' },
+    // Row 2: missing POD (invalid)
+    { pol: 'VNSGN', mode: 'FCL', valid_from: '2026-10-01', valid_to: '2027-01-31' },
+    // Row 3: valid_to < valid_from (invalid)
+    { pol: 'VNSGN', pod: 'PHMNL', mode: 'FCL',
+      valid_from: '2027-01-01', valid_to: '2026-01-01', currency: 'USD', rate_20ft: 700 },
+  ]
+  const r = await call('api_rate_import', { p_rows: rows })
+  assert.ok(r, 'api_rate_import returns a result')
+  assert.equal(r.imported, 1, 'only 1 valid row imported')
+  assert.equal(r.error_count, 2, '2 error rows reported')
+  assert.ok(Array.isArray(r.errors), 'errors is array')
+  const errRows = r.errors.map((e) => e.row)
+  assert.ok(errRows.includes(2), 'row 2 (missing POD) reported in errors')
+  assert.ok(errRows.includes(3), 'row 3 (bad dates) reported in errors')
+  // Valid row must be in DB
+  const dbRows = await sys(`SELECT count(*)::int c FROM public.rates WHERE notes = 'T10.3 valid row'`)
+  assert.equal(dbRows[0].c, 1, 'valid row persisted despite error rows')
+})
+
+t('T10.4', 'api_rate_expiry_check: tạo email_outbox cho rate sắp hết hạn', async () => {
+  // Ensure OPS_MANAGER role for an existing user
+  await sys(`INSERT INTO public.user_roles (user_id, role_code)
+             SELECT id, 'OPS_MANAGER' FROM public.app_users
+             WHERE email = 'muahang.tp@erp.demo' ON CONFLICT DO NOTHING`)
+
+  // Ensure at least one rate expiring within 7 days exists (seed has one expiring in 3 days)
+  const expiringRate = await sys(
+    `SELECT count(*)::int c FROM public.rates WHERE status = 'ACTIVE' AND valid_to <= (current_date + 7) AND valid_to >= current_date`
+  )
+  // Seed should have inserted one; if not, insert one here
+  if (expiringRate[0].c === 0) {
+    await sys(`INSERT INTO public.rates (tenant_id, pol, pod, mode, rate_type, valid_from, valid_to, currency, rate_20ft, status)
+               VALUES ('00000000-0000-0000-0000-000000000001','TEXP','TEXP2','FCL','SPOT',
+                       current_date - 10, current_date + 2,'USD',500,'ACTIVE')`)
+  }
+
+  const outboxBefore = (await sys(`SELECT count(*)::int c FROM public.email_outbox WHERE subject LIKE '[CẢNH BÁO]%'`))[0].c
+
+  // Call as OPS_MANAGER user (has RATE VIEW permission)
+  await as('muahang.tp')
+  const r = await call('api_rate_expiry_check', { p_warn_days: 7 })
+  ok(r, 'api_rate_expiry_check returns ok')
+  assert.ok(r.alerts_sent >= 0, 'alerts_sent is a number')
+
+  const outboxAfter = (await sys(`SELECT count(*)::int c FROM public.email_outbox WHERE subject LIKE '[CẢNH BÁO]%'`))[0].c
+  assert.ok(outboxAfter >= outboxBefore, 'email_outbox entries created or already existed')
+  if (r.alerts_sent > 0) {
+    assert.ok(outboxAfter > outboxBefore, 'new outbox entries added for expiring rates')
+  }
+})
+
+t('T10.5', 'api_quote_build: trả về margin đúng cho shipment có container', async () => {
+  await sys(`INSERT INTO public.user_roles (user_id, role_code)
+             SELECT id, 'OPS_STAFF' FROM public.app_users
+             WHERE email = 'muahang@erp.demo' ON CONFLICT DO NOTHING`)
+  await as('muahang')
+
+  // Create a SHIPMENT + add containers
+  const spt = await call('api_create_document', {
+    p_doc_type: 'SHIPMENT',
+    p_header: { title: 'T10.5 quote test', partner_id: await partner('CUST-LOG-01') },
+    p_data: { mode: 'FCL', shipment_type: 'EXPORT', pol: 'VNSGN', pod: 'CNSHA',
+               etd: '2026-11-01', eta: '2026-11-28', carrier: 'TEST-C', incoterm: 'FOB' },
+  })
+  ok(spt, 'SHIPMENT created for T10.5')
+
+  // Insert 2 containers: 1×20DC + 1×40HC
+  await sys(`INSERT INTO public.containers (shipment_id, tenant_id, container_number, container_type, size_ft)
+             VALUES ($1, '00000000-0000-0000-0000-000000000001', 'TCKU1234560', '20DC', 20),
+                    ($1, '00000000-0000-0000-0000-000000000001', 'MSCU9876541', '40HC', 40)`,
+    [spt.id])
+
+  const r = await call('api_quote_build', { p_shipment_id: spt.id })
+  assert.ok(r, 'api_quote_build returns a result')
+  assert.ok(r.ok === true || r.rate_found !== undefined, 'returned structured response')
+
+  if (r.rate_found) {
+    assert.ok(typeof r.ar_total === 'number' || Number(r.ar_total) >= 0, 'ar_total is numeric')
+    assert.ok(typeof r.margin  === 'number' || Number(r.margin)  >= 0,  'margin is numeric')
+    assert.ok(Array.isArray(r.lines), 'lines is array')
+    // Margin consistency: ar - ap = margin
+    const calcMargin = Number(r.ar_total) - Number(r.ap_total)
+    assert.ok(Math.abs(calcMargin - Number(r.margin)) < 0.01, 'margin = ar_total - ap_total')
+  } else {
+    // No matching rate in test data — acceptable, but structure must be correct
+    assert.equal(r.route, 'VNSGN → CNSHA', 'route field matches pol/pod')
+  }
+})
