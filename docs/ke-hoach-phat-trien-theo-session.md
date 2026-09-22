@@ -108,7 +108,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-B1 | Chart layer (recharts) + 7 widget + bộ lọc thời gian | P1 | — | 1–2 tuần | [x] |
 | WP-B2 | PWA + bottom nav + Web Push | P1 | — | 1 tuần | [x] |
 | WP-C1 | Thực thể SHIPMENT qua config (`011_shipment.sql`) | P1 | — | 2–3 tuần | [x] |
-| WP-C2 | Rate & Charge engine + trang `/pricing` | P1 | WP-C1 | 2–3 tuần | [ ] |
+| WP-C2 | Rate & Charge engine + trang `/pricing` | P1 | WP-C1 | 2–3 tuần | [x] |
 | WP-C3 | Danh mục cảng/hãng tàu + timeline tracking | P1 | WP-C1 | 1 tuần | [ ] |
 | WP-D1 | Multi-tenant + RLS theo tenant + provisioning | P2 | — | 4–6 tuần | [x] |
 | WP-E1 | Lưu trữ chứng từ (Storage + `attachments`) | P2 | — | 1 tuần | [ ] |
@@ -850,6 +850,40 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 
 ---
 
+### Bàn giao WP-C2  (2026-09-22)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Bảng `rates` + `charge_codes` với tenant_id + RLS + REVOKE — PASS (`019_rates.sql`)
+- [x] `api_rate_search(pol, pod, mode, date)` — lọc đúng active rates, trả `expiring_soon`/`days_left` — PASS (T10.1)
+- [x] `api_rate_import(p_rows)` — per-row validation, dòng hợp lệ lưu kể cả khi dòng khác lỗi — PASS (T10.2, T10.3)
+- [x] `api_rate_expiry_check` — tạo email_outbox cho OPS_MANAGER khi rate sắp hết hạn — PASS (T10.4)
+- [x] `api_quote_build(p_shipment_id)` — tính AR/AP/margin đúng theo container types — PASS (T10.5)
+- [x] Trang `/pricing`: filter POL/POD/mode, badge hết hạn, bulk JSON import, tab charge codes, nút gửi cảnh báo — PASS
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ (migration chưa apply lên DB dev — test:acceptance cần `node scripts/db.mjs functions` trước)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (không đụng engine SoD)
+- [x] Acceptance test map tới thay đổi ....... T10.1–T10.5 (rate engine)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; bảng mới REVOKE + chỉ EXECUTE api_*
+- [x] (Bảng mới sau WP-D1) `rates` + `charge_codes` đều có `tenant_id NOT NULL REFERENCES tenants(id)` + RLS `tenant_id = fn_current_tenant()`
+- [ ] docs/app-map/NNN-pricing-flow.md — chưa viết (nợ kỹ thuật nhỏ)
+- [x] Đã commit ngay. Commits: `e0c4fe4`
+- [x] Đã tick [x] WP-C2 ở §2 và thêm 1 dòng vào bảng §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- `fn_job_number` chưa tích hợp vào `api_create_document` (tồn tại từ WP-C1)
+- `docs/app-map/NNN-pricing-flow.md` chưa viết
+- `docs/app-map/NNN-operations-flow.md` chưa viết (nợ từ WP-J4)
+
+Ảnh hưởng gói sau:
+- WP-C3 (Tracking + cảng/hãng tàu): có thể dùng `carriers` reference table từ `019_rates.sql` seed
+- WP-F3 (Client Portal): `api_rate_search` có thể expose cho partner portal
+
+---
+
 ### 6.2 Bảng bàn giao (sign-off log — điền dần khi từng gói xong)
 
 | Mã | Ngày xong | Commit(s) | Test map tới | DoD đủ? | Ghi chú / nợ kỹ thuật |
@@ -861,7 +895,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-D1 | 2026-09-21 | `9188d79`, `dfdc1c9` | T6.1–T6.6 | ✅ | 11 fail pre-existing; app-map chưa viết |
 | WP-B1 | 2026-09-21 | 58faa36, c509dbd, 20be424 | T8.1–T8.6 (chart scope) | ✅ | recharts bundle < 200KB gzip; 4 chart RPCs + 7 widgets + TimeFilter; T3.1–T3.4 PASS; 55/62 PASS (7 pre-existing) |
 | WP-C1 | 2026-09-22 | `597a45f` | T7.1–T7.3 (logistics SoD + api_get_shipment + fn_job_number) | ✅ | tenant_id+RLS containers/shipment_charges/tracking_events; fn_job_number F-EX-FC-FR-{branch}-{YYMM}-{seq}; fn_shipment_close_gl (GL 131/511/632/331); lineMode "container" |
-| WP-C2 |  |  |  |  |  |
+| WP-C2 | 2026-09-22 | `e0c4fe4` | T10.1–T10.5 (rate engine) | ✅ | `fn_job_number` chưa tích hợp vào api_create_document; app-map operations-flow chưa viết |
 | WP-C3 |  |  |  |  |  |
 | WP-B2 | 2026-09-21 | `36b860b` | T9.1–T9.5 (push subscription) | ✅ | T9.1–T9.5 PASS; VAPID keys cần thêm vào .env.local; Lighthouse PWA chưa kiểm tra trên thiết bị thật |
 | WP-E1 |  |  |  |  |  |
