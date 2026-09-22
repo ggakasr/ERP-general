@@ -18,7 +18,7 @@ export interface HeaderField {
   productFilter?: string[]
 }
 
-export type LineMode = "product" | "journal" | "budget" | "bankrec" | "none"
+export type LineMode = "product" | "journal" | "budget" | "bankrec" | "container" | "charge" | "none"
 
 export interface ListColumn {
   key: string
@@ -279,7 +279,7 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
   },
   // ── Operations / Logistics ────────────────────────────────
   SHIPMENT: {
-    code: "SHIPMENT", label: "Lô hàng", plural: "Lô hàng (Shipment)", module: "operations", flow: "L12", lineMode: "none",
+    code: "SHIPMENT", label: "Lô hàng", plural: "Lô hàng (Shipment)", module: "operations", flow: "L12", lineMode: "container",
     header: [
       { key: "title",    label: "Diễn giải",       type: "text",   required: true },
       { key: "mode",     label: "Phương thức",      type: "select", data: true, options: [

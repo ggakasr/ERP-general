@@ -1024,6 +1024,85 @@ t('T6.6', 'Cô lập tenant: api_trial_balance không trả về GL entries củ
 })
 
 // ═══════════════════════════════════════════════════════════════
+// N7 — Logistics / Shipment (WP-C1)
+// ═══════════════════════════════════════════════════════════════
+
+t('T7.1', 'BLOCKER SoD: cùng user không vừa tạo vừa duyệt cùng SHIPMENT', async () => {
+  // Give muahang both create (OPS_STAFF) and approve (OPS_MANAGER) rights
+  await sys(`INSERT INTO public.user_roles (user_id, role_code)
+             SELECT id, r FROM public.app_users,
+               (VALUES ('OPS_STAFF'),('OPS_MANAGER')) v(r)
+             WHERE email = 'muahang@erp.demo'
+             ON CONFLICT DO NOTHING`)
+
+  await as('muahang')
+  const r = await call('api_create_document', {
+    p_doc_type: 'SHIPMENT',
+    p_header: { title: 'T7.1 SoD Test Shipment', partner_id: await partner('CUST-LOG-01') },
+    p_data: { mode: 'FCL', shipment_type: 'EXPORT', pol: 'VNSGN', pod: 'USLAX',
+               etd: '2026-10-01', eta: '2026-10-28', carrier: 'TEST', incoterm: 'FOB' },
+  })
+  ok(r, 'create SHIPMENT')
+  const sptId = r.id
+
+  // book it (DRAFT → BOOKED, EDIT permission, no SoD role)
+  ok(await act('muahang', sptId, 'book'), 'book transition')
+
+  // Same user tries to confirm (BOOKED → CONFIRMED, APPROVE + sod_role APPROVER) — must fail
+  const rConfirm = await act('muahang', sptId, 'confirm')
+  assert.equal(rConfirm.ok, false, 'SoD: same user cannot confirm own shipment')
+  assert.ok(
+    rConfirm.code === 'SOD_VIOLATION' || rConfirm.code === 'FORBIDDEN',
+    `expected SOD_VIOLATION or FORBIDDEN, got: ${rConfirm.code} — ${JSON.stringify(rConfirm)}`
+  )
+  // Status must remain BOOKED
+  const [row] = await sys('SELECT status FROM public.documents WHERE id = $1', [sptId])
+  assert.equal(row.status, 'BOOKED', 'status unchanged after SoD block')
+})
+
+t('T7.2', 'api_get_shipment trả về containers, charges, tracking, profit', async () => {
+  await as('muahang')
+  // Use seed data — find any SHIPMENT
+  const [spt] = await sys(`SELECT id FROM public.documents WHERE doc_type = 'SHIPMENT' LIMIT 1`)
+  assert.ok(spt, 'seed SHIPMENT exists')
+
+  await sys(`INSERT INTO public.user_roles (user_id, role_code)
+             SELECT id, 'OPS_STAFF' FROM public.app_users
+             WHERE email = 'muahang@erp.demo' ON CONFLICT DO NOTHING`)
+  await as('muahang')
+  const r = await call('api_get_shipment', { p_id: spt.id })
+  ok(r, 'api_get_shipment returns ok')
+  assert.ok(r.document,         'has document field')
+  assert.ok(Array.isArray(r.charges),    'charges is array')
+  assert.ok(Array.isArray(r.containers), 'containers is array')
+  assert.ok(Array.isArray(r.tracking),   'tracking is array')
+  assert.ok(r.profit,           'has profit summary')
+  assert.ok('ar_total'   in r.profit, 'profit.ar_total present')
+  assert.ok('ap_total'   in r.profit, 'profit.ap_total present')
+  assert.ok('margin'     in r.profit, 'profit.margin present')
+  assert.ok('margin_pct' in r.profit, 'profit.margin_pct present')
+  assert.ok(Array.isArray(r.actions), 'actions is array')
+})
+
+t('T7.3', 'fn_job_number: mã job cấu trúc đúng định dạng F-{dir}-{mode}-FR-...', async () => {
+  await sys(`INSERT INTO public.user_roles (user_id, role_code)
+             SELECT id, 'OPS_STAFF' FROM public.app_users
+             WHERE email = 'muahang@erp.demo' ON CONFLICT DO NOTHING`)
+  await as('muahang')
+  const [brRow] = await sys(`SELECT b.id FROM public.app_users u JOIN public.branches b ON b.id = u.branch_id WHERE u.email = 'muahang@erp.demo'`)
+  const jobNo = await call('fn_job_number', {
+    p_doc_type:  'SHIPMENT',
+    p_data:      { mode: 'FCL', shipment_type: 'EXPORT' },
+    p_branch_id: brRow.id,
+  })
+  // call() returns the raw return value; fn_job_number returns text
+  const jn = typeof jobNo === 'string' ? jobNo : jobNo?.fn_job_number ?? String(jobNo)
+  assert.ok(jn, 'fn_job_number returns a value')
+  assert.ok(/^F-EX-FC-FR-[A-Z]{2,3}-\d{4}-\d{4}$/.test(jn),
+    `job number "${jn}" does not match F-EX-FC-FR-{branch}-{YYMM}-{seq4} pattern`)
+})
+
+// ═══════════════════════════════════════════════════════════════
 // N8 — Chart RPC scope isolation (WP-B1)
 // ═══════════════════════════════════════════════════════════════
 
