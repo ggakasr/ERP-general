@@ -1,11 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, FileText, Ship, TrendingDown, TrendingUp } from "lucide-react"
+import { ArrowLeft, FileText, Plus, Ship, TrendingDown, TrendingUp } from "lucide-react"
 import { rpc } from "@/lib/api"
 import type { ShipmentDetail } from "@/lib/types"
+import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 import { statusClass, statusLabel } from "@/lib/labels"
 import { Button } from "@/components/ui/button"
@@ -262,40 +263,197 @@ const TRACKING_ICON: Record<string, string> = {
   CUSTOMS_CLEARED: "✅", DELIVERED: "🏠", DEFAULT: "📍",
 }
 
-function TrackingTab({ events }: { events: ShipmentDetail["tracking"] }) {
-  if (!events.length) return <p className="py-8 text-center text-sm text-muted-foreground">Chưa có sự kiện tracking.</p>
+// ── Add-event inline form ──────────────────────────────────────────────────────
+
+const EVENT_PRESETS = [
+  { code: "PICKUP",          name: "Lấy hàng tại kho" },
+  { code: "LOADED",          name: "Đóng hàng / xếp container" },
+  { code: "DEPARTED",        name: "Tàu rời cảng" },
+  { code: "ARRIVED",         name: "Tàu cập cảng đích" },
+  { code: "CUSTOMS_CLEARED", name: "Thông quan" },
+  { code: "DELIVERED",       name: "Giao hàng tận nơi" },
+]
+
+function AddEventForm({
+  shipmentId,
+  onSaved,
+  onCancel,
+}: {
+  shipmentId: string
+  onSaved: () => void
+  onCancel: () => void
+}) {
+  const toast = useToast()
+  const [eventCode, setEventCode] = useState("")
+  const [eventName, setEventName] = useState("")
+  const [location, setLocation]   = useState("")
+  const [eventTime, setEventTime] = useState("")
+  const [actual, setActual]       = useState(true)
+  const [notes, setNotes]         = useState("")
+  const [saving, setSaving]       = useState(false)
+  const codeRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { codeRef.current?.focus() }, [])
+
+  const handlePreset = (code: string, name: string) => {
+    setEventCode(code)
+    setEventName(name)
+  }
+
+  const save = async () => {
+    if (!eventCode.trim()) { toast("error", "event_code không được trống"); return }
+    if (!eventName.trim()) { toast("error", "Tên sự kiện không được trống"); return }
+    setSaving(true)
+    try {
+      const r = await rpc<{ ok: boolean; id?: string; code?: string; message?: string }>(
+        "api_add_tracking_event",
+        {
+          p_shipment_id: shipmentId,
+          p_event_code:  eventCode.trim().toUpperCase(),
+          p_event_name:  eventName.trim(),
+          p_location:    location.trim() || null,
+          p_event_time:  eventTime ? new Date(eventTime).toISOString() : null,
+          p_actual:      actual,
+          p_notes:       notes.trim() || null,
+        }
+      )
+      if (!r.ok) { toast("error", r.message ?? "Lưu thất bại"); return }
+      toast("success", "Đã thêm sự kiện tracking")
+      onSaved()
+    } catch { toast("error", "Lỗi kết nối") }
+    finally { setSaving(false) }
+  }
+
+  const fieldCls = "rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full"
+
   return (
-    <ol className="relative border-l border-border ml-4 space-y-0">
-      {events.map((e, i) => {
-        const past = e.actual && e.event_time && new Date(e.event_time) <= new Date()
-        return (
-          <li key={e.id} className="ml-6 pb-6 last:pb-0">
-            <span className={cn(
-              "absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full ring-2 ring-background text-sm",
-              past ? "bg-success/20" : "bg-muted",
-              i === 0 && "ring-primary"
-            )}>
-              {TRACKING_ICON[e.event_code] ?? TRACKING_ICON.DEFAULT}
-            </span>
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-              <p className={cn("text-sm font-medium", past ? "text-foreground" : "text-muted-foreground")}>
-                {e.event_name}
-              </p>
-              {e.location && (
-                <span className="text-xs text-muted-foreground">{e.location}</span>
-              )}
-              {!e.actual && (
-                <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-inset ring-border">Dự kiến</span>
-              )}
-            </div>
-            {e.event_time && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{new Date(e.event_time).toLocaleString("vi-VN")}</p>
+    <div className="rounded-xl border border-primary/30 bg-card p-4 space-y-3 mt-4">
+      <p className="text-sm font-medium text-foreground">Thêm sự kiện tracking</p>
+
+      {/* Quick presets */}
+      <div className="flex flex-wrap gap-1.5">
+        {EVENT_PRESETS.map((p) => (
+          <button
+            key={p.code}
+            onClick={() => handlePreset(p.code, p.name)}
+            className={cn(
+              "px-2 py-0.5 rounded-full text-xs border transition-colors",
+              eventCode === p.code
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border hover:bg-muted"
             )}
-            {e.notes && <p className="mt-1 text-xs text-muted-foreground">{e.notes}</p>}
-          </li>
-        )
-      })}
-    </ol>
+          >
+            {TRACKING_ICON[p.code] ?? TRACKING_ICON.DEFAULT} {p.code}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Mã sự kiện *
+          <input ref={codeRef} value={eventCode} onChange={(e) => setEventCode(e.target.value.toUpperCase())} placeholder="DEPARTED" className={fieldCls} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Tên sự kiện *
+          <input value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="Tàu rời cảng" className={fieldCls} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Địa điểm
+          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Cảng Cát Lái, TP.HCM" className={fieldCls} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium">
+          Thời điểm
+          <input type="datetime-local" value={eventTime} onChange={(e) => setEventTime(e.target.value)} className={fieldCls} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium col-span-2">
+          Ghi chú
+          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Thông tin bổ sung..." className={fieldCls} />
+        </label>
+        <label className="flex items-center gap-2 text-xs font-medium col-span-2 cursor-pointer">
+          <input type="checkbox" checked={actual} onChange={(e) => setActual(e.target.checked)} className="h-3.5 w-3.5 rounded" />
+          Sự kiện thực tế (bỏ chọn nếu là dự kiến)
+        </label>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-1">
+        <button onClick={onCancel} className="px-3 py-1.5 rounded-md border border-border text-xs hover:bg-muted">Huỷ</button>
+        <button onClick={save} disabled={saving} className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50">
+          {saving ? "Đang lưu..." : "Lưu sự kiện"}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Tracking tab ───────────────────────────────────────────────────────────────
+
+function TrackingTab({
+  events,
+  shipmentId,
+  onRefresh,
+}: {
+  events: ShipmentDetail["tracking"]
+  shipmentId: string
+  onRefresh: () => void
+}) {
+  const [showForm, setShowForm] = useState(false)
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs font-medium hover:bg-muted transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Thêm sự kiện
+        </button>
+      </div>
+
+      {showForm && (
+        <AddEventForm
+          shipmentId={shipmentId}
+          onSaved={() => { setShowForm(false); onRefresh() }}
+          onCancel={() => setShowForm(false)}
+        />
+      )}
+
+      {events.length === 0 && !showForm ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Chưa có sự kiện tracking.</p>
+      ) : (
+        <ol className="relative border-l border-border ml-4 space-y-0 mt-2">
+          {events.map((e, i) => {
+            const past = e.actual && e.event_time && new Date(e.event_time) <= new Date()
+            return (
+              <li key={e.id} className="ml-6 pb-6 last:pb-0">
+                <span className={cn(
+                  "absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full ring-2 ring-background text-sm",
+                  past ? "bg-success/20" : "bg-muted",
+                  i === 0 && "ring-primary"
+                )}>
+                  {TRACKING_ICON[e.event_code] ?? TRACKING_ICON.DEFAULT}
+                </span>
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <p className={cn("text-sm font-medium", past ? "text-foreground" : "text-muted-foreground")}>
+                    {e.event_name}
+                  </p>
+                  {e.location && (
+                    <span className="text-xs text-muted-foreground">{e.location}</span>
+                  )}
+                  {!e.actual && (
+                    <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-inset ring-border">Dự kiến</span>
+                  )}
+                </div>
+                {e.event_time && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">{new Date(e.event_time).toLocaleString("vi-VN")}</p>
+                )}
+                {e.notes && <p className="mt-1 text-xs text-muted-foreground">{e.notes}</p>}
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </div>
   )
 }
 
@@ -406,7 +564,7 @@ export default function ShipmentDetailPage() {
         {tab === "overview"   && <OverviewTab    detail={detail} />}
         {tab === "charges"    && <ChargesTab     charges={detail.charges} />}
         {tab === "containers" && <ContainersTab  containers={detail.containers} />}
-        {tab === "tracking"   && <TrackingTab    events={detail.tracking} />}
+        {tab === "tracking"   && <TrackingTab    events={detail.tracking} shipmentId={id} onRefresh={load} />}
         {tab === "documents"  && <DocumentsTab   docs={detail.child_docs} />}
       </div>
     </div>
