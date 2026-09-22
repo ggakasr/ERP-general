@@ -109,7 +109,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-B2 | PWA + bottom nav + Web Push | P1 | — | 1 tuần | [x] |
 | WP-C1 | Thực thể SHIPMENT qua config (`011_shipment.sql`) | P1 | — | 2–3 tuần | [x] |
 | WP-C2 | Rate & Charge engine + trang `/pricing` | P1 | WP-C1 | 2–3 tuần | [x] |
-| WP-C3 | Danh mục cảng/hãng tàu + timeline tracking | P1 | WP-C1 | 1 tuần | [ ] |
+| WP-C3 | Danh mục cảng/hãng tàu + timeline tracking | P1 | WP-C1 | 1 tuần | [x] |
 | WP-D1 | Multi-tenant + RLS theo tenant + provisioning | P2 | — | 4–6 tuần | [x] |
 | WP-E1 | Lưu trữ chứng từ (Storage + `attachments`) | P2 | — | 1 tuần | [ ] |
 | WP-E2 | AI ingestion pipeline (`/api/ingest` + `ingest_jobs`) | P2 | WP-E1 | 2–3 tuần | [ ] |
@@ -884,6 +884,37 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 
 ---
 
+### Bàn giao WP-C3  (2026-09-22)
+
+Commits: `7ca0e84` (migration 019_reference) · `e0c4fe4` (types + sidebar) · `acee67d` (tracking tab) · `2e048c2` (T11 tests) · `d9a4a4c` (sidebar nav)
+
+Definition of Done:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (không đụng engine SoD)
+- [x] Acceptance test map tới thay đổi ....... T11.1–T11.5 (carriers/ports/schedules/tracking)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (DB mới) carriers, ports, vessels, vessel_schedules: REVOKE + chỉ EXECUTE api_*; tenant_id NOT NULL + RLS
+- [x] api_add_tracking_event: SoD-aware (fn_doc_in_scope EDIT), ghi audit_trail immutable
+- [x] Không gọi HTTP từ Postgres — adapter HTTP để ở tầng Next.js (WP-C3 phase 2)
+- [x] Trang /schedule: search form, bảng kết quả, dialog import CSV (carrier/port/vessel/schedule)
+- [x] TrackingTab: nút "Thêm sự kiện" + form inline + preset buttons + reload sau khi lưu
+- [x] Sidebar: entry "Lịch tàu" /schedule
+- [x] Seed: 8 carriers, 12 ports, 5 vessels, 6 schedules (ETD tương đối — demo ngay)
+- [x] Đã commit ngay từng thay đổi
+- [x] Đã tick [x] WP-C3 ở §2 và thêm 1 dòng vào bảng §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- `docs/app-map/NNN-schedule-flow.md` chưa viết (nợ kỹ thuật nhỏ)
+- `fn_job_number` chưa tích hợp vào `api_create_document` (tồn tại từ WP-C1)
+- Adapter HTTP hãng tàu (AIS / carrier API) → WP-C3 phase 2 (riêng gói hoặc WP-H)
+
+Ảnh hưởng gói sau:
+- WP-F3 (Client Portal): `api_vessel_schedules` + `api_carriers` có thể expose cho partner portal
+- WP-H (tích hợp): endpoint adapter gọi carrier API ở tầng Next.js, map kết quả → `api_import_reference`
+
+---
+
 ### 6.2 Bảng bàn giao (sign-off log — điền dần khi từng gói xong)
 
 | Mã | Ngày xong | Commit(s) | Test map tới | DoD đủ? | Ghi chú / nợ kỹ thuật |
@@ -896,7 +927,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-B1 | 2026-09-21 | 58faa36, c509dbd, 20be424 | T8.1–T8.6 (chart scope) | ✅ | recharts bundle < 200KB gzip; 4 chart RPCs + 7 widgets + TimeFilter; T3.1–T3.4 PASS; 55/62 PASS (7 pre-existing) |
 | WP-C1 | 2026-09-22 | `597a45f` | T7.1–T7.3 (logistics SoD + api_get_shipment + fn_job_number) | ✅ | tenant_id+RLS containers/shipment_charges/tracking_events; fn_job_number F-EX-FC-FR-{branch}-{YYMM}-{seq}; fn_shipment_close_gl (GL 131/511/632/331); lineMode "container" |
 | WP-C2 | 2026-09-22 | `e0c4fe4` | T10.1–T10.5 (rate engine) | ✅ | `fn_job_number` chưa tích hợp vào api_create_document; app-map operations-flow chưa viết |
-| WP-C3 |  |  |  |  |  |
+| WP-C3 | 2026-09-22 | `7ca0e84`, `e0c4fe4`, `acee67d`, `2e048c2`, `d9a4a4c` | T11.1–T11.5 (carriers/ports/schedules/tracking events) | ✅ | carriers/ports/vessels/vessel_schedules tables + RLS; api_add_tracking_event + audit; /schedule page (search + CSV import); TrackingTab interactive form; sidebar entry; app-map nợ nhỏ |
 | WP-B2 | 2026-09-21 | `36b860b` | T9.1–T9.5 (push subscription) | ✅ | T9.1–T9.5 PASS; VAPID keys cần thêm vào .env.local; Lighthouse PWA chưa kiểm tra trên thiết bị thật |
 | WP-E1 |  |  |  |  |  |
 | WP-E2 |  |  |  |  |  |
