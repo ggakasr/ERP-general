@@ -6,6 +6,7 @@ CREATE OR REPLACE FUNCTION api_tasks() RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_me             app_users := fn_current_user();
+  v_tenant_id      uuid      := fn_current_tenant();
   d                documents;
   v_acts           jsonb;
   v_rows           jsonb := '[]'::jsonb;
@@ -20,6 +21,7 @@ BEGIN
   FOR d IN
     SELECT doc.* FROM documents doc JOIN doc_types dt ON dt.code = doc.doc_type
     WHERE NOT (doc.status = ANY(dt.terminal_statuses))
+      AND doc.tenant_id = v_tenant_id
     ORDER BY doc.updated_at DESC LIMIT 600
   LOOP
     CONTINUE WHEN NOT fn_doc_in_scope(v_me.id, d, d.doc_type, 'VIEW');
