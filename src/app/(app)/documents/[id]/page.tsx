@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Banknote, CheckCircle2, Clock3, Package, Paperclip, Pencil, Printer, RefreshCw, UserCheck } from "lucide-react"
+import { ArrowLeft, Banknote, CheckCircle2, Clock3, MessageCircle, Package, Paperclip, Pencil, Printer, RefreshCw, UserCheck } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { DOC_TYPES } from "@/lib/doc-config"
 import { useSession } from "@/lib/session"
@@ -16,6 +16,7 @@ import { Tabs } from "@/components/ui/tabs"
 import { ErrorBox, StatusBadge } from "@/components/shared/bits"
 import { ActionBar } from "@/components/docs/action-bar"
 import { AttachmentsTab } from "@/components/docs/attachments-tab"
+import { CommentsTab } from "@/components/docs/comments-tab"
 import {
   AuditTable, BudgetUsage, ChainCard, GlTable, HandoffList, InfoGrid, LinesTable, MatchResult, MdcPayload,
   SodChecks, StateMachine, StockTable, Timeline,
@@ -67,6 +68,7 @@ export default function DocumentPage() {
     ...(detail.audit ? [{ key: "audit", label: "Audit trail", count: detail.audit.length }] : []),
     { key: "machine", label: "Máy trạng thái" },
     { key: "attachments", label: "File đính kèm" },
+    { key: "comments", label: "Thảo luận", count: undefined },
   ]
 
   return (
@@ -151,6 +153,7 @@ export default function DocumentPage() {
                 {tab === "audit" && detail.audit && <AuditTable rows={detail.audit} />}
                 {tab === "machine" && <StateMachine detail={detail} />}
                 {tab === "attachments" && <AttachmentsTab documentId={doc.id} />}
+                {tab === "comments" && <CommentsTab documentId={doc.id} />}
               </div>
             </CardContent>
           </Card>
