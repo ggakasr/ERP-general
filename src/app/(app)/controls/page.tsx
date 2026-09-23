@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useSession } from "@/lib/session"
 import { PageHeader } from "@/components/shared/bits"
 import { Tabs } from "@/components/ui/tabs"
-import { HandoffsTab, OverviewTab, SodLogTab } from "@/components/controls/runtime-tabs"
+import { HandoffsTab, OverviewTab, RiskAlertsTab, SodLogTab } from "@/components/controls/runtime-tabs"
 import {
   OwnershipTab, PermissionMatrixTab, ShadowItImpactTab, SodMatrixTab, StateMachineTab,
 } from "@/components/controls/reference-tabs"
@@ -18,6 +18,7 @@ export default function ControlsPage() {
     ...(canControls ? [{ key: "overview", label: "Tổng quan" }] : []),
     { key: "sod-matrix", label: "Ma trận SoD" },
     ...(canControls ? [{ key: "sod-log", label: "Nhật ký SoD" }] : []),
+    ...(canControls ? [{ key: "risk-alerts", label: "Cảnh báo rủi ro" }] : []),
     ...(canHandoff ? [{ key: "handoffs", label: "Bàn giao" }] : []),
     { key: "ownership", label: "Chủ sở hữu quy trình" },
     { key: "permissions", label: "Ma trận phân quyền" },
@@ -41,6 +42,7 @@ export default function ControlsPage() {
         {active === "overview" && <OverviewTab />}
         {active === "sod-matrix" && <SodMatrixTab />}
         {active === "sod-log" && <SodLogTab />}
+        {active === "risk-alerts" && <RiskAlertsTab />}
         {active === "handoffs" && <HandoffsTab />}
         {active === "ownership" && <OwnershipTab />}
         {active === "permissions" && <PermissionMatrixTab />}

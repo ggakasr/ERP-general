@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Download, FileWarning, RefreshCw } from "lucide-react"
+import { AlertTriangle, Clock, DollarSign, Download, FileWarning, RefreshCw, Shield } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { RESOURCE_LABELS, ACTION_LABELS, SLA_LABELS, statusLabel, SOD_LABELS } from "@/lib/labels"
 import { cn, downloadCsv, formatDateTime } from "@/lib/utils"
@@ -503,6 +503,161 @@ export function HandoffsTab() {
           { key: "completed", label: "Hoàn tất", className: "whitespace-nowrap text-xs", render: (r) => formatDateTime(r.completed_at) },
         ]}
       />
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------
+// e. Risk Alerts — api_risk_alerts(p_days)
+// ------------------------------------------------------------------
+interface RiskAlert {
+  type: "SOD_NEAR_MISS" | "EXCEPTION_SPIKE" | "OFF_HOURS" | "AMOUNT_OUTLIER"
+  severity: "HIGH" | "MEDIUM" | "LOW"
+  detail: string
+  user_name?: string
+  document?: string
+  doc_type?: string
+  created_at?: string
+  z_score?: number
+  amount?: number
+  current_count?: number
+  previous_count?: number
+}
+
+const ALERT_META: Record<string, { label: string; icon: typeof Shield; tone: string }> = {
+  SOD_NEAR_MISS: { label: "SoD gần vi phạm", icon: Shield, tone: "text-destructive" },
+  EXCEPTION_SPIKE: { label: "Ngoại lệ tăng đột biến", icon: AlertTriangle, tone: "text-warning" },
+  OFF_HOURS: { label: "Hoạt động ngoài giờ", icon: Clock, tone: "text-info" },
+  AMOUNT_OUTLIER: { label: "Số tiền bất thường", icon: DollarSign, tone: "text-warning" },
+}
+
+const SEVERITY_TONE: Record<string, "red" | "amber" | "blue"> = {
+  HIGH: "red",
+  MEDIUM: "amber",
+  LOW: "blue",
+}
+
+export function RiskAlertsTab() {
+  const [days, setDays] = useState("30")
+  const [alerts, setAlerts] = useState<RiskAlert[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<{ code?: string; message: string } | null>(null)
+  const [typeFilter, setTypeFilter] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const res = await rpc<{ alerts: RiskAlert[]; total: number }>("api_risk_alerts", { p_days: Number(days) })
+    setLoading(false)
+    if (!res.ok) {
+      setError({ code: res.code, message: res.error || "Không tải được cảnh báo rủi ro" })
+      return
+    }
+    setError(null)
+    setAlerts(res.alerts || [])
+    setTotal(res.total || 0)
+  }, [days])
+
+  useEffect(() => { load() }, [load])
+
+  const typeCounts = useMemo(() => {
+    const c: Record<string, number> = {}
+    alerts.forEach((a) => (c[a.type] = (c[a.type] || 0) + 1))
+    return c
+  }, [alerts])
+
+  const visible = typeFilter ? alerts.filter((a) => a.type === typeFilter) : alerts
+
+  if (error?.code === "FORBIDDEN") return <NoPermission>{error.message}</NoPermission>
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Chips
+          value={days}
+          onChange={(v) => setDays(v ?? "30")}
+          options={[
+            { value: "7", label: "7 ngày" },
+            { value: "30", label: "30 ngày" },
+            { value: "90", label: "90 ngày" },
+          ]}
+        />
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={load} title="Tải lại">
+            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          </Button>
+        </div>
+      </div>
+
+      {error && <ErrorBox message={error.message} />}
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {Object.entries(ALERT_META).map(([type, meta]) => {
+          const count = typeCounts[type] || 0
+          const Icon = meta.icon
+          return (
+            <button
+              key={type}
+              onClick={() => setTypeFilter(typeFilter === type ? null : type)}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border p-3 text-left text-sm transition-colors hover:bg-muted/50",
+                typeFilter === type && "ring-2 ring-primary"
+              )}
+            >
+              <Icon className={cn("h-4 w-4 shrink-0", meta.tone)} />
+              <div>
+                <p className="font-medium tabular-nums">{count}</p>
+                <p className="text-xs text-muted-foreground">{meta.label}</p>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {total === 0 && !loading && (
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+          <Shield className="h-6 w-6 text-success" />
+          <p className="font-medium text-foreground">Không phát hiện bất thường</p>
+          <p>Không có cảnh báo rủi ro nào trong {Number(days)} ngày gần nhất.</p>
+        </div>
+      )}
+
+      {visible.length > 0 && (
+        <DataTable
+          rows={visible}
+          loading={loading}
+          rowKey={(_, i) => `alert-${i}`}
+          empty="Không có cảnh báo nào"
+          columns={[
+            {
+              key: "severity", label: "Mức độ",
+              render: (r) => <Pill tone={SEVERITY_TONE[r.severity] || "gray"}>{r.severity}</Pill>,
+            },
+            {
+              key: "type", label: "Loại",
+              render: (r) => {
+                const meta = ALERT_META[r.type]
+                const Icon = meta?.icon || AlertTriangle
+                return (
+                  <div className="flex items-center gap-1.5">
+                    <Icon className={cn("h-3.5 w-3.5 shrink-0", meta?.tone)} />
+                    <span className="text-xs">{meta?.label || r.type}</span>
+                  </div>
+                )
+              },
+            },
+            { key: "detail", label: "Chi tiết", className: "min-w-[300px]", render: (r) => <span className="text-xs">{r.detail}</span> },
+            {
+              key: "user", label: "Người dùng",
+              render: (r) => r.user_name ? <span className="text-xs">{r.user_name}</span> : <Muted />,
+            },
+            {
+              key: "doc", label: "Chứng từ",
+              render: (r) => r.document ? <span className="font-mono text-xs">{r.document}</span> : <Muted />,
+            },
+          ]}
+        />
+      )}
     </div>
   )
 }

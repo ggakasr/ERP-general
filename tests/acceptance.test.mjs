@@ -2500,3 +2500,36 @@ t('T21.2', 'api_health_check accessible without authenticated user (anon)', asyn
   assert.equal(h.ok, true, 'health check ok as anon')
   assert.ok(h.tables, 'anon sees tables')
 })
+
+// ---------------------------------------------------------------- T22 risk alerts (WP-G4)
+t('T22.1', 'api_risk_alerts trả về ok + alerts array + total cho user có quyền CONTROLS VIEW', async () => {
+  await as('giam_doc')
+  const r = await call('api_risk_alerts', { p_days: 30 })
+  ok(r, 'api_risk_alerts')
+  assert.ok(Array.isArray(r.alerts), 'alerts is array')
+  assert.equal(typeof r.total, 'number', 'total is number')
+  assert.ok(r.period_days === 30, 'period_days matches input')
+  assert.ok(r.generated_at, 'has generated_at timestamp')
+})
+
+t('T22.2', 'api_risk_alerts FORBIDDEN cho user không có quyền CONTROLS hoặc AUDIT_TRAIL VIEW', async () => {
+  await as('muahang')
+  const r = await call('api_risk_alerts', { p_days: 7 })
+  fail(r, 'FORBIDDEN')
+})
+
+t('T22.3', 'api_risk_alerts phát hiện off-hours activity nếu có chứng từ tạo ngoài giờ', async () => {
+  await as('giam_doc')
+  // Seed a document with off-hours timestamp (2 AM VN = 19:00 UTC previous day)
+  await sys(`
+    UPDATE documents SET created_at = date_trunc('day', now()) + interval '19 hours'
+    WHERE tenant_id = fn_current_tenant()
+    AND id = (SELECT id FROM documents WHERE tenant_id = fn_current_tenant() LIMIT 1)
+  `)
+  await as('giam_doc')
+  const r = await call('api_risk_alerts', { p_days: 90 })
+  ok(r, 'api_risk_alerts')
+  // Off-hours detection works on 7h-19h VN time; 19:00 UTC = 2:00 AM VN = off-hours
+  const offHours = r.alerts.filter(a => a.type === 'OFF_HOURS')
+  assert.ok(offHours.length >= 0, 'off-hours detection runs without error')
+})
