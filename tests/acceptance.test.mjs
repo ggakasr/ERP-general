@@ -2053,3 +2053,77 @@ t('T16.3', 'api_audit_pack: kết xuất tôn trọng fn_doc_in_scope — BUYER 
   // (audit_trail có thể trống nếu trigger chưa tạo record, nhưng document_count phải >= 1)
   assert.ok(rKkt.manifest.document_count >= 1, 'ketoantruong thấy JV qua fn_doc_in_scope')
 })
+
+// ---------------------------------------------------------------- N8 audit hash-chain (WP-G2)
+
+t('T17.1', 'api_audit_chain_verify: ok=true trên dữ liệu bất biến sau khi ghi', async () => {
+  // Tạo PO và submit để sinh nhiều bản ghi audit_trail với hash-chain
+  const poId = await newPo('muahang')
+  ok(await act('muahang', poId, 'submit'), 'submit PO')
+
+  // kiemtoan (INTERNAL_AUDITOR) có quyền AUDIT_TRAIL VIEW → được gọi api_audit_chain_verify
+  await as('kiemtoan')
+  const result = await call('api_audit_chain_verify', {})
+  ok(result, 'api_audit_chain_verify trả về ok')
+  assert.equal(result.ok, true, `Chuỗi hash phải toàn vẹn: ${JSON.stringify(result)}`)
+  assert.ok(result.total > 0, `Phải có ít nhất 1 bản ghi có hash: total=${result.total}`)
+  assert.equal(result.valid, result.total, `Tất cả bản ghi phải valid: ${JSON.stringify(result)}`)
+  assert.equal(result.broken_at_id, null, `Không có bản ghi bị hỏng: ${JSON.stringify(result)}`)
+})
+
+t('T17.2', 'api_audit_chain_verify: phát hiện bản ghi audit bị giả mạo (row_hash sai)', async () => {
+  // Tạo một số bản ghi audit bình thường
+  const poId = await newPo('muahang')
+  ok(await act('muahang', poId, 'submit'), 'submit PO')
+
+  // Xác nhận chain hiện tại là tốt
+  await as('kiemtoan')
+  const before = await call('api_audit_chain_verify', {})
+  ok(before, 'chain tốt trước khi giả mạo')
+  assert.equal(before.ok, true, 'chain phải ok trước khi giả mạo')
+
+  // Chèn trực tiếp một bản ghi với row_hash sai (bypass trigger, giả lập DBA giả mạo)
+  await sys(
+    `INSERT INTO public.audit_trail (table_name, record_id, action, user_id, user_name, created_at, prev_hash, row_hash)
+     VALUES ('documents', 'tampered-record-id', 'UPDATE', NULL, 'TAMPER_TEST',
+             clock_timestamp(),
+             repeat('0', 64),
+             'deadbeef' || repeat('0', 56))`
+  )
+
+  // Sau khi chèn bản ghi giả mạo, chain phải bị phát hiện hỏng
+  await as('kiemtoan')
+  const after = await call('api_audit_chain_verify', {})
+  assert.ok(after && typeof after === 'object', 'api_audit_chain_verify phải trả về object')
+  assert.equal(after.ok, false, `Chain phải bị phát hiện hỏng: ${JSON.stringify(after)}`)
+  assert.ok(after.broken_at_id !== null, 'broken_at_id phải được đặt')
+  assert.ok(typeof after.reason === 'string' && after.reason.length > 0, 'reason phải có nội dung')
+})
+
+t('T17.3', 'Mỗi bản ghi audit: prev_hash bằng row_hash của bản ghi liền trước', async () => {
+  // Tạo nhiều bản ghi audit liên tiếp
+  const po1 = await newPo('muahang', 5, 1000)
+  ok(await act('muahang', po1, 'submit'), 'submit PO 1')
+  const po2 = await newPo('muahang', 10, 2000)
+  ok(await act('muahang', po2, 'submit'), 'submit PO 2')
+
+  // Kiểm tra liên kết chuỗi trực tiếp bằng SQL (không qua API)
+  const rows = await sys(
+    `SELECT id, prev_hash, row_hash
+     FROM public.audit_trail
+     WHERE row_hash IS NOT NULL
+     ORDER BY id ASC`
+  )
+  assert.ok(rows.length >= 4, `Cần ít nhất 4 bản ghi có hash, thực tế: ${rows.length}`)
+
+  // Mỗi bản ghi (trừ bản đầu) phải có prev_hash = row_hash của bản ghi trước đó
+  let broken = null
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i].prev_hash !== rows[i - 1].row_hash) {
+      broken = { at: rows[i].id, expected: rows[i - 1].row_hash, stored: rows[i].prev_hash }
+      break
+    }
+  }
+  assert.equal(broken, null,
+    `Chuỗi hash bị đứt: id=${broken?.at}, expected_prev=${broken?.expected}, stored_prev=${broken?.stored}`)
+})
