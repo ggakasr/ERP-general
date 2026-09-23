@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Banknote, CheckCircle2, Clock3, Package, Pencil, Printer, RefreshCw, UserCheck } from "lucide-react"
+import { ArrowLeft, Banknote, CheckCircle2, Clock3, Package, Paperclip, Pencil, Printer, RefreshCw, UserCheck } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { DOC_TYPES } from "@/lib/doc-config"
 import { useSession } from "@/lib/session"
@@ -15,6 +15,7 @@ import { SkeletonDocDetail } from "@/components/ui/skeleton"
 import { Tabs } from "@/components/ui/tabs"
 import { ErrorBox, StatusBadge } from "@/components/shared/bits"
 import { ActionBar } from "@/components/docs/action-bar"
+import { AttachmentsTab } from "@/components/docs/attachments-tab"
 import {
   AuditTable, BudgetUsage, ChainCard, GlTable, HandoffList, InfoGrid, LinesTable, MatchResult, MdcPayload,
   SodChecks, StateMachine, StockTable, Timeline,
@@ -65,6 +66,7 @@ export default function DocumentPage() {
     ...(detail.sod_checks ? [{ key: "sod", label: "Kiểm tra SoD", count: detail.sod_checks.length }] : []),
     ...(detail.audit ? [{ key: "audit", label: "Audit trail", count: detail.audit.length }] : []),
     { key: "machine", label: "Máy trạng thái" },
+    { key: "attachments", label: "File đính kèm" },
   ]
 
   return (
@@ -148,6 +150,7 @@ export default function DocumentPage() {
                 {tab === "sod" && detail.sod_checks && <SodChecks rows={detail.sod_checks} />}
                 {tab === "audit" && detail.audit && <AuditTable rows={detail.audit} />}
                 {tab === "machine" && <StateMachine detail={detail} />}
+                {tab === "attachments" && <AttachmentsTab documentId={doc.id} />}
               </div>
             </CardContent>
           </Card>
