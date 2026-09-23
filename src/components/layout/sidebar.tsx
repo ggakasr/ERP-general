@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  AlertTriangle, BarChart3, Building2, CalendarClock, ClipboardCheck, Factory, FileSearch, Headphones,
+  AlertTriangle, BarChart3, Building2, CalendarClock, ClipboardCheck, CreditCard, Factory, FileSearch, Headphones,
   Inbox, Landmark, LayoutDashboard, Package, Route, Settings, Shield, Ship, ShoppingBag, ShoppingCart, Tag, Users,
 } from "lucide-react"
 import { useSession } from "@/lib/session"
@@ -52,6 +52,7 @@ const GROUPS: { label: string; items: Item[] }[] = [
       { name: "Báo cáo & KPI", href: "/reports", icon: BarChart3, resources: ["GL", "KPI", "REPORT_OPS", "BUDGET"] },
       { name: "Nghiệm thu", href: "/acceptance", icon: ClipboardCheck, resources: [] },
       { name: "Quản trị", href: "/admin", icon: Settings, resources: ["USER_ADMIN", "ACCESS_REVIEW", "MDC"] },
+      { name: "Gói dịch vụ", href: "/billing", icon: CreditCard, resources: [] },
     ],
   },
 ]

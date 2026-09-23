@@ -2661,3 +2661,51 @@ t('T23.7', 'api_portal_documents trả về chứng từ thuộc partner', async
   const qt = r.rows.find(d => d.number === 'QT-TEST-PORTAL')
   assert.ok(qt, 'portal user sees quotation')
 })
+
+// ---------------------------------------------------------------- T24 billing (WP-I1)
+t('T24.1', 'api_subscription_info trả về plan + usage + features', async () => {
+  await as('admin')
+  const r = await call('api_subscription_info')
+  ok(r, 'api_subscription_info')
+  assert.ok(r.plan, 'has plan')
+  assert.ok(r.usage, 'has usage')
+  assert.equal(typeof r.usage.active_users, 'number', 'active_users is number')
+  assert.equal(typeof r.usage.documents_total, 'number', 'documents_total is number')
+  assert.ok(r.features, 'has features')
+  assert.ok('MAX_USERS' in r.features, 'MAX_USERS in features')
+})
+
+t('T24.2', 'plan_features có đủ 3 gói × 8 tính năng', async () => {
+  const rows = await sys('SELECT plan, count(*) AS cnt FROM plan_features GROUP BY plan ORDER BY plan')
+  assert.equal(rows.length, 3, '3 plans')
+  for (const r of rows) {
+    assert.ok(parseInt(r.cnt) >= 8, `${r.plan} has >= 8 features`)
+  }
+})
+
+t('T24.3', 'fn_feature_enabled trả về true/false theo plan hiện tại', async () => {
+  await as('admin')
+  // Default tenant is PROFESSIONAL, should have AUDIT_PACK enabled
+  const { rows } = await db.query("SELECT fn_feature_enabled('AUDIT_PACK') AS v")
+  assert.equal(rows[0].v, true, 'PROFESSIONAL has AUDIT_PACK')
+  const { rows: r2 } = await db.query("SELECT fn_feature_enabled('CUSTOM_BRANDING') AS v")
+  assert.equal(r2[0].v, false, 'PROFESSIONAL does not have CUSTOM_BRANDING')
+})
+
+t('T24.4', 'api_admin_change_plan thay đổi gói thành công', async () => {
+  await as('admin')
+  const tenantId = (await sys('SELECT fn_current_tenant() AS t'))[0].t
+  const r = await call('api_admin_change_plan', { p_tenant_id: tenantId, p_new_plan: 'ENTERPRISE' })
+  ok(r, 'change plan')
+  assert.equal(r.new_plan, 'ENTERPRISE')
+  // Verify tenant updated
+  const t = (await sys('SELECT plan FROM tenants WHERE id = $1', [tenantId]))[0]
+  assert.equal(t.plan, 'ENTERPRISE')
+})
+
+t('T24.5', 'api_admin_change_plan FORBIDDEN cho user không phải SYS_ADMIN', async () => {
+  await as('ketoan')
+  const tenantId = (await sys('SELECT fn_current_tenant() AS t'))[0].t
+  const r = await call('api_admin_change_plan', { p_tenant_id: tenantId, p_new_plan: 'STARTER' })
+  fail(r, 'FORBIDDEN')
+})
