@@ -117,7 +117,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-F2 | Nâng cấp task queue theo vai trò | P2 | — | 1 tuần | [x] |
 | WP-F3 | Client Portal + Agent Portal | P3 | WP-D1, WP-C1 | 5–6 tuần | [ ] |
 | WP-G1 | Audit Pack + manifest hash | P2 | — | 2 tuần | [x] |
-| WP-G2 | Audit trail tamper-evident (hash-chain) | P2 | — | 1 tuần | [ ] |
+| WP-G2 | Audit trail tamper-evident (hash-chain) | P2 | — | 1 tuần | [x] |
 | WP-G3 | Duyệt đa cấp + SoD theo mức rủi ro + delegation | P2 | — | 2–3 tuần | [ ] |
 | WP-G4 | Widget phát hiện bất thường (risk alerts) | P2 | WP-B1 | 1 tuần | [ ] |
 | WP-H1 | Hoá đơn điện tử (adapter + `einvoice_log`) | P2 | — | 2–3 tuần | [ ] |
@@ -962,7 +962,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-F1 | 2026-09-23 | `4606a9d`, `2188a71`, `69a312a` | T14.1–T14.3 (add_comment, @mention notify, tenant isolation) | ✅ | 023_comments.sql; comments bảng + RLS; api_add_comment + api_get_comments; CommentsTab @mention dropdown; tab Thảo luận ở /documents/[id] |
 | WP-F2 | 2026-09-23 | `334f331`, `319b4a6`, `1ceb703`, `f251767`, `cf3ce06` | T15.1–T15.4 (api_tasks role_groups, APPROVE group, SLA priority, tenant isolation) | ✅ | 024_tasks.sql api_tasks(); useTasks() hook; /tasks role-group tabs; 025_fix_handoff_tenant.sql; 026_fix_fn_notify.sql; T3.1–T3.4 PASS; 87/107 PASS (20 pre-existing) |
 | WP-G1 | 2026-09-23 | `24c2be5`, `7161942` | T16.1–T16.3 (api_audit_pack hash stable, hash changes on mutation, scope BUYER≠JV) | ✅ | 027_audit_pack.sql; api_audit_pack(from,to,scope) SECURITY DEFINER; 6 sections (audit_trail/sod/links/handoff/exc/gl) + SHA-256 manifest; T3.1–T3.4 PASS |
-| WP-G2 |  |  |  |  |  |
+| WP-G2 | 2026-09-23 | `61a89bd` | T17.1–T17.3 (api_audit_chain_verify ok/tamper/chain) | ✅ | 028_audit_hash_chain.sql; fn_audit_row() tính SHA-256 chain (pg_advisory_xact_lock); api_audit_chain_verify() SECURITY DEFINER; T17.1–T17.3 PASS full suite |
 | WP-G3 |  |  |  |  |  |
 | WP-H1 |  |  |  |  |  |
 | WP-H2 |  |  |  |  |  |
@@ -1143,3 +1143,36 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 Ảnh hưởng gói sau:
 - WP-G2 (hash-chain): audit_trail đã được hash section trong WP-G1 — WP-G2 thêm `prev_hash`+`row_hash` per-row để Audit Pack có thể kiểm chứng tính toàn vẹn chuỗi
 - WP-G4 (Risk alerts): `sod_check_log` được kết xuất đầy đủ — cơ sở cho widget phát hiện bất thường SoD
+
+---
+
+### Bàn giao WP-G2  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Mỗi bản ghi `audit_trail` có `prev_hash` + `row_hash` (SHA-256) — PASS (`028_audit_hash_chain.sql`)
+- [x] `fn_audit_row()` tính hash-chain: `pg_advisory_xact_lock` serialize; genesis block `repeat('0', 64)`; canonical input dùng `chr(31)` delimiter + `extract(epoch...)::text` — PASS
+- [x] `api_audit_chain_verify(p_from, p_to)`: yêu cầu quyền `AUDIT_TRAIL VIEW`; tái tính hash và kiểm tra liên kết prev_hash; trả `{ok, total, valid, broken_at_id, reason}` — PASS
+- [x] Phát hiện giả mạo: INSERT bản ghi với `row_hash` sai → `ok=false`, `broken_at_id` khác null — PASS (T17.2)
+- [x] Chuỗi liên tục: `rows[i].prev_hash === rows[i-1].row_hash` cho mọi i — PASS (T17.3)
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi; chỉ đụng SQL + test JS)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ T17.1–T17.3 PASS; T3.1–T3.4 PASS; tổng suite 119 test (T17.1 ✔ T17.2 ✔ T17.3 ✔ trong full run)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (không đụng state machine / SoD engine)
+- [x] Acceptance test map tới thay đổi ....... T17.1 (chain verify ok=true sau ghi bình thường), T17.2 (phát hiện giả mạo row_hash), T17.3 (prev_hash == row_hash của dòng trước)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; `api_audit_chain_verify` SECURITY DEFINER; chỉ GRANT EXECUTE
+- [x] (Bảng mới sau WP-D1) N/A — không tạo bảng mới; chỉ thêm 2 cột + 1 index vào `audit_trail`
+- [ ] docs/app-map/NNN-audit-pack.md — chưa viết (nợ từ WP-G1)
+- [x] Đã commit ngay. Commit: `61a89bd` (028_audit_hash_chain.sql + tests/acceptance.test.mjs T17.1–T17.3)
+- [x] Đã tick [x] WP-G2 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- `pg_advisory_xact_lock` serialize toàn bộ INSERT vào audit_trail trong một transaction; nếu transaction insert nhiều dòng audit (vd. bulk action) → tất cả cùng giữ lock → không bị fork nhưng throughput giảm (chấp nhận được cho hệ thống ERP)
+- Bản ghi cũ (row_hash IS NULL) bị bỏ qua khi verify; muốn back-fill hash cho bản ghi cũ phải viết script migration riêng (không nằm trong WP-G2)
+- `api_audit_chain_verify` là STABLE (không ghi) nhưng SELECT `audit_trail` không qua RLS (SECURITY DEFINER); chỉ user có quyền `AUDIT_TRAIL VIEW` mới gọi được
+
+Ảnh hưởng gói sau:
+- WP-G1 (Audit Pack): `api_audit_pack` manifest có thể bổ sung kiểm tra chain bằng cách gọi `api_audit_chain_verify` và ghi kết quả vào manifest
+- WP-G4 (Risk alerts): có thể thêm alert khi `api_audit_chain_verify` trả `ok=false`
