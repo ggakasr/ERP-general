@@ -2333,3 +2333,145 @@ t('T19.3', 'INV ở DRAFT không thể issue — chỉ POSTED mới chuyển ISS
   const r = await act('ketoan', inv.id, 'issue')
   assert.equal(r.ok, false, `DRAFT không thể issue: ${JSON.stringify(r)}`)
 })
+
+// ---------------------------------------------------------------- T20 bank reconciliation import (WP-H2)
+t('T20.1', 'api_bankrec_import nhập hàng loạt dòng sao kê vào BANKREC DRAFT', async () => {
+  // Create a BANKREC in DRAFT
+  await as('ketoan')
+  const br = await call('api_create_document', {
+    p_doc_type: 'BANKREC',
+    p_header: { title: 'T20.1 import test', data: { bank_account: '0011-IMPORT' } },
+    p_lines: [],
+  })
+  ok(br, 'create BANKREC')
+
+  // Import 3 lines via api_bankrec_import
+  const imp = await call('api_bankrec_import', {
+    p_document_id: br.id,
+    p_lines: [
+      { date: '2026-09-01', description: 'Thu tiền KH CUS-001', amount: 50000, reference: 'REF001' },
+      { date: '2026-09-02', description: 'Chi thanh toán SUP-001', amount: -30000, reference: 'REF002' },
+      { date: '2026-09-03', description: 'Tiền phí ngân hàng', amount: -500 },
+    ],
+  })
+  ok(imp, 'api_bankrec_import')
+  assert.equal(imp.imported, 3, '3 dòng imported')
+  assert.equal(imp.total_amount, 19500, 'total = 50000 - 30000 - 500')
+
+  // Verify lines were created
+  const lines = await sys('SELECT * FROM public.document_lines WHERE document_id = $1 ORDER BY line_no', [br.id])
+  assert.equal(lines.length, 3, '3 document_lines created')
+  assert.equal(Number(lines[0].amount), 50000)
+  assert.equal(Number(lines[1].amount), -30000)
+  assert.equal(lines[0].data.txn_date, '2026-09-01')
+  assert.equal(lines[0].data.reference, 'REF001')
+})
+
+t('T20.2', 'api_bankrec_import: BANKREC phải ở DRAFT, dòng amount=0 bị bỏ qua', async () => {
+  await as('ketoan')
+  const br = await call('api_create_document', {
+    p_doc_type: 'BANKREC',
+    p_header: { title: 'T20.2 state check', data: { bank_account: '0011-T202' } },
+    p_lines: [{ amount: -45000, description: 'Initial line' }],
+  })
+  ok(br, 'create BANKREC')
+
+  // Create a PMT to match against, then match BANKREC
+  await as('ketoan')
+  const so = await call('api_create_document', { p_doc_type: 'SO', p_header: { title: 'T20.2 SO', partner_id: await partner('CUS-001'), warehouse_id: await wh('WH-HN-01') },
+    p_lines: [{ product_id: await product('SP-A4'), quantity: 1, unit_price: 45000 }] })
+  ok(so)
+  ok(await act('kinhdoanh.tp', so.id, 'confirm'))
+  await as('kho')
+  const dn = await call('api_create_document', { p_doc_type: 'DN', p_header: {}, p_parent_id: so.id })
+  ok(dn)
+  ok(await act('kho', dn.id, 'pick'))
+  ok(await act('kho.tp', dn.id, 'ship'))
+  await as('ketoan')
+  const inv = await call('api_create_document', { p_doc_type: 'INV', p_header: {}, p_parent_id: so.id })
+  ok(inv)
+  ok(await act('ketoantruong', inv.id, 'approve'))
+
+  // Match the BANKREC to transition DRAFT → MATCHED
+  ok(await act('ketoan', br.id, 'match'))
+  const brDoc = (await sys('SELECT status FROM public.documents WHERE id = $1', [br.id]))[0]
+  assert.equal(brDoc.status, 'MATCHED')
+
+  // Try import on MATCHED — should fail
+  await as('ketoan')
+  const r = await call('api_bankrec_import', {
+    p_document_id: br.id,
+    p_lines: [{ date: '2026-09-10', description: 'Should fail', amount: 1000 }],
+  })
+  assert.equal(r.ok, false, 'import on MATCHED fails')
+
+  // Test amount=0 lines skipped
+  await as('ketoan')
+  const br2 = await call('api_create_document', {
+    p_doc_type: 'BANKREC',
+    p_header: { title: 'T20.2 zero test', data: { bank_account: '0011-ZERO' } },
+    p_lines: [],
+  })
+  ok(br2)
+  const imp = await call('api_bankrec_import', {
+    p_document_id: br2.id,
+    p_lines: [
+      { date: '2026-09-01', description: 'Zero', amount: 0 },
+      { date: '2026-09-01', description: 'Valid', amount: 1000 },
+    ],
+  })
+  ok(imp)
+  assert.equal(imp.imported, 1, 'zero amount line skipped')
+  assert.equal(imp.errors.length, 1, 'error reported for zero line')
+})
+
+t('T20.3', 'api_bankrec_suggest gợi ý match PMT/RCPT theo amount', async () => {
+  // Create a PMT (PAID status) to be matchable
+  const po = await newPo('muahang', 5, 10000)
+  ok(await act('muahang', po, 'submit'))
+  ok(await act('muahang.tp', po, 'approve'))
+  ok(await act('muahang', po, 'send'))
+  ok(await act('muahang', po, 'confirm'))
+
+  await as('kho')
+  const grn = await call('api_create_document', { p_doc_type: 'GRN', p_header: {}, p_parent_id: po })
+  ok(grn)
+  ok(await act('kho', grn.id, 'receive'))
+  ok(await act('kho.tp', grn.id, 'accept'))
+
+  await as('ketoan')
+  const sinv = await call('api_create_document', { p_doc_type: 'SINV', p_header: { amount: 50000 }, p_parent_id: po })
+  ok(sinv)
+  ok(await act('ketoan', sinv.id, 'submit'))
+  ok(await act('ketoantruong', sinv.id, 'approve'))
+  ok(await act('ketoan', sinv.id, 'match_po'))
+
+  const pmt = await call('api_create_document', { p_doc_type: 'PMT', p_header: { title: 'T20.3 chi NCC', amount: 50000 }, p_parent_id: sinv.id })
+  ok(pmt)
+  ok(await act('ketoan', pmt.id, 'submit'))
+  ok(await act('cfo', pmt.id, 'approve'))
+  ok(await act('thuquy', pmt.id, 'execute'))
+
+  // PMT now in PAID status with amount 50000
+  // Create BANKREC with matching line
+  await as('ketoan')
+  const br = await call('api_create_document', {
+    p_doc_type: 'BANKREC',
+    p_header: { title: 'T20.3 suggest', data: { bank_account: '0011-SUG' } },
+    p_lines: [],
+  })
+  ok(br)
+  const imp = await call('api_bankrec_import', {
+    p_document_id: br.id,
+    p_lines: [{ date: '2026-09-15', description: 'UNC thanh toán', amount: -50000 }],
+  })
+  ok(imp)
+
+  // Call suggest
+  const sug = await call('api_bankrec_suggest', { p_document_id: br.id })
+  ok(sug, 'api_bankrec_suggest')
+  assert.ok(sug.suggestions.length >= 1, 'at least 1 suggestion')
+  assert.equal(sug.suggestions[0].match_type, 'PMT')
+  assert.equal(Number(sug.suggestions[0].match_amount), 50000)
+  assert.equal(sug.suggestions[0].match_document_id, pmt.id)
+})
