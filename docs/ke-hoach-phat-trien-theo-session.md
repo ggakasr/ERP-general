@@ -111,7 +111,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-C2 | Rate & Charge engine + trang `/pricing` | P1 | WP-C1 | 2–3 tuần | [x] |
 | WP-C3 | Danh mục cảng/hãng tàu + timeline tracking | P1 | WP-C1 | 1 tuần | [x] |
 | WP-D1 | Multi-tenant + RLS theo tenant + provisioning | P2 | — | 4–6 tuần | [x] |
-| WP-E1 | Lưu trữ chứng từ (Storage + `attachments`) | P2 | — | 1 tuần | [ ] |
+| WP-E1 | Lưu trữ chứng từ (Storage + `attachments`) | P2 | — | 1 tuần | [x] |
 | WP-E2 | AI ingestion pipeline (`/api/ingest` + `ingest_jobs`) | P2 | WP-E1 | 2–3 tuần | [ ] |
 | WP-F1 | Comment trên chứng từ + `@mention` | P2 | — | 1–2 tuần | [ ] |
 | WP-F2 | Nâng cấp task queue theo vai trò | P2 | — | 1 tuần | [ ] |
@@ -957,7 +957,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-C2 | 2026-09-22 | `e0c4fe4` | T10.1–T10.5 (rate engine) | ✅ | `fn_job_number` chưa tích hợp vào api_create_document; app-map operations-flow chưa viết |
 | WP-C3 | 2026-09-22 | `7ca0e84`, `e0c4fe4`, `acee67d`, `2e048c2`, `d9a4a4c` | T11.1–T11.5 (carriers/ports/schedules/tracking events) | ✅ | carriers/ports/vessels/vessel_schedules tables + RLS; api_add_tracking_event + audit; /schedule page (search + CSV import); TrackingTab interactive form; sidebar entry; app-map nợ nhỏ |
 | WP-B2 | 2026-09-21 | `36b860b` | T9.1–T9.5 (push subscription) | ✅ | T9.1–T9.5 PASS; VAPID keys cần thêm vào .env.local; Lighthouse PWA chưa kiểm tra trên thiết bị thật |
-| WP-E1 |  |  |  |  |  |
+| WP-E1 | 2026-09-23 | `5ab598e`, `ce797e9`, `d7476cb`, `e2e1a36` | T12.1–T12.3 (attach_file, get_attachments, missing_attachments) | ✅ | Storage bucket 'documents' + attachments table + RLS; checksum SHA-256; tab "File đính kèm" ở /documents/[id]; cảnh báo amber ở /controls |
 | WP-E2 |  |  |  |  |  |
 | WP-F1 |  |  |  |  |  |
 | WP-F2 |  |  |  |  |  |
@@ -979,3 +979,34 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 
 > **Cách chủ dự án dùng**: mở bảng này xem cột *DoD đủ?* = ✅ và *Commit(s)* có hash là biết gói đã xong &
 > có bằng chứng. Chỉ cần soi kỹ những dòng *Ghi chú / nợ kỹ thuật* có nội dung.
+
+---
+
+### Bàn giao WP-E1  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Upload/tải file qua RPC (không mở bảng trực tiếp) — `api_attach_file` + `api_get_attachments` SECURITY DEFINER, `attachments` REVOKE ALL từ authenticated
+- [x] Checksum lưu — SHA-256 tính ở client bằng SubtleCrypto, ghi vào cột `checksum`
+- [x] Cảnh báo thiếu file hoạt động — `api_missing_attachments` + `MissingAttachmentsCard` (ẩn nếu total=0, viền amber khi có dữ liệu)
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ (T12.1–T12.3 chạy được trên DB thật; T3.1–T3.4 không bị ảnh hưởng)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (migration không sửa engine/SoD logic)
+- [x] Acceptance test map tới thay đổi ....... T12.1 (api_attach_file + audit trail), T12.2 (api_get_attachments + FORBIDDEN), T12.3 (api_missing_attachments + cảnh báo disappears sau attach)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; `attachments` chỉ qua `api_attach_file`/`api_get_attachments`; storage policies trên `storage.objects` theo `bucket_id`
+- [x] (Bảng mới sau WP-D1) `attachments` có `tenant_id uuid NOT NULL REFERENCES tenants(id)` + idx_attachments_tenant
+- [x] docs/app-map chưa cập nhật (nợ nhỏ — không có file app-map riêng cho attachments)
+- [x] Đã commit ngay theo từng thay đổi. Commits: `5ab598e` (migration), `ce797e9` (UI AttachmentsTab), `d7476cb` (controls warning), `e2e1a36` (tests)
+- [x] Đã tick [x] WP-E1 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- Storage bucket cần tạo thủ công trong Supabase Dashboard (hoặc qua CLI `supabase storage create-bucket documents`) vì migration SQL `INSERT INTO storage.buckets` chỉ chạy được khi extension `storage` đã được kích hoạt trên project
+- `createSignedUrl` trên client cần storage RLS `documents_bucket_select` được apply; nếu apply chậm hơn so với upload thì cần test lại trên project thật
+- app-map/016-attachments-flow.md chưa viết
+
+Ảnh hưởng gói sau:
+- WP-E2 (AI ingestion) build trên `attachments.id` — `ingest_jobs.attachment_id` FK vào đây
+- WP-F1 (Comment) không phụ thuộc attachments nhưng có thể hiển thị cùng tab
