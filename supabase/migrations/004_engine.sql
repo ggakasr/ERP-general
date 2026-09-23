@@ -31,12 +31,17 @@ $$;
 
 CREATE OR REPLACE FUNCTION fn_next_number(p_doc_type text) RETURNS text
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_prefix text; v_ym text := to_char(fn_now(), 'YYYYMM'); v_seq int;
+DECLARE
+  v_prefix text;
+  v_ym     text := to_char(fn_now(), 'YYYYMM');
+  v_seq    int;
+  v_tid    uuid := coalesce(fn_current_tenant(), '00000000-0000-0000-0000-000000000001'::uuid);
 BEGIN
   SELECT prefix INTO v_prefix FROM doc_types WHERE code = p_doc_type;
-  INSERT INTO doc_sequences (prefix, yyyymm, last_seq) VALUES (v_prefix, v_ym, 1)
-  ON CONFLICT (prefix, yyyymm) DO UPDATE SET last_seq = doc_sequences.last_seq + 1
-  RETURNING last_seq INTO v_seq;
+  INSERT INTO doc_sequences (tenant_id, prefix, yyyymm, last_seq)
+    VALUES (v_tid, v_prefix, v_ym, 1)
+    ON CONFLICT (tenant_id, prefix, yyyymm) DO UPDATE SET last_seq = doc_sequences.last_seq + 1
+    RETURNING last_seq INTO v_seq;
   RETURN v_prefix || '-' || v_ym || '-' || lpad(v_seq::text, 5, '0');
 END $$;
 
@@ -663,9 +668,9 @@ DECLARE u app_users; dt doc_types; d documents;
 BEGIN
   SELECT * INTO u FROM app_users WHERE id = p_user;
   SELECT * INTO dt FROM doc_types WHERE code = p_type;
-  INSERT INTO documents (doc_type, number, status, title, branch_id, department_id, cost_center_id, amount, data, created_by)
+  INSERT INTO documents (doc_type, number, status, title, branch_id, department_id, cost_center_id, amount, data, created_by, tenant_id)
   VALUES (p_type, fn_next_number(p_type), dt.initial_status, p_title, u.branch_id, u.department_id,
-          coalesce(p_cost_center, u.department_id), coalesce(p_amount, 0), coalesce(p_data, '{}'), p_user)
+          coalesce(p_cost_center, u.department_id), coalesce(p_amount, 0), coalesce(p_data, '{}'), p_user, u.tenant_id)
   RETURNING * INTO d;
   IF p_parent IS NOT NULL THEN
     INSERT INTO document_links (parent_id, child_id, link_type) VALUES (p_parent, d.id, p_link_type);
@@ -1426,7 +1431,7 @@ BEGIN
   BEGIN
     INSERT INTO documents (doc_type, number, status, title, branch_id, department_id, cost_center_id, partner_id,
                            warehouse_id, to_warehouse_id, product_id, employee_id, doc_date, due_date, amount, data,
-                           created_by, idempotency_key)
+                           created_by, idempotency_key, tenant_id)
     VALUES (p_doc_type, fn_next_number(p_doc_type), v_dt.initial_status,
             coalesce(nullif(h->>'title', ''), v_parent.title),
             v_me.branch_id, v_me.department_id,
@@ -1440,7 +1445,7 @@ BEGIN
             nullif(h->>'due_date', '')::date,
             coalesce(nullif(h->>'amount', '')::numeric, 0),
             coalesce(h->'data', '{}'::jsonb),
-            v_me.id, p_idempotency_key)
+            v_me.id, p_idempotency_key, v_me.tenant_id)
     RETURNING * INTO v_doc;
 
     IF v_parent.id IS NOT NULL THEN
@@ -1586,10 +1591,10 @@ BEGIN
   END IF;
   v_end := (to_date(p_period || '-01', 'YYYY-MM-DD') + interval '1 month - 1 day')::date;
   BEGIN
-    INSERT INTO documents (doc_type, number, status, title, branch_id, department_id, cost_center_id, data, created_by, doc_date)
+    INSERT INTO documents (doc_type, number, status, title, branch_id, department_id, cost_center_id, data, created_by, doc_date, tenant_id)
     VALUES ('PAYROLL', fn_next_number('PAYROLL'), 'CALCULATED', 'Bảng lương tháng ' || p_period,
             v_me.branch_id, v_me.department_id, v_me.department_id,
-            jsonb_build_object('period', p_period, 'standard_days', v_std), v_me.id, (fn_now())::date)
+            jsonb_build_object('period', p_period, 'standard_days', v_std), v_me.id, (fn_now())::date, v_me.tenant_id)
     RETURNING * INTO v_doc;
     FOR e IN SELECT * FROM employees WHERE status = 'ACTIVE' AND coalesce(start_date, '2000-01-01') <= v_end ORDER BY code LOOP
       v_no := v_no + 1;
@@ -1629,9 +1634,9 @@ BEGIN
   IF p_period !~ '^\d{4}-\d{2}$' THEN RETURN fn_fail('VALIDATION', 'Kỳ dạng YYYY-MM'); END IF;
   v_end := (to_date(p_period || '-01', 'YYYY-MM-DD') + interval '1 month - 1 day')::date;
   BEGIN
-    INSERT INTO documents (doc_type, number, status, title, branch_id, department_id, cost_center_id, doc_date, data, created_by)
+    INSERT INTO documents (doc_type, number, status, title, branch_id, department_id, cost_center_id, doc_date, data, created_by, tenant_id)
     VALUES ('JV', fn_next_number('JV'), 'DRAFT', 'Khấu hao TSCĐ tháng ' || p_period, v_me.branch_id, v_me.department_id,
-            v_me.department_id, v_end, jsonb_build_object('depreciation_period', p_period), v_me.id)
+            v_me.department_id, v_end, jsonb_build_object('depreciation_period', p_period), v_me.id, v_me.tenant_id)
     RETURNING * INTO v_doc;
     FOR a IN
       SELECT d.* FROM documents d
@@ -1674,9 +1679,9 @@ DECLARE v_me app_users := fn_current_user(); v_doc documents; r record; v_no int
 BEGIN
   IF v_me.id IS NULL THEN RETURN fn_fail('UNAUTHENTICATED', 'Chưa đăng nhập'); END IF;
   IF fn_perm_scope(v_me.id, 'ACCESS_REVIEW', 'CREATE') = 0 THEN RETURN fn_fail('FORBIDDEN', 'Bạn không có quyền tạo rà soát quyền'); END IF;
-  INSERT INTO documents (doc_type, number, status, title, branch_id, department_id, cost_center_id, data, created_by)
+  INSERT INTO documents (doc_type, number, status, title, branch_id, department_id, cost_center_id, data, created_by, tenant_id)
   VALUES ('ACCESS_REVIEW', fn_next_number('ACCESS_REVIEW'), 'DRAFT', 'Rà soát quyền truy cập ' || to_char(fn_now(), 'MM/YYYY'),
-          v_me.branch_id, v_me.department_id, v_me.department_id, '{}', v_me.id)
+          v_me.branch_id, v_me.department_id, v_me.department_id, '{}', v_me.id, v_me.tenant_id)
   RETURNING * INTO v_doc;
   FOR r IN
     SELECT u.id, u.full_name, u.employee_code, ur.role_code, ro.name AS role_name, d.name AS dept

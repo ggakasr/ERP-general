@@ -1752,14 +1752,14 @@ t('T14.1', 'api_add_comment tạo comment gắn vào chứng từ', async () => 
   })
   ok(r, 'api_add_comment returns ok')
   assert.ok(r.id, 'comment id returned')
-  assert.equal(r.user_name, 'Nguyễn Mua Hàng', 'user_name returned')
+  assert.equal(r.user_name, 'Bùi Thị Mai', 'user_name returned')
 
   // api_get_comments trả về comment vừa tạo
   const list = await call('api_get_comments', { p_document_id: poId })
   ok(list, 'api_get_comments ok')
   assert.equal(list.comments.length, 1, 'one comment visible')
   assert.equal(list.comments[0].body, 'Kiểm tra lại số lượng dòng 1 nhé.', 'body matches')
-  assert.equal(list.comments[0].user_name, 'Nguyễn Mua Hàng', 'user_name in list')
+  assert.equal(list.comments[0].user_name, 'Bùi Thị Mai', 'user_name in list')
 })
 
 t('T14.2', '@mention trong comment → fn_notify gửi thông báo cho người được nhắc', async () => {
@@ -1822,15 +1822,18 @@ t('T14.3', 'api_get_comments từ chối user tenant khác (cô lập tenant)', 
     ON CONFLICT (id) DO NOTHING
   `)
 
+  // pre-fetch muahang id as superuser (before switching to authenticated to avoid RLS on fn_current_tenant)
+  const [muahangRow] = await sys(`SELECT id::text AS id FROM public.app_users WHERE email = 'muahang@erp.demo' LIMIT 1`)
+  const muahangId = muahangRow.id
+
   // user của tenant B không được thấy comment của tenant A
   // dùng muahang nhưng đổi tenant context sang B
   await db.query('SET LOCAL ROLE authenticated')
-  await db.query(`SELECT set_config('request.jwt.claim.sub',
-    (SELECT id::text FROM public.app_users WHERE email = 'muahang@erp.demo' LIMIT 1), true)`)
+  await db.query(`SELECT set_config('request.jwt.claim.sub', $1, true)`, [muahangId])
+  await db.query(`SELECT set_config('request.jwt.claim.tenant_id', '${TENANT_B}', true)`)
   await db.query(`SELECT set_config('request.jwt.claims',
-    jsonb_build_object('sub', (SELECT id::text FROM public.app_users WHERE email = 'muahang@erp.demo' LIMIT 1),
-                       'role', 'authenticated',
-                       'tenant_id', '${TENANT_B}')::text, true)`)
+    jsonb_build_object('sub', $1::text, 'role', 'authenticated', 'tenant_id', '${TENANT_B}')::text, true)`,
+    [muahangId])
 
   // gọi api_get_comments — chứng từ thuộc tenant A nên bị FORBIDDEN hoặc trả 0 comment
   const res = await call('api_get_comments', { p_document_id: poId })

@@ -39,7 +39,7 @@ DECLARE
   v_doc        documents;
   v_comment_id uuid;
   v_uid        uuid;
-  v_user_name  text;
+  v_user_name  text := '';
 BEGIN
   IF v_me.id IS NULL THEN
     RETURN fn_fail('UNAUTHENTICATED', 'Chưa đăng nhập');
@@ -75,7 +75,7 @@ BEGIN
     );
   END LOOP;
 
-  SELECT full_name INTO v_user_name FROM app_users WHERE id = v_me.id;
+  v_user_name := v_me.full_name;
 
   RETURN jsonb_build_object(
     'ok',         true,
