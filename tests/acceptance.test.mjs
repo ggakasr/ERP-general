@@ -2127,3 +2127,117 @@ t('T17.3', 'Mỗi bản ghi audit: prev_hash bằng row_hash của bản ghi li�
   assert.equal(broken, null,
     `Chuỗi hash bị đứt: id=${broken?.at}, expected_prev=${broken?.expected}, stored_prev=${broken?.stored}`)
 })
+
+// ---------------------------------------------------------------- WP-G3: multi-level approval + delegation
+
+t('T18.1', 'api_create_delegation: chặn uỷ quyền APPROVER cho người có CREATE trên cùng doc_type (SoD)', async () => {
+  // muahang có BUYER role → có CREATE trên PO → không được nhận APPROVER delegation cho PO
+  const muahangId = await id('app_users', 'email = $1', ['muahang@erp.demo'])
+  await as('muahang.tp')
+  const r = await call('api_create_delegation', {
+    p_delegate_id: muahangId,
+    p_doc_types: ['PO'],
+    p_sod_roles: ['APPROVER'],
+    p_valid_until: new Date(Date.now() + 7 * 86400000).toISOString(),
+    p_reason: 'Test SoD block',
+  })
+  fail(r, 'SOD_VIOLATION')
+  assert.ok(r.error && r.error.includes('REQUESTER'), `Thông báo lỗi phải đề cập REQUESTER: ${r.error}`)
+})
+
+t('T18.2', 'api_create_delegation: cho phép uỷ quyền hợp lệ (delegate không có CREATE trên doc_type)', async () => {
+  // cfo không có CREATE trên PO → được nhận APPROVER delegation
+  const cfoId = await id('app_users', 'email = $1', ['cfo@erp.demo'])
+  await as('muahang.tp')
+  const r = await call('api_create_delegation', {
+    p_delegate_id: cfoId,
+    p_doc_types: ['PO'],
+    p_sod_roles: ['APPROVER'],
+    p_valid_until: new Date(Date.now() + 7 * 86400000).toISOString(),
+    p_reason: 'Test valid delegation',
+  })
+  ok(r, 'delegation created')
+  assert.ok(r.delegation_id, 'delegation_id được trả về')
+})
+
+t('T18.3', 'Người nhận uỷ quyền (delegate) có thể phê duyệt chứng từ trong phạm vi delegator', async () => {
+  // Setup: muahang.tp uỷ quyền cho cfo để approve PO (PO dưới 50M nên không cần chain)
+  const cfoId = await id('app_users', 'email = $1', ['cfo@erp.demo'])
+  await as('muahang.tp')
+  ok(await call('api_create_delegation', {
+    p_delegate_id: cfoId,
+    p_doc_types: ['PO'],
+    p_sod_roles: ['APPROVER'],
+    p_valid_until: new Date(Date.now() + 7 * 86400000).toISOString(),
+  }), 'create delegation')
+
+  // muahang tạo và submit PO (giá trị thấp: qty=5, price=4000 → 20000 < 50M)
+  const po = await newPo('muahang', 5, 4000)
+  ok(await act('muahang', po, 'submit'), 'submit PO')
+
+  // cfo duyệt qua delegation (cfo không có APPROVE trực tiếp trên PO)
+  const r = await act('cfo', po, 'approve')
+  ok(r, 'cfo approve via delegation')
+
+  // Xác nhận trạng thái APPROVED
+  const d = await sys('SELECT status FROM public.documents WHERE id = $1', [po])
+  assert.equal(d[0].status, 'APPROVED', 'PO phải ở trạng thái APPROVED')
+})
+
+t('T18.4', 'PO ≥ 50 triệu: chain_complete chặn approve cho đến khi tất cả bước hoàn tất', async () => {
+  // Tạo PO giá trị cao: qty=1, price=60,000,000 → amount=60M ≥ 50M threshold
+  const po = await newPo('muahang', 1, 60000000)
+  ok(await act('muahang', po, 'submit'), 'submit high-value PO')
+
+  // Attempt 1: approve trực tiếp → phải fail vì chain_complete chưa pass
+  const r1 = await act('muahang.tp', po, 'approve')
+  fail(r1, 'CONDITION_FAILED')
+  assert.ok(r1.error && r1.error.includes('Chuỗi'), `Phải nhắc đến chuỗi duyệt: ${r1.error}`)
+
+  // Lấy danh sách steps qua api_get_approval_status
+  await as('muahang.tp')
+  const statusR = await call('api_get_approval_status', { p_doc_id: po })
+  ok(statusR, 'get approval status')
+  assert.ok(statusR.chain_required, 'chain_required phải là true')
+  assert.equal(statusR.steps.length, 2, 'phải có đúng 2 bước')
+  const [step1, step2] = statusR.steps
+
+  // muahang.tp duyệt bước 1 (PROC_MANAGER)
+  await as('muahang.tp')
+  ok(await call('api_approve_step', { p_doc_id: po, p_step_id: step1.step_id }), 'approve step 1')
+
+  // Attempt 2: approve trực tiếp → vẫn fail (bước 2 chưa xong)
+  const r2 = await act('muahang.tp', po, 'approve')
+  fail(r2, 'CONDITION_FAILED')
+
+  // cfo duyệt bước 2 (CFO)
+  await as('cfo')
+  ok(await call('api_approve_step', { p_doc_id: po, p_step_id: step2.step_id }), 'approve step 2 by cfo')
+
+  // Attempt 3: approve chính thức — phải thành công
+  const r3 = await act('muahang.tp', po, 'approve')
+  ok(r3, 'final approve after all chain steps done')
+  const d = await sys('SELECT status FROM public.documents WHERE id = $1', [po])
+  assert.equal(d[0].status, 'APPROVED', 'PO phải ở trạng thái APPROVED')
+})
+
+t('T18.5', 'Delegation không bypass SoD: người đề xuất PO không thể nhận uỷ quyền APPROVER', async () => {
+  // Thử tạo delegation: muahang.tp → muahang (BUYER, có CREATE trên PO)
+  // Phải bị chặn ngay tại api_create_delegation
+  const muahangId = await id('app_users', 'email = $1', ['muahang@erp.demo'])
+  await as('muahang.tp')
+  const blocked = await call('api_create_delegation', {
+    p_delegate_id: muahangId,
+    p_doc_types: ['PO'],
+    p_sod_roles: ['APPROVER'],
+    p_valid_until: new Date(Date.now() + 7 * 86400000).toISOString(),
+  })
+  fail(blocked, 'SOD_VIOLATION')
+
+  // Xác nhận T3.1 vẫn giữ nguyên: muahang tạo PO, muahang không thể tự duyệt
+  // (BUYER role không có APPROVE permission → FORBIDDEN, cũng là bằng chứng SoD an toàn)
+  const po = await newPo('muahang', 5, 4000)
+  ok(await act('muahang', po, 'submit'), 'submit PO')
+  const r = await act('muahang', po, 'approve')
+  assert.equal(r.ok, false, `muahang không được tự duyệt PO của mình: ${JSON.stringify(r)}`)
+})
