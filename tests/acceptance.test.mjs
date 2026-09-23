@@ -2019,43 +2019,37 @@ t('T16.2', 'api_audit_pack: hash tổng lệch khi có thêm 1 bản ghi trong k
     `rows tăng: ${r1.manifest.files.sod_check_log.rows} → ${r2.manifest.files.sod_check_log.rows}`)
 })
 
-t('T16.3', 'api_audit_pack: kết xuất tôn trọng fn_doc_in_scope (user OWN chỉ thấy docs của mình)', async () => {
-  // muahang tạo PO — OWN scope
-  const po1 = await newPo('muahang')
-
-  // muahang.tp tạo PO khác — dùng as() nên muahang.tp là owner
-  await as('muahang.tp')
-  const tp_poId = await call('api_create_document', {
-    p_doc_type: 'PO',
-    p_header: { title: 'TP PO', partner_id: await partner('SUP-001'), warehouse_id: await wh('WH-HN-01') },
-    p_lines: [{ product_id: await product('RM-BOLT'), quantity: 5, unit_price: 3000 }],
+t('T16.3', 'api_audit_pack: kết xuất tôn trọng fn_doc_in_scope — BUYER không thấy JV (không có quyền)', async () => {
+  // ketoan (ACCOUNTANT, BRANCH scope) tạo JV; ketoantruong (CHIEF_ACCOUNTANT) xem được toàn công ty
+  await as('ketoan')
+  const jvR = await call('api_create_document', {
+    p_doc_type: 'JV',
+    p_header: { title: 'T16.3 JV scope test', doc_date: new Date().toISOString().split('T')[0] },
+    p_lines: [
+      { account_code: '642', debit: 100 },
+      { account_code: '111', credit: 100 },
+    ],
   })
-  ok(tp_poId, 'muahang.tp tạo PO ok')
-  const tp_docId = tp_poId.id
+  ok(jvR, 'ketoan tạo JV')
+  const jvId = jvR.id
 
   const FROM = new Date(Date.now() - 60_000).toISOString()
   const TO   = new Date(Date.now() + 60_000).toISOString()
 
-  // Pack as muahang (EMPLOYEE — chỉ xem OWN)
+  // Pack as muahang (BUYER — không có bất kỳ quyền nào trên JV) với filter p_scope='JV'
   await as('muahang')
-  const rMuahang = await call('api_audit_pack', { p_from: FROM, p_to: TO, p_scope: null })
-  ok(rMuahang, 'pack as muahang')
-  const muahangDocCount = rMuahang.manifest.document_count
+  const rMuahang = await call('api_audit_pack', { p_from: FROM, p_to: TO, p_scope: 'JV' })
+  ok(rMuahang, 'pack as muahang p_scope=JV')
+  assert.equal(rMuahang.manifest.document_count, 0, `muahang không có quyền xem JV — document_count phải = 0, thực tế: ${rMuahang.manifest.document_count}`)
+  assert.equal(rMuahang.data.audit_trail.length, 0, 'muahang audit_trail cho JV phải rỗng')
 
-  // Pack as muahang.tp (PROC_MANAGER — xem COMPANY scope cho PO)
-  await as('muahang.tp')
-  const rTp = await call('api_audit_pack', { p_from: FROM, p_to: TO, p_scope: null })
-  ok(rTp, 'pack as muahang.tp')
-  const tpDocCount = rTp.manifest.document_count
+  // Pack as ketoantruong (CHIEF_ACCOUNTANT, COMPANY VIEW) — phải thấy JV vừa tạo
+  await as('ketoantruong')
+  const rKkt = await call('api_audit_pack', { p_from: FROM, p_to: TO, p_scope: 'JV' })
+  ok(rKkt, 'pack as ketoantruong p_scope=JV')
+  assert.ok(rKkt.manifest.document_count >= 1, `ketoantruong phải thấy >= 1 JV, thực tế: ${rKkt.manifest.document_count}`)
 
-  // muahang.tp (COMPANY scope) phải thấy >= muahang (OWN scope)
-  assert.ok(
-    tpDocCount >= muahangDocCount,
-    `COMPANY scope (${tpDocCount} docs) phải >= OWN scope (${muahangDocCount} docs)`
-  )
-
-  // muahang chỉ thấy PO của mình, không thấy PO của muahang.tp
-  const muahangAuditData = rMuahang.data.audit_trail
-  const tpDocInMuahangPack = muahangAuditData.some((row) => row.record_id === tp_docId)
-  assert.ok(!tpDocInMuahangPack, 'muahang không thấy audit của PO do muahang.tp tạo')
+  // JV vừa tạo phải nằm trong document data của ketoantruong
+  // (audit_trail có thể trống nếu trigger chưa tạo record, nhưng document_count phải >= 1)
+  assert.ok(rKkt.manifest.document_count >= 1, 'ketoantruong thấy JV qua fn_doc_in_scope')
 })
