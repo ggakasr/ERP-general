@@ -2475,3 +2475,28 @@ t('T20.3', 'api_bankrec_suggest gợi ý match PMT/RCPT theo amount', async () =
   assert.equal(Number(sug.suggestions[0].match_amount), 50000)
   assert.equal(sug.suggestions[0].match_document_id, pmt.id)
 })
+
+// ---------------------------------------------------------------- T21 health check & deployment (WP-H3)
+t('T21.1', 'api_health_check trả về ok + danh sách bảng + config checks', async () => {
+  await as('ketoan')
+  const h = await call('api_health_check')
+  ok(h, 'api_health_check')
+  assert.ok(h.tables, 'has tables map')
+  assert.ok(h.tables.tenants >= 1, 'tenants table has rows')
+  assert.ok(h.tables.app_users >= 1, 'app_users table has rows')
+  assert.ok(h.tables.state_transitions >= 1, 'state_transitions has rows')
+  assert.ok(h.checks, 'has checks')
+  assert.equal(h.checks.state_transitions, true, 'state_transitions config exists')
+  assert.equal(h.checks.sod_matrix, true, 'sod_matrix config exists')
+  assert.equal(h.checks.roles, true, 'roles exist')
+  assert.ok(h.version, 'has migration version')
+})
+
+t('T21.2', 'api_health_check accessible without authenticated user (anon)', async () => {
+  await db.query('RESET ROLE')
+  await db.query('SET LOCAL ROLE anon')
+  const { rows } = await db.query('SELECT public.api_health_check() AS r')
+  const h = rows[0].r
+  assert.equal(h.ok, true, 'health check ok as anon')
+  assert.ok(h.tables, 'anon sees tables')
+})

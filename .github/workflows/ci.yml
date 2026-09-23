@@ -49,7 +49,32 @@ jobs:
         if: steps.has_db.outputs.ok == 'true'
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: npm run test:acceptance
+        run: npm run test:acceptance 2>&1 | tee test-output.txt
+
+      # SoD gate — T3.1-T3.4 are absolute blockers (ĐK3).
+      # If any of these fail the pipeline exits non-zero and blocks the merge.
+      - name: SoD gate — T3.1-T3.4 must PASS
+        if: steps.has_db.outputs.ok == 'true'
+        run: |
+          echo "--- SoD blocker check (T3.1, T3.2, T3.3, T3.4) ---"
+          FAILED=""
+          for tc in T3.1 T3.2 T3.3 T3.4; do
+            if grep -qE "not ok.*${tc} " test-output.txt 2>/dev/null; then
+              FAILED="$FAILED $tc"
+              echo "::error::ABSOLUTE BLOCKER: ${tc} FAILED — SoD violation detected"
+            elif grep -qE "ok.*${tc} " test-output.txt 2>/dev/null; then
+              echo "✅ ${tc} PASSED"
+            else
+              echo "::warning::${tc} — result not found in output (test may not have run)"
+            fi
+          done
+          if [ -n "$FAILED" ]; then
+            echo ""
+            echo "::error::DEPLOYMENT BLOCKED — SoD tests failed:${FAILED}"
+            echo "T3.1-T3.4 are absolute blockers per ĐK3. Fix SoD violations before merging."
+            exit 1
+          fi
+          echo "--- All SoD blocker tests PASSED ---"
 
       - name: Acceptance tests skipped
         if: steps.has_db.outputs.ok != 'true'
