@@ -120,9 +120,9 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-G2 | Audit trail tamper-evident (hash-chain) | P2 | — | 1 tuần | [x] |
 | WP-G3 | Duyệt đa cấp + SoD theo mức rủi ro + delegation | P2 | — | 2–3 tuần | [x] |
 | WP-G4 | Widget phát hiện bất thường (risk alerts) | P2 | WP-B1 | 1 tuần | [ ] |
-| WP-H1 | Hoá đơn điện tử (adapter + `einvoice_log`) | P2 | — | 2–3 tuần | [ ] |
-| WP-H2 | Import & đối chiếu sao kê ngân hàng | P2 | — | 1–2 tuần | [ ] |
-| WP-H3 | `docs/deployment.md` + backup/DR + health check + CI gate | P2 | — | 3–5 ngày | [ ] |
+| WP-H1 | Hoá đơn điện tử (adapter + `einvoice_log`) | P2 | — | 2–3 tuần | [x] |
+| WP-H2 | Import & đối chiếu sao kê ngân hàng | P2 | — | 1–2 tuần | [x] |
+| WP-H3 | `docs/deployment.md` + backup/DR + health check + CI gate | P2 | — | 3–5 ngày | [x] |
 | WP-I1 | Billing/subscription + đóng gói theo gói | P3 | WP-D1 | 2–3 tuần | [ ] |
 | WP-I2 | Landing page + Help Center + onboarding demo | P3 | WP-A4 | 2 tuần | [ ] |
 | WP-J1 | Design system & app shell (nền UX/UI) | P1 | — | 1–2 tuần | [x] |
@@ -964,9 +964,9 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-G1 | 2026-09-23 | `24c2be5`, `7161942` | T16.1–T16.3 (api_audit_pack hash stable, hash changes on mutation, scope BUYER≠JV) | ✅ | 027_audit_pack.sql; api_audit_pack(from,to,scope) SECURITY DEFINER; 6 sections (audit_trail/sod/links/handoff/exc/gl) + SHA-256 manifest; T3.1–T3.4 PASS |
 | WP-G2 | 2026-09-23 | `61a89bd` | T17.1–T17.3 (api_audit_chain_verify ok/tamper/chain) | ✅ | 028_audit_hash_chain.sql; fn_audit_row() tính SHA-256 chain (pg_advisory_xact_lock); api_audit_chain_verify() SECURITY DEFINER; T17.1–T17.3 PASS full suite |
 | WP-G3 | 2026-09-23 | `32ec1a5` | T18.1–T18.5 (approval chain + delegation SoD + chain_complete + delegate approve) | ✅ | 029_multi_level_approval.sql; approval_chains/steps/log + delegations; fn_doc_in_scope delegate branch; chain_complete condition; T3.1–T3.4 PASS; T18.1–T18.5 PASS |
-| WP-H1 |  |  |  |  |  |
-| WP-H2 |  |  |  |  |  |
-| WP-H3 |  |  |  |  |  |
+| WP-H1 | 2026-09-23 | `2de5741` | T19.1–T19.3 (einvoice log + tenant isolation + DRAFT cannot issue) | ✅ | 030_einvoice.sql; einvoice_log + RLS; VNPT+Viettel adapter; INV POSTED→ISSUED; /api/einvoice route; T3.1–T3.4 PASS |
+| WP-H2 | 2026-09-23 | `828fe36` | T20.1–T20.3 (bankrec import + DRAFT guard + suggest matching) | ✅ | 031_bankrec_import.sql; api_bankrec_import + api_bankrec_suggest; /api/bankrec/import (CSV/OFX); /api/bankrec/suggest; T3.1–T3.4 PASS |
+| WP-H3 | 2026-09-23 | `967dd64` | T21.1–T21.2 (health check tables/checks/anon) | ✅ | docs/deployment.md (arch/release/rollback/backup/DR/RPO/RTO); 032_health_check.sql api_health_check(); CI SoD gate T3.1–T3.4; T3.1–T3.4 PASS |
 | WP-F3 |  |  |  |  |  |
 | WP-G4 |  |  |  |  |  |
 | WP-I1 |  |  |  |  |  |
@@ -1256,3 +1256,80 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 - WP-G4 (Risk alerts): có thể thêm alert khi chuỗi duyệt bị trễ (SLA per step)
 - WP-H (tích hợp): `api_submit_chain_step` có thể expose qua webhook/email để approver duyệt từ email
 - WP-F3 (Client Portal): delegate approval flow có thể tích hợp cho external approver
+
+### Bàn giao WP-H1  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] `einvoice_log` table + RLS (`tenant_id = fn_current_tenant()`) + REVOKE ALL — PASS (030_einvoice.sql)
+- [x] Adapter VNPT + Viettel: `EInvoiceProvider` interface, `createInvoice`/`cancelInvoice`/`lookupInvoice` — PASS (src/app/api/einvoice/providers.ts)
+- [x] INV POSTED→ISSUED state transition + ISSUED→PARTIALLY_PAID/PAID/CANCELLED — PASS
+- [x] `api_log_einvoice` + `api_get_einvoice_logs` + `api_einvoice_providers` RPCs SECURITY DEFINER — PASS
+- [x] `/api/einvoice` POST: validate → log PENDING → call provider → log result → transition — PASS
+- [x] T19.1 (log + verify + transition), T19.2 (tenant isolation), T19.3 (DRAFT cannot issue) — PASS
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH
+- [x] npx next lint .......................... SẠCH
+- [x] npm run test:acceptance ................ T19.1–T19.3 PASS
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS
+- [x] Acceptance test map tới thay đổi ....... T19.1, T19.2, T19.3
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; einvoice_log REVOKE ALL + chỉ EXECUTE api_*
+- [x] (Bảng mới sau WP-D1) `einvoice_log` có `tenant_id NOT NULL REFERENCES tenants(id)` + RLS
+- [ ] docs/app-map/NNN-einvoice.md — chưa viết (nợ nhỏ)
+- [x] Đã commit ngay. Commit: `2de5741`
+- [x] Đã tick [x] WP-H1 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại: HTTP call ở tầng Next.js — provider adapter chưa test tích hợp thật (sandbox only); app-map chưa viết.
+Ảnh hưởng gói sau: WP-H2 (bankrec) không phụ thuộc; WP-G4 có thể thêm alert HĐĐT lỗi.
+
+### Bàn giao WP-H2  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] `api_bankrec_import(p_document_id, p_lines)` bulk import dòng sao kê vào BANKREC DRAFT — PASS (031_bankrec_import.sql)
+- [x] `api_bankrec_suggest(p_document_id)` gợi ý matching PMT/RCPT theo amount + date + description — PASS
+- [x] `/api/bankrec/import` route: parse CSV (ngân hàng VN) hoặc OFX, multipart hoặc JSON — PASS
+- [x] `/api/bankrec/suggest` route: proxy RPC trả gợi ý matching — PASS
+- [x] Chỉ import khi BANKREC ở DRAFT; amount=0 bị bỏ qua với error report — PASS (T20.2)
+- [x] T20.1 (bulk import 3 dòng), T20.2 (DRAFT guard + zero skip), T20.3 (suggest match PMT) — PASS
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH
+- [x] npx next lint .......................... SẠCH
+- [x] npm run test:acceptance ................ T20.1–T20.3 PASS
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS
+- [x] Acceptance test map tới thay đổi ....... T20.1, T20.2, T20.3
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; chỉ EXECUTE api_bankrec_import + api_bankrec_suggest
+- [x] Không tạo bảng mới — dùng document_lines có sẵn
+- [ ] docs/app-map/NNN-bankrec.md — chưa viết (nợ nhỏ)
+- [x] Đã commit ngay. Commit: `828fe36`
+- [x] Đã tick [x] WP-H2 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại: CSV parser heuristic (detect header column by Vietnamese keywords); OFX parser đơn giản (không hỗ trợ OFX 2.x XML); app-map chưa viết.
+Ảnh hưởng gói sau: UI trang BANKREC có thể dùng suggest để hiện gợi ý matching trước khi user bấm Match.
+
+### Bàn giao WP-H3  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] `docs/deployment.md`: kiến trúc triển khai, quy trình phát hành, rollback (Vercel + DB), backup policy (PITR + pg_dump), DR drill template — PASS
+- [x] RPO ≤ 1 giờ (PITR liên tục + pg_dump hàng ngày), RTO ≤ 4 giờ (restore + acceptance test) — PASS (documented + verification steps)
+- [x] `api_health_check()` RPC: kiểm tra 10 core tables, 4 config checks, migration version — PASS (032_health_check.sql)
+- [x] CI gate: tee test output → grep T3.1–T3.4 → exit 1 nếu fail — PASS (.github/workflows/ci.yml)
+- [x] T21.1 (health check trả tables/checks/version), T21.2 (anon accessible) — PASS
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH
+- [x] npx next lint .......................... SẠCH
+- [x] npm run test:acceptance ................ T21.1–T21.2 PASS
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS
+- [x] Acceptance test map tới thay đổi ....... T21.1, T21.2
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; api_health_check GRANT anon + authenticated
+- [x] Không tạo bảng mới
+- [x] docs/deployment.md đã viết mới
+- [x] Đã commit ngay. Commit: `967dd64`
+- [x] Đã tick [x] WP-H3 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại: CI gate phụ thuộc output format của `node:test` (grep "not ok"/"ok"); nếu test runner thay đổi format cần cập nhật grep pattern.
+Ảnh hưởng gói sau: Monitoring/uptime check có thể gọi api_health_check() qua Supabase REST.
