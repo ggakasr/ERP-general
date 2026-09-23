@@ -974,7 +974,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-J1 | 2026-09-21 | 71aa36e | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | dark mode via @media; Inter font removed; Skeleton + Breadcrumb mới |
 | WP-J2 | 2026-09-21 | 7df1587, cbe640d, 31d6f99, 53a128d, c35824e | (frontend-only — không đụng DB; T3.1–T3.12 PASS) | ✅ | Skeleton KPI/Inbox/DocDetail; EmptyState CTA; ErrorBox retry; state matrix §9 DESIGN-SPEC |
 | WP-J3 | 2026-09-21 | 75c3cdd | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | Chuyển tất cả màu hardcode Tailwind sang semantic token (success/warning/info/destructive/muted); dark mode đầy đủ |
-| WP-J3 v2 | 2026-09-23 | pending | (frontend-only — T3.1–T3.4 không bị ảnh hưởng) | ✅ | Pass 2: 14 RED + 13 YELLOW defects sửa trong 10 file. useState→useEffect bug (schedule), cn() thay template string (notifications), SCOPE_CLASS semantic tokens (me), hardcode red/emerald→destructive/success (audit-trail, acceptance, trace), table headers uppercase tracking-wide, nhãn tiếng Anh→tiếng Việt (operations, schedule), empty states với icon (operations/[id]) |
+| WP-J3 v2 | 2026-09-23 | `b3373a6` | (frontend-only — T3.1–T3.4 không bị ảnh hưởng) | ✅ | Pass 2: 14 RED + 13 YELLOW defects sửa trong 10 file. useState→useEffect bug (schedule), cn() thay template string (notifications), SCOPE_CLASS semantic tokens (me), hardcode red/emerald→destructive/success (audit-trail, acceptance, trace), table headers uppercase tracking-wide, nhãn tiếng Anh→tiếng Việt (operations, schedule), empty states với icon (operations/[id]) |
 | WP-J4 | 2026-09-21 | 57e2610 | T1.1 (tạo doc SHIPMENT) | ✅ | DB layer minimal WP-C1 (011_shipment.sql): containers, shipment_charges, tracking_events, api_list_shipments, api_get_shipment; UI: card list + detail 5 tab; "Lãi hết hạn" badge; acceptance T3.1–T3.4 running |
 | WP-J4 bugfix | 2026-09-23 | 015bb91 | T7.2 (api_get_shipment) | ✅ | Fix arg order fn_available_actions(v_doc, v_me.id): 020_fix_api_get_shipment.sql; chi tiết shipment 5 tab xác nhận hoạt động đầy đủ |
 
@@ -1005,7 +1005,7 @@ Definition of Done chung:
 - [x] Không đụng DB — không cần kiểm tra quyền bảng
 - [x] docs/app-map/NNN-*.md — không cập nhật (không có thay đổi logic/flow)
 - [x] Đã tick [x] WP-J3 ở §2 (đã tick từ pass 1) và thêm 1 dòng WP-J3 v2 vào bảng §6.2
-- [ ] Commit(s): pending xác nhận từ user
+- [x] Commit(s): `b3373a6`
 
 **Files đã sửa (10 file, 27 defects):**
 1. `src/app/(app)/me/page.tsx` — SCOPE_CLASS 4 hardcode → semantic tokens (info/success/warning/primary)
