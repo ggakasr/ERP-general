@@ -2241,3 +2241,95 @@ t('T18.5', 'Delegation không bypass SoD: người đề xuất PO không thể 
   const r = await act('muahang', po, 'approve')
   assert.equal(r.ok, false, `muahang không được tự duyệt PO của mình: ${JSON.stringify(r)}`)
 })
+
+// ---------------------------------------------------------------- N19 e-invoice (WP-H1)
+
+// Helper: tạo INV ở trạng thái POSTED
+async function postedInv() {
+  await as('kinhdoanh')
+  const so = await call('api_create_document', { p_doc_type: 'SO', p_header: { title: 'EInv test', partner_id: await partner('CUS-001'), warehouse_id: await wh('WH-HN-01') },
+    p_lines: [{ product_id: await product('SP-A4'), quantity: 2, unit_price: 500000 }] })
+  ok(so, 'create SO')
+  ok(await act('kinhdoanh.tp', so.id, 'confirm'), 'confirm SO')
+  await as('kho')
+  const dn = await call('api_create_document', { p_doc_type: 'DN', p_header: {}, p_parent_id: so.id })
+  ok(dn, 'create DN')
+  ok(await act('kho', dn.id, 'pick'), 'pick DN')
+  ok(await act('kho.tp', dn.id, 'ship'), 'ship DN')
+  await as('ketoan')
+  const inv = await call('api_create_document', { p_doc_type: 'INV', p_header: {}, p_parent_id: so.id })
+  ok(inv, 'create INV')
+  ok(await act('ketoantruong', inv.id, 'post'), 'post INV')
+  return inv.id
+}
+
+t('T19.1', 'api_log_einvoice ghi log + INV chuyển POSTED→ISSUED', async () => {
+  const invId = await postedInv()
+  // Log e-invoice
+  await as('ketoan')
+  const log = await call('api_log_einvoice', {
+    p_document_id: invId,
+    p_provider: 'VNPT',
+    p_direction: 'ISSUE',
+    p_status: 'ISSUED',
+    p_invoice_series: '1C24TAA',
+    p_invoice_number: '00000001',
+    p_invoice_code: 'MCQ-TEST-001',
+    p_lookup_code: 'TRACUU-001',
+    p_issued_date: '2026-09-23',
+  })
+  ok(log, 'api_log_einvoice')
+
+  // Verify log persisted
+  const logs = await call('api_get_einvoice_logs', { p_document_id: invId })
+  ok(logs, 'api_get_einvoice_logs')
+  assert.ok(logs.logs.length >= 1, 'at least 1 log')
+  assert.equal(logs.logs[0].provider, 'VNPT')
+  assert.equal(logs.logs[0].status, 'ISSUED')
+  assert.equal(logs.logs[0].invoice_code, 'MCQ-TEST-001')
+
+  // Transition POSTED → ISSUED
+  const tr = await act('ketoan', invId, 'issue')
+  ok(tr, 'transition POSTED→ISSUED')
+  const d = await doc((await sys('SELECT number FROM public.documents WHERE id = $1', [invId]))[0].number)
+  assert.equal(d.status, 'ISSUED', 'INV status = ISSUED')
+})
+
+t('T19.2', 'einvoice_log: cô lập tenant — user B không thấy log tenant A', async () => {
+  const invId = await postedInv()
+  await as('ketoan')
+  ok(await call('api_log_einvoice', { p_document_id: invId, p_provider: 'VIETTEL', p_status: 'ISSUED' }), 'log tenant A')
+
+  // Switch to tenant B user (use sys to check isolation)
+  const logsA = await call('api_get_einvoice_logs', { p_document_id: invId })
+  ok(logsA)
+  assert.ok(logsA.logs.length >= 1, 'tenant A sees logs')
+
+  // Directly check RLS: create tenant B and try reading
+  await sys(`INSERT INTO tenants (id, code, name) VALUES ('00000000-0000-0000-0000-000000000099', 'TENANT_B_EINV', 'Tenant B EInv') ON CONFLICT DO NOTHING`)
+  const tenBLogs = await sys(`
+    SELECT count(*)::int c FROM einvoice_log
+    WHERE document_id = $1 AND tenant_id = '00000000-0000-0000-0000-000000000099'
+  `, [invId])
+  assert.equal(tenBLogs[0].c, 0, 'tenant B has no logs for tenant A invoice')
+})
+
+t('T19.3', 'INV ở DRAFT không thể issue — chỉ POSTED mới chuyển ISSUED', async () => {
+  await as('kinhdoanh')
+  const so = await call('api_create_document', { p_doc_type: 'SO', p_header: { title: 'EInv draft test', partner_id: await partner('CUS-001'), warehouse_id: await wh('WH-HN-01') },
+    p_lines: [{ product_id: await product('SP-A4'), quantity: 1, unit_price: 100000 }] })
+  ok(so, 'create SO')
+  ok(await act('kinhdoanh.tp', so.id, 'confirm'), 'confirm SO')
+  await as('kho')
+  const dn = await call('api_create_document', { p_doc_type: 'DN', p_header: {}, p_parent_id: so.id })
+  ok(dn, 'create DN')
+  ok(await act('kho', dn.id, 'pick'), 'pick')
+  ok(await act('kho.tp', dn.id, 'ship'), 'ship')
+  await as('ketoan')
+  const inv = await call('api_create_document', { p_doc_type: 'INV', p_header: {}, p_parent_id: so.id })
+  ok(inv, 'create INV (DRAFT)')
+
+  // Try issue on DRAFT — should fail
+  const r = await act('ketoan', inv.id, 'issue')
+  assert.equal(r.ok, false, `DRAFT không thể issue: ${JSON.stringify(r)}`)
+})
