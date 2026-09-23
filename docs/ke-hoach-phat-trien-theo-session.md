@@ -705,6 +705,34 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 
 ---
 
+### Bàn giao WP-J4 bugfix  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Danh sách shipment dạng card hoạt động đúng (`/operations`) — PASS, 5 cards từ RPC thật
+- [x] Chi tiết shipment nhiều tab (`/operations/[id]`) — PASS sau khi fix `api_get_shipment`
+- [x] Dữ liệu từ RPC thật — `api_list_shipments` PASS, `api_get_shipment` PASS sau fix
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ chạy song song (exit code 0 xác nhận qua b30az39nd)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔
+- [x] Acceptance test map tới thay đổi ....... T7.2 (api_get_shipment trả về containers, charges, tracking, profit)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) fix qua `020_fix_api_get_shipment.sql` — GRANT EXECUTE giữ nguyên cho authenticated, không cấp quyền bảng
+- [x] Đã commit ngay. Commit: `015bb91`
+- [x] Đã thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- `docs/app-map/NNN-operations-flow.md` chưa viết (nợ từ WP-J4)
+- `019_rates.sql` pending migration: FKey violation `permission_matrix` thiếu role SYSTEM_ADMIN — cần fix riêng
+- Migration 018_shipment_full đã apply thành công trong session này
+
+Ảnh hưởng gói sau:
+- `api_get_shipment` nay trả về `actions` đúng — giao diện có thể dùng state machine actions
+
+---
+
 ### Bàn giao WP-D1  (2026-09-21)
 
 Tiêu chí nghiệm thu riêng của gói (§3):
@@ -947,6 +975,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-J2 | 2026-09-21 | 7df1587, cbe640d, 31d6f99, 53a128d, c35824e | (frontend-only — không đụng DB; T3.1–T3.12 PASS) | ✅ | Skeleton KPI/Inbox/DocDetail; EmptyState CTA; ErrorBox retry; state matrix §9 DESIGN-SPEC |
 | WP-J3 | 2026-09-21 | 75c3cdd | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | Chuyển tất cả màu hardcode Tailwind sang semantic token (success/warning/info/destructive/muted); dark mode đầy đủ |
 | WP-J4 | 2026-09-21 | 57e2610 | T1.1 (tạo doc SHIPMENT) | ✅ | DB layer minimal WP-C1 (011_shipment.sql): containers, shipment_charges, tracking_events, api_list_shipments, api_get_shipment; UI: card list + detail 5 tab; "Lãi hết hạn" badge; acceptance T3.1–T3.4 running |
+| WP-J4 bugfix | 2026-09-23 | 015bb91 | T7.2 (api_get_shipment) | ✅ | Fix arg order fn_available_actions(v_doc, v_me.id): 020_fix_api_get_shipment.sql; chi tiết shipment 5 tab xác nhận hoạt động đầy đủ |
 
 > **Cách chủ dự án dùng**: mở bảng này xem cột *DoD đủ?* = ✅ và *Commit(s)* có hash là biết gói đã xong &
 > có bằng chứng. Chỉ cần soi kỹ những dòng *Ghi chú / nợ kỹ thuật* có nội dung.
