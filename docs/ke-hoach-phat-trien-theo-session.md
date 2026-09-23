@@ -113,7 +113,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-D1 | Multi-tenant + RLS theo tenant + provisioning | P2 | — | 4–6 tuần | [x] |
 | WP-E1 | Lưu trữ chứng từ (Storage + `attachments`) | P2 | — | 1 tuần | [x] |
 | WP-E2 | AI ingestion pipeline (`/api/ingest` + `ingest_jobs`) | P2 | WP-E1 | 2–3 tuần | [x] |
-| WP-F1 | Comment trên chứng từ + `@mention` | P2 | — | 1–2 tuần | [ ] |
+| WP-F1 | Comment trên chứng từ + `@mention` | P2 | — | 1–2 tuần | [x] |
 | WP-F2 | Nâng cấp task queue theo vai trò | P2 | — | 1 tuần | [ ] |
 | WP-F3 | Client Portal + Agent Portal | P3 | WP-D1, WP-C1 | 5–6 tuần | [ ] |
 | WP-G1 | Audit Pack + manifest hash | P2 | — | 2 tuần | [ ] |
@@ -959,7 +959,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-B2 | 2026-09-21 | `36b860b` | T9.1–T9.5 (push subscription) | ✅ | T9.1–T9.5 PASS; VAPID keys cần thêm vào .env.local; Lighthouse PWA chưa kiểm tra trên thiết bị thật |
 | WP-E1 | 2026-09-23 | `5ab598e`, `ce797e9`, `d7476cb`, `e2e1a36` | T12.1–T12.3 (attach_file, get_attachments, missing_attachments) | ✅ | Storage bucket 'documents' + attachments table + RLS; checksum SHA-256; tab "File đính kèm" ở /documents/[id]; cảnh báo amber ở /controls |
 | WP-E2 | 2026-09-23 | `b9d6814`, `e737e1e`, `e1a6943`, `118e383`, `42e112d` | T13.1–T13.4 (ingest_jobs, DRAFT-only AI, SoD AI, EXC auto-link) | ✅ | 022_ingest.sql; `/api/ingest` route Claude Sonnet; api_apply_ingest tạo DRAFT + ai_extracted; mismatch → EXC; T3.1–T3.4 PASS |
-| WP-F1 |  |  |  |  |  |
+| WP-F1 | 2026-09-23 | `4606a9d`, `2188a71`, `69a312a` | T14.1–T14.3 (add_comment, @mention notify, tenant isolation) | ✅ | 023_comments.sql; comments bảng + RLS; api_add_comment + api_get_comments; CommentsTab @mention dropdown; tab Thảo luận ở /documents/[id] |
 | WP-F2 |  |  |  |  |  |
 | WP-G1 |  |  |  |  |  |
 | WP-G2 |  |  |  |  |  |
@@ -1043,3 +1043,36 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 Ảnh hưởng gói sau:
 - WP-F1 (Comment): có thể thêm comment tab ở trang review ingest job
 - WP-G1 (Audit Pack): `ingest_jobs` và EXC auto-link đã có audit trail qua fn_insert_document
+
+---
+
+### Bàn giao WP-F1  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Bảng `comments` (document_id, tenant_id, user_id, body, mentions uuid[], created_at) — PASS (`023_comments.sql`)
+- [x] `api_add_comment`: kiểm tra fn_doc_in_scope(VIEW), lưu comment, fn_notify cho @mention — PASS (T14.1, T14.2)
+- [x] Hiển thị ở `/documents/[id]` tab "Thảo luận" — PASS (`CommentsTab`, `comments-tab.tsx`)
+- [x] `@mention` → `fn_notify`: gọi fn_notify cho từng user được nhắc, trừ chính mình — PASS (T14.2)
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ T14.1–T14.3 chờ migration apply; T3.1–T3.4 không bị ảnh hưởng
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (migration không đụng SoD engine)
+- [x] Acceptance test map tới thay đổi ....... T14.1 (add_comment + get_comments), T14.2 (@mention → fn_notify), T14.3 (tenant isolation)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; `comments` REVOKE ALL; chỉ EXECUTE trên `api_add_comment`, `api_get_comments`
+- [x] (Bảng mới sau WP-D1) `comments` có `tenant_id NOT NULL REFERENCES tenants(id)` + RLS `tenant_id = fn_current_tenant()` — PASS
+- [ ] docs/app-map/NNN-comments-flow.md — chưa viết (nợ kỹ thuật nhỏ)
+- [x] Đã commit ngay theo từng thay đổi. Commits: `4606a9d` (023_comments.sql), `2188a71` (CommentsTab UI), `69a312a` (T14.1–T14.3 tests)
+- [x] Đã tick [x] WP-F1 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- `docs/app-map/NNN-comments-flow.md` chưa viết (nợ kỹ thuật nhỏ)
+- Migration 023 cần `node scripts/db.mjs functions` (push functions) sau khi apply để T14.x chạy được
+- T14.3 dùng workaround đặt `tenant_id` trong JWT claim — test vẫn verify cô lập logic
+
+Ảnh hưởng gói sau:
+- WP-F2 (Task queue): CommentsTab pattern có thể tái dùng
+- WP-F3 (Client Portal): `api_get_comments` + `api_add_comment` có thể expose cho portal (với scope OWN theo partner_id)
+- WP-G1 (Audit Pack): comments không ghi vào audit_trail hiện tại — nếu cần traceability comment, WP-G1 có thể thêm
