@@ -118,7 +118,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-F3 | Client Portal + Agent Portal | P3 | WP-D1, WP-C1 | 5–6 tuần | [ ] |
 | WP-G1 | Audit Pack + manifest hash | P2 | — | 2 tuần | [x] |
 | WP-G2 | Audit trail tamper-evident (hash-chain) | P2 | — | 1 tuần | [x] |
-| WP-G3 | Duyệt đa cấp + SoD theo mức rủi ro + delegation | P2 | — | 2–3 tuần | [ ] |
+| WP-G3 | Duyệt đa cấp + SoD theo mức rủi ro + delegation | P2 | — | 2–3 tuần | [x] |
 | WP-G4 | Widget phát hiện bất thường (risk alerts) | P2 | WP-B1 | 1 tuần | [ ] |
 | WP-H1 | Hoá đơn điện tử (adapter + `einvoice_log`) | P2 | — | 2–3 tuần | [ ] |
 | WP-H2 | Import & đối chiếu sao kê ngân hàng | P2 | — | 1–2 tuần | [ ] |
@@ -963,7 +963,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-F2 | 2026-09-23 | `334f331`, `319b4a6`, `1ceb703`, `f251767`, `cf3ce06` | T15.1–T15.4 (api_tasks role_groups, APPROVE group, SLA priority, tenant isolation) | ✅ | 024_tasks.sql api_tasks(); useTasks() hook; /tasks role-group tabs; 025_fix_handoff_tenant.sql; 026_fix_fn_notify.sql; T3.1–T3.4 PASS; 87/107 PASS (20 pre-existing) |
 | WP-G1 | 2026-09-23 | `24c2be5`, `7161942` | T16.1–T16.3 (api_audit_pack hash stable, hash changes on mutation, scope BUYER≠JV) | ✅ | 027_audit_pack.sql; api_audit_pack(from,to,scope) SECURITY DEFINER; 6 sections (audit_trail/sod/links/handoff/exc/gl) + SHA-256 manifest; T3.1–T3.4 PASS |
 | WP-G2 | 2026-09-23 | `61a89bd` | T17.1–T17.3 (api_audit_chain_verify ok/tamper/chain) | ✅ | 028_audit_hash_chain.sql; fn_audit_row() tính SHA-256 chain (pg_advisory_xact_lock); api_audit_chain_verify() SECURITY DEFINER; T17.1–T17.3 PASS full suite |
-| WP-G3 |  |  |  |  |  |
+| WP-G3 | 2026-09-23 | `32ec1a5` | T18.1–T18.5 (approval chain + delegation SoD + chain_complete + delegate approve) | ✅ | 029_multi_level_approval.sql; approval_chains/steps/log + delegations; fn_doc_in_scope delegate branch; chain_complete condition; T3.1–T3.4 PASS; T18.1–T18.5 PASS |
 | WP-H1 |  |  |  |  |  |
 | WP-H2 |  |  |  |  |  |
 | WP-H3 |  |  |  |  |  |
@@ -1176,3 +1176,40 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 Ảnh hưởng gói sau:
 - WP-G1 (Audit Pack): `api_audit_pack` manifest có thể bổ sung kiểm tra chain bằng cách gọi `api_audit_chain_verify` và ghi kết quả vào manifest
 - WP-G4 (Risk alerts): có thể thêm alert khi `api_audit_chain_verify` trả `ok=false`
+
+---
+
+### Bàn giao WP-G3  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] `approval_chains` + `approval_chain_steps`: cấu hình chuỗi duyệt theo `doc_type` + `min_amount`/`max_amount`; seed PO ≥ 50 triệu với 2 bước (PROC_MANAGER → CFO) — PASS (`029_multi_level_approval.sql`)
+- [x] `approval_chain_log`: immutable (trigger `trg_chain_log_immutable` chặn UPDATE/DELETE); UNIQUE (document_id, step_id) — mỗi bước chỉ duyệt 1 lần — PASS
+- [x] `fn_check_condition` mở rộng với case `chain_complete`: tìm chain phù hợp (doc_type + amount), kiểm tra từng bước, trả thông báo tiếng Việt khi còn bước chờ — PASS (T18.4)
+- [x] `state_transitions.conditions` cho PO → `approve` được append `chain_complete`; PO < 50 triệu không có chain → condition pass ngay — PASS
+- [x] `delegations`: time-bounded (`valid_from`/`valid_until`); `delegations_no_self` check; SoD block khi delegate có quyền CREATE trên doc_type được uỷ quyền APPROVER — PASS (T18.1)
+- [x] `api_create_delegation`: kiểm tra `fn_perm_scope(delegate, doc_type, 'CREATE') > 0` → trả `SOD_VIOLATION` — PASS (T18.1)
+- [x] `fn_doc_in_scope` mở rộng: khi `fn_perm_scope` = 0 cho APPROVE, tra `delegations` → dùng scope của delegator; tenant isolation giữ nguyên — PASS (T18.2, T18.3)
+- [x] T3.1–T3.4 (SoD blocker) vẫn PASS sau khi thêm delegation — PASS (T18.5)
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi; chỉ đụng SQL + test JS)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ T18.1–T18.5 PASS; T3.1–T3.4 PASS
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (cùng user không tạo+duyệt cùng PO; mọi attempt bị log)
+- [x] Acceptance test map tới thay đổi ....... T18.1 (SOD_VIOLATION khi uỷ quyền sai), T18.2 (tạo delegation hợp lệ), T18.3 (delegate duyệt thành công), T18.4 (chain_complete chặn duyệt khi chưa đủ bước), T18.5 (SoD vẫn block dù có delegation)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; 4 bảng mới REVOKE + chỉ EXECUTE api_*; SECURITY DEFINER trên toàn bộ api_* mới
+- [x] (Bảng mới sau WP-D1) `approval_chains`, `approval_chain_steps`, `approval_chain_log`, `delegations` đều có `tenant_id NOT NULL REFERENCES tenants(id)` + RLS `tenant_id = fn_current_tenant()`
+- [ ] docs/app-map/NNN-approval-flow.md — chưa viết (nợ kỹ thuật nhỏ)
+- [x] Đã commit ngay. Commit: `32ec1a5` (029_multi_level_approval.sql + T18.1–T18.5)
+- [x] Đã tick [x] WP-G3 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- `docs/app-map/NNN-approval-flow.md` chưa viết
+- `node scripts/db.mjs functions` ghi đè `fn_after_status_change` / `fn_notify` / `fn_audit_row` từ 004_engine.sql, phá vỡ fix từ migrations 025–028; cần re-apply các migration đó sau mỗi lần chạy `db.mjs functions`
+- Chain hiện chỉ seed cho PO ≥ 50 triệu; các doc_type khác (PMT, JV lớn) chưa có chain — bổ sung trong config (003_config hoặc migration mới)
+
+Ảnh hưởng gói sau:
+- WP-G4 (Risk alerts): có thể thêm alert khi chuỗi duyệt bị trễ (SLA per step)
+- WP-H (tích hợp): `api_submit_chain_step` có thể expose qua webhook/email để approver duyệt từ email
+- WP-F3 (Client Portal): delegate approval flow có thể tích hợp cho external approver
