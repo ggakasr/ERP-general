@@ -1587,3 +1587,142 @@ t('T12.3', 'api_missing_attachments — cảnh báo chứng từ chưa đính k�
   assert.equal(rForbid.ok, false, 'ketoan không có quyền → fail')
   assert.equal(rForbid.code, 'FORBIDDEN', 'code = FORBIDDEN')
 })
+
+// ════════════════════════════════════════════════════════════════════
+// N13 — AI Ingestion Pipeline (WP-E2)
+// ════════════════════════════════════════════════════════════════════
+
+t('T13.1', 'api_create_ingest_job — tạo job thành công, bảng ingest_jobs tồn tại', async () => {
+  // Bảng phải tồn tại
+  const tbl = await sys(
+    `SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='ingest_jobs'`
+  )
+  assert.equal(tbl.length, 1, 'ingest_jobs table exists')
+
+  await as('muahang')
+  const r = await call('api_create_ingest_job', { p_doc_type: 'PR', p_source_type: 'UPLOAD' })
+  ok(r, 'api_create_ingest_job returns ok')
+  assert.ok(r.id, 'returns job id')
+
+  // Kiểm tra job tồn tại trong bảng (bypass RLS)
+  const rows = await sys(`SELECT id, status, doc_type FROM public.ingest_jobs WHERE id = $1`, [r.id])
+  assert.equal(rows.length, 1, 'job persisted in ingest_jobs table')
+  assert.equal(rows[0].status, 'PENDING', 'initial status is PENDING')
+  assert.equal(rows[0].doc_type, 'PR', 'doc_type is PR')
+})
+
+t('T13.2', 'api_apply_ingest — chỉ tạo DRAFT với ai_extracted=true, không SUBMIT/APPROVE/POST', async () => {
+  await as('muahang')
+
+  // Tạo ingest job
+  const job = await call('api_create_ingest_job', { p_doc_type: 'PR', p_source_type: 'UPLOAD' })
+  ok(job, 'job created')
+
+  // Áp dụng kết quả AI extraction (mock data)
+  const extracted = { title: 'Test AI Import', amount: 5000000 }
+  const r = await call('api_apply_ingest', {
+    p_job_id:     job.id,
+    p_extracted:  extracted,
+    p_confidence: 0.9,
+  })
+  ok(r, `api_apply_ingest ok: ${JSON.stringify(r)}`)
+  assert.equal(r.ai_extracted, true, 'ai_extracted = true')
+  assert.ok(r.id, 'document id returned')
+  assert.equal(r.status, 'DRAFT', 'document status is DRAFT')
+
+  // Kiểm tra document_actions: chỉ có action 'create', không có submit/approve/post
+  const actions = await sys(
+    `SELECT action FROM public.document_actions WHERE document_id = $1 ORDER BY created_at`,
+    [r.id]
+  )
+  const actionNames = actions.map((a) => a.action)
+  assert.ok(actionNames.includes('create'), 'has create action')
+  assert.ok(!actionNames.includes('submit'), 'AI did NOT submit the document')
+  assert.ok(!actionNames.includes('approve'), 'AI did NOT approve the document')
+  assert.ok(!actionNames.includes('post'), 'AI did NOT post the document')
+
+  // Kiểm tra data có ai_extracted + confidence
+  const [docRow] = await sys(`SELECT data FROM public.documents WHERE id = $1`, [r.id])
+  assert.equal(docRow.data.ai_extracted, true, 'data.ai_extracted = true')
+  assert.ok(docRow.data.confidence > 0, 'data.confidence recorded')
+  assert.ok(docRow.data.ingest_job_id, 'data.ingest_job_id recorded')
+
+  // Kiểm tra job status được cập nhật
+  const [jobRow] = await sys(
+    `SELECT status, created_document_id FROM public.ingest_jobs WHERE id = $1`, [job.id]
+  )
+  assert.equal(jobRow.status, 'DONE', 'job status = DONE')
+  assert.equal(jobRow.created_document_id, r.id, 'job.created_document_id = document id')
+})
+
+t('T13.3', 'SoD: user tạo chứng từ qua AI ingestion không thể tự phê duyệt', async () => {
+  // muahang tạo PR qua AI ingestion (ghi record document_actions với create_sod_role = REQUESTER)
+  await as('muahang')
+  const job = await call('api_create_ingest_job', { p_doc_type: 'PR', p_source_type: 'UPLOAD' })
+  ok(job, 'job created')
+  const r = await call('api_apply_ingest', {
+    p_job_id:     job.id,
+    p_extracted:  { title: 'PR AI T13.3', amount: 1000000 },
+    p_confidence: 0.8,
+  })
+  ok(r, 'AI created DRAFT PR')
+  const prId = r.id
+
+  // muahang submit (vẫn ổn — là REQUESTER)
+  const submitR = await act('muahang', prId, 'submit')
+  ok(submitR, 'muahang can submit own PR')
+
+  // muahang cố approve chính PR mình tạo → SoD violation (REQUESTER ≠ APPROVER)
+  const approveR = await act('muahang', prId, 'approve')
+  assert.equal(approveR.ok, false, 'SoD: muahang cannot approve their own AI-ingested PR')
+  assert.ok(
+    approveR.code === 'SOD_VIOLATION' || approveR.code === 'FORBIDDEN',
+    `expected SOD_VIOLATION or FORBIDDEN, got: ${approveR.code} — ${JSON.stringify(approveR)}`
+  )
+
+  // Trạng thái vẫn SUBMITTED — không bị thay đổi
+  const [row] = await sys('SELECT status FROM public.documents WHERE id = $1', [prId])
+  assert.equal(row.status, 'SUBMITTED', 'PR remains SUBMITTED after blocked approve attempt')
+})
+
+t('T13.4', 'api_apply_ingest: sai lệch master data → tự động tạo và liên kết EXC', async () => {
+  await as('muahang')
+
+  const job = await call('api_create_ingest_job', { p_doc_type: 'PR', p_source_type: 'UPLOAD' })
+  ok(job, 'job created')
+
+  // partner_code không tồn tại trong DB → phải sinh EXC
+  const FAKE_PARTNER = 'FAKE-PARTNER-T13.4-XYZ'
+  const FAKE_PRODUCT = 'FAKE-PRODUCT-T13.4-ABC'
+  const r = await call('api_apply_ingest', {
+    p_job_id: job.id,
+    p_extracted: {
+      title:        'AI Import mismatch test',
+      partner_code: FAKE_PARTNER,
+      amount:       999,
+      lines: [{ product_code: FAKE_PRODUCT, quantity: 1, unit_price: 999 }],
+    },
+    p_confidence: 0.5,
+  })
+  ok(r, `api_apply_ingest ok with mismatches: ${JSON.stringify(r)}`)
+  assert.ok(r.exceptions >= 2, `expected ≥2 exceptions (partner + product), got ${r.exceptions}`)
+
+  // Job phải DONE_WITH_EXCEPTIONS
+  const [jobRow] = await sys(
+    `SELECT status FROM public.ingest_jobs WHERE id = $1`, [job.id]
+  )
+  assert.equal(jobRow.status, 'DONE_WITH_EXCEPTIONS', 'job status = DONE_WITH_EXCEPTIONS')
+
+  // Phải có ≥2 EXC liên kết với chứng từ qua EXCEPTION link
+  const links = await sys(
+    `SELECT dl.link_type, d.doc_type, d.status, d.data->>'exception_type' AS exc_type
+     FROM public.document_links dl
+     JOIN public.documents d ON d.id = dl.child_id
+     WHERE dl.parent_id = $1 AND dl.link_type = 'EXCEPTION'`,
+    [r.id]
+  )
+  assert.ok(links.length >= 2, `expected ≥2 EXCEPTION links, got ${links.length}`)
+  assert.ok(links.every((l) => l.doc_type === 'EXC'), 'all linked docs are EXC type')
+  assert.ok(links.every((l) => l.status === 'RAISED'), 'all EXC are in RAISED status')
+  assert.ok(links.every((l) => l.exc_type === 'DATA_MISMATCH'), 'all EXC have exception_type=DATA_MISMATCH')
+})
