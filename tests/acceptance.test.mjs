@@ -1841,3 +1841,105 @@ t('T14.3', 'api_get_comments từ chối user tenant khác (cô lập tenant)', 
   const safeTenantIsolation = !res.ok || (res.ok && res.comments.length === 0)
   assert.ok(safeTenantIsolation, `tenant B không thấy comment tenant A: ${JSON.stringify(res)}`)
 })
+
+// ---------------------------------------------------------------- N6 task queue (WP-F2)
+
+t('T15.1', 'api_tasks trả về rows có trường role_groups và primary_role_group', async () => {
+  const poId = await newPo('muahang')
+  ok(await act('muahang', poId, 'submit'), 'submit PO')
+
+  // muahang.tp (PROC_MANAGER / APPROVER) gọi api_tasks
+  await as('muahang.tp')
+  const r = await call('api_tasks')
+  ok(r, 'api_tasks ok')
+
+  const rows = Array.isArray(r.rows) ? r.rows : JSON.parse(r.rows)
+  assert.ok(rows.length > 0, 'rows não vazio')
+
+  const task = rows.find((row) => row.document.id === poId)
+  assert.ok(task, 'PO SUBMITTED xuất hiện trong api_tasks')
+  assert.ok(Array.isArray(task.role_groups), `role_groups là mảng: ${JSON.stringify(task.role_groups)}`)
+  assert.ok(typeof task.primary_role_group === 'string', `primary_role_group là string: ${task.primary_role_group}`)
+  assert.ok(typeof task.sla_priority === 'number', `sla_priority là number: ${task.sla_priority}`)
+})
+
+t('T15.2', 'action APPROVER → role_groups chứa APPROVE, primary_role_group = APPROVE', async () => {
+  const poId = await newPo('muahang')
+  ok(await act('muahang', poId, 'submit'), 'submit PO')
+
+  // PO SUBMITTED → handoff to PROC_MANAGER (approve action, sod_role = APPROVER)
+  await as('muahang.tp')
+  const r = await call('api_tasks')
+  ok(r, 'api_tasks ok')
+
+  const rows = Array.isArray(r.rows) ? r.rows : JSON.parse(r.rows)
+  const task = rows.find((row) => row.document.id === poId)
+  assert.ok(task, 'PO in tasks')
+
+  const groups = Array.isArray(task.role_groups) ? task.role_groups : JSON.parse(task.role_groups)
+  assert.ok(groups.includes('APPROVE'), `role_groups chứa APPROVE: ${JSON.stringify(groups)}`)
+  assert.equal(task.primary_role_group, 'APPROVE', 'primary_role_group = APPROVE')
+
+  // counts object phải có key APPROVE >= 1
+  assert.ok((r.counts?.APPROVE ?? 0) >= 1, `counts.APPROVE >= 1: ${JSON.stringify(r.counts)}`)
+})
+
+t('T15.3', 'tasks sắp xếp SLA priority: BREACHED (0) trước ON_TIME (2)', async () => {
+  const po1 = await newPo('muahang')
+  ok(await act('muahang', po1, 'submit'), 'submit po1')
+  const po2 = await newPo('muahang')
+  ok(await act('muahang', po2, 'submit'), 'submit po2')
+
+  // Đặt sla_due_at của po1 thành quá khứ → BREACHED
+  await db.query('RESET ROLE')
+  await db.query(
+    `UPDATE public.handoff_records SET sla_due_at = now() - interval '1 hour'
+     WHERE document_id = $1 AND status = 'INITIATED'`,
+    [po1]
+  )
+
+  await as('muahang.tp')
+  const r = await call('api_tasks')
+  ok(r, 'api_tasks ok')
+
+  const rows = Array.isArray(r.rows) ? r.rows : JSON.parse(r.rows)
+  const t1 = rows.find((row) => row.document.id === po1)
+  const t2 = rows.find((row) => row.document.id === po2)
+  assert.ok(t1, 'po1 in tasks')
+  assert.ok(t2, 'po2 in tasks')
+
+  assert.equal(t1.sla_priority, 0, `po1 sla_priority = 0 (BREACHED)`)
+  assert.ok(t1.sla_priority < t2.sla_priority,
+    `BREACHED (${t1.sla_priority}) phải nhỏ hơn ON_TIME/null (${t2.sla_priority})`)
+})
+
+t('T15.4', 'api_tasks không lộ tasks của tenant khác', async () => {
+  const poId = await newPo('muahang')
+  ok(await act('muahang', poId, 'submit'), 'submit PO')
+
+  const TENANT_B = '00000000-0000-0000-0000-000000000099'
+  await sys(
+    `INSERT INTO public.tenants (id, name, code, status)
+     VALUES ('${TENANT_B}', 'Tenant B Tasks Test', 'TENBT', 'ACTIVE')
+     ON CONFLICT (id) DO NOTHING`
+  )
+
+  // Đổi muahang.tp sang tenant B
+  const tpId = await id('app_users', "email = 'muahang.tp@erp.demo'")
+  await db.query('RESET ROLE')
+  await db.query('SET LOCAL ROLE authenticated')
+  await db.query(`SELECT set_config('request.jwt.claim.sub', $1, true)`, [tpId])
+  await db.query(`SELECT set_config('request.jwt.claim.tenant_id', '${TENANT_B}', true)`)
+  await db.query(
+    `SELECT set_config('request.jwt.claims',
+      jsonb_build_object('sub', $1::text, 'role', 'authenticated', 'tenant_id', '${TENANT_B}')::text, true)`,
+    [tpId]
+  )
+
+  const r = await call('api_tasks')
+  assert.ok(r.ok, 'api_tasks trả ok dù tenant B')
+
+  const rows = Array.isArray(r.rows) ? r.rows : JSON.parse(r.rows)
+  const found = rows.find((row) => row.document.id === poId)
+  assert.ok(!found, 'Tenant B không thấy PO của Tenant A trong api_tasks')
+})
