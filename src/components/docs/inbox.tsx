@@ -14,7 +14,13 @@ export interface InboxRow {
   document: DocumentRow
   actions: AvailableAction[]
   blocked_by_sod: boolean
-  handoff: { expected_action: string; sla_due_at: string; sla_status: string } | null
+  handoff: { expected_action: string; sla_due_at: string; sla_status: string; to_role?: string } | null
+}
+
+export interface TaskRow extends InboxRow {
+  role_groups: string[]
+  primary_role_group: string
+  sla_priority: number
 }
 
 export function useInbox() {
@@ -29,6 +35,22 @@ export function useInbox() {
     load()
   }, [load])
   return { rows, error, reload: load }
+}
+
+export function useTasks() {
+  const [rows, setRows] = useState<TaskRow[] | null>(null)
+  const [counts, setCounts] = useState<Record<string, number>>({})
+  const [error, setError] = useState<string | null>(null)
+  const load = useCallback(async () => {
+    const res = await rpc<{ rows: TaskRow[]; counts: Record<string, number> }>("api_tasks")
+    if (!res.ok) return setError(res.error || "Lỗi")
+    setRows(res.rows)
+    setCounts(res.counts || {})
+  }, [])
+  useEffect(() => {
+    load()
+  }, [load])
+  return { rows, counts, error, reload: load }
 }
 
 export function InboxList({ rows, limit, onReload }: { rows: InboxRow[] | null; limit?: number; onReload?: () => void }) {
