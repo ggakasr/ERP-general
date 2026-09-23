@@ -1734,3 +1734,107 @@ t('T13.4', 'api_apply_ingest: sai lệch master data → tự động tạo và 
   assert.ok(links.every((l) => l.status === 'RAISED'), 'all EXC are in RAISED status')
   assert.ok(links.every((l) => l.exc_type === 'DATA_MISMATCH'), 'all EXC have exception_type=DATA_MISMATCH')
 })
+
+// ─────────────────────────────────────────────────────────────
+// N1/N2: WP-F1 — Comment trên chứng từ + @mention
+// ─────────────────────────────────────────────────────────────
+
+t('T14.1', 'api_add_comment tạo comment gắn vào chứng từ', async () => {
+  // muahang tạo PO
+  const poId = await newPo('muahang')
+
+  // muahang thêm comment
+  await as('muahang')
+  const r = await call('api_add_comment', {
+    p_document_id: poId,
+    p_body:        'Kiểm tra lại số lượng dòng 1 nhé.',
+    p_mentions:    [],
+  })
+  ok(r, 'api_add_comment returns ok')
+  assert.ok(r.id, 'comment id returned')
+  assert.equal(r.user_name, 'Nguyễn Mua Hàng', 'user_name returned')
+
+  // api_get_comments trả về comment vừa tạo
+  const list = await call('api_get_comments', { p_document_id: poId })
+  ok(list, 'api_get_comments ok')
+  assert.equal(list.comments.length, 1, 'one comment visible')
+  assert.equal(list.comments[0].body, 'Kiểm tra lại số lượng dòng 1 nhé.', 'body matches')
+  assert.equal(list.comments[0].user_name, 'Nguyễn Mua Hàng', 'user_name in list')
+})
+
+t('T14.2', '@mention trong comment → fn_notify gửi thông báo cho người được nhắc', async () => {
+  // muahang tạo PO
+  const poId = await newPo('muahang')
+
+  // lấy id của muahang.tp (người sẽ được mention)
+  const tpId = await id('app_users', "email = 'muahang.tp@erp.demo'")
+  assert.ok(tpId, 'muahang.tp user exists')
+
+  // đếm notifications của muahang.tp trước khi comment
+  const [before] = await sys(
+    `SELECT count(*) AS cnt FROM public.notifications WHERE user_id = $1`, [tpId]
+  )
+  const beforeCount = Number(before.cnt)
+
+  // muahang thêm comment @mention muahang.tp
+  await as('muahang')
+  const r = await call('api_add_comment', {
+    p_document_id: poId,
+    p_body:        `@Nguyễn Trưởng Phòng Mua Hàng bạn xem giúp mình.`,
+    p_mentions:    [tpId],
+  })
+  ok(r, 'comment with mention ok')
+
+  // kiểm tra muahang.tp nhận được notification
+  const [after] = await sys(
+    `SELECT count(*) AS cnt FROM public.notifications WHERE user_id = $1`, [tpId]
+  )
+  const afterCount = Number(after.cnt)
+  assert.ok(afterCount > beforeCount, `muahang.tp nhận thêm notification (${beforeCount} → ${afterCount})`)
+
+  // nội dung notification trỏ đúng document
+  const [notif] = await sys(
+    `SELECT title, document_id FROM public.notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [tpId]
+  )
+  assert.equal(notif.document_id, poId, 'notification document_id matches PO')
+  assert.ok(notif.title.includes('được nhắc đến'), `notification title mentions: ${notif.title}`)
+})
+
+t('T14.3', 'api_get_comments từ chối user tenant khác (cô lập tenant)', async () => {
+  // muahang tạo PO trong tenant mặc định
+  const poId = await newPo('muahang')
+
+  // muahang thêm comment
+  await as('muahang')
+  ok(await call('api_add_comment', {
+    p_document_id: poId,
+    p_body:        'Comment từ tenant A',
+    p_mentions:    [],
+  }), 'comment added')
+
+  // tạo tenant B và user trong tenant B
+  await db.query('RESET ROLE')
+  const TENANT_B = '00000000-0000-0000-0000-000000000099'
+  await db.query(`
+    INSERT INTO public.tenants (id, name, code, status)
+    VALUES ('${TENANT_B}', 'Tenant B Test', 'TENB', 'ACTIVE')
+    ON CONFLICT (id) DO NOTHING
+  `)
+
+  // user của tenant B không được thấy comment của tenant A
+  // dùng muahang nhưng đổi tenant context sang B
+  await db.query('SET LOCAL ROLE authenticated')
+  await db.query(`SELECT set_config('request.jwt.claim.sub',
+    (SELECT id::text FROM public.app_users WHERE email = 'muahang@erp.demo' LIMIT 1), true)`)
+  await db.query(`SELECT set_config('request.jwt.claims',
+    jsonb_build_object('sub', (SELECT id::text FROM public.app_users WHERE email = 'muahang@erp.demo' LIMIT 1),
+                       'role', 'authenticated',
+                       'tenant_id', '${TENANT_B}')::text, true)`)
+
+  // gọi api_get_comments — chứng từ thuộc tenant A nên bị FORBIDDEN hoặc trả 0 comment
+  const res = await call('api_get_comments', { p_document_id: poId })
+  // expected: either NOT_FOUND / FORBIDDEN (tenant mismatch) or comments array empty
+  const safeTenantIsolation = !res.ok || (res.ok && res.comments.length === 0)
+  assert.ok(safeTenantIsolation, `tenant B không thấy comment tenant A: ${JSON.stringify(res)}`)
+})
