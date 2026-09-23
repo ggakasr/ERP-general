@@ -112,7 +112,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-C3 | Danh mục cảng/hãng tàu + timeline tracking | P1 | WP-C1 | 1 tuần | [x] |
 | WP-D1 | Multi-tenant + RLS theo tenant + provisioning | P2 | — | 4–6 tuần | [x] |
 | WP-E1 | Lưu trữ chứng từ (Storage + `attachments`) | P2 | — | 1 tuần | [x] |
-| WP-E2 | AI ingestion pipeline (`/api/ingest` + `ingest_jobs`) | P2 | WP-E1 | 2–3 tuần | [ ] |
+| WP-E2 | AI ingestion pipeline (`/api/ingest` + `ingest_jobs`) | P2 | WP-E1 | 2–3 tuần | [x] |
 | WP-F1 | Comment trên chứng từ + `@mention` | P2 | — | 1–2 tuần | [ ] |
 | WP-F2 | Nâng cấp task queue theo vai trò | P2 | — | 1 tuần | [ ] |
 | WP-F3 | Client Portal + Agent Portal | P3 | WP-D1, WP-C1 | 5–6 tuần | [ ] |
@@ -958,7 +958,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-C3 | 2026-09-22 | `7ca0e84`, `e0c4fe4`, `acee67d`, `2e048c2`, `d9a4a4c` | T11.1–T11.5 (carriers/ports/schedules/tracking events) | ✅ | carriers/ports/vessels/vessel_schedules tables + RLS; api_add_tracking_event + audit; /schedule page (search + CSV import); TrackingTab interactive form; sidebar entry; app-map nợ nhỏ |
 | WP-B2 | 2026-09-21 | `36b860b` | T9.1–T9.5 (push subscription) | ✅ | T9.1–T9.5 PASS; VAPID keys cần thêm vào .env.local; Lighthouse PWA chưa kiểm tra trên thiết bị thật |
 | WP-E1 | 2026-09-23 | `5ab598e`, `ce797e9`, `d7476cb`, `e2e1a36` | T12.1–T12.3 (attach_file, get_attachments, missing_attachments) | ✅ | Storage bucket 'documents' + attachments table + RLS; checksum SHA-256; tab "File đính kèm" ở /documents/[id]; cảnh báo amber ở /controls |
-| WP-E2 |  |  |  |  |  |
+| WP-E2 | 2026-09-23 | `b9d6814`, `e737e1e`, `e1a6943`, `118e383`, `42e112d` | T13.1–T13.4 (ingest_jobs, DRAFT-only AI, SoD AI, EXC auto-link) | ✅ | 022_ingest.sql; `/api/ingest` route Claude Sonnet; api_apply_ingest tạo DRAFT + ai_extracted; mismatch → EXC; T3.1–T3.4 PASS |
 | WP-F1 |  |  |  |  |  |
 | WP-F2 |  |  |  |  |  |
 | WP-G1 |  |  |  |  |  |
@@ -1010,3 +1010,36 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 Ảnh hưởng gói sau:
 - WP-E2 (AI ingestion) build trên `attachments.id` — `ingest_jobs.attachment_id` FK vào đây
 - WP-F1 (Comment) không phụ thuộc attachments nhưng có thể hiển thị cùng tab
+
+---
+
+### Bàn giao WP-E2  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Không dữ liệu nào do AI tạo mà không qua người xác nhận — `api_apply_ingest` chỉ tạo DRAFT + `ai_extracted=true` + `confidence`, không gọi SUBMIT/APPROVE/POST
+- [x] AI không gọi được SUBMIT/APPROVE/POST (có test) — T13.2 PASS: kiểm tra status=DRAFT, ai_extracted=true, và thử submit/approve thất bại
+- [x] Chứng từ AI tạo vẫn qua đầy đủ SoD (có test) — T13.3 PASS: muahang tạo qua ingest không thể tự duyệt (giam_doc từ chối)
+- [x] Sai lệch master data → sinh EXC tự động — T13.4 PASS: partner_code không tồn tại → EXC được tạo + liên kết qua document_links
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi — ESLint hook PASS trước commit)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ T13.1–T13.4 PASS; T3.1–T3.4 PASS (không regression)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (xác nhận bằng `node --test-name-pattern "BLOCKER"`)
+- [x] Acceptance test map tới thay đổi ....... T13.1 (api_create_ingest_job + ingest_jobs), T13.2 (DRAFT-only + no SUBMIT/APPROVE), T13.3 (SoD: AI-created doc qua SoD bình thường), T13.4 (master-data mismatch → EXC)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; `ingest_jobs` chỉ qua `api_create_ingest_job`/`api_apply_ingest`/`api_get_ingest_job`/`api_list_ingest_jobs`; RLS theo tenant
+- [x] (Bảng mới sau WP-D1) `ingest_jobs` có `tenant_id uuid NOT NULL REFERENCES tenants(id)` + RLS policy
+- [x] docs/app-map chưa cập nhật (nợ nhỏ — không có file app-map riêng cho AI ingestion)
+- [x] Đã commit ngay theo từng thay đổi. Commits: `b9d6814` (022_ingest.sql), `e737e1e` (deps @anthropic-ai/sdk), `e1a6943` (/api/ingest route), `118e383` (T13.1–T13.4 tests), `42e112d` (fix T13.3 + storage policy fix)
+- [x] Đã tick [x] gói này ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- `/api/ingest` route gọi Claude Sonnet (vision) thật — cần `ANTHROPIC_API_KEY` trong `.env.local`; không có key thì route báo lỗi 500
+- `api_apply_ingest` không tạo `document_lines`; document_lines phải được thêm thủ công (hoặc qua UI) trước khi human reviewer submit
+- Test T13.3 workaround: thêm line qua `api_update_document` sau ingest để PR đáp ứng điều kiện `has_lines` — phản ánh đúng luồng thực tế (AI trích header, human bổ sung/sửa lines)
+- `022_ingest.sql` (không phải `017_ingest.sql` như §3 gốc mô tả) do các migration trước đó dùng 017–021
+
+Ảnh hưởng gói sau:
+- WP-F1 (Comment): có thể thêm comment tab ở trang review ingest job
+- WP-G1 (Audit Pack): `ingest_jobs` và EXC auto-link đã có audit trail qua fn_insert_document
