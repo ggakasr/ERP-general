@@ -1484,3 +1484,106 @@ t('T11.5', 'api_import_reference bulk import carriers và ports', async () => {
   assert.equal(r2.ok, true, 'import ports ok')
   assert.ok(r2.inserted >= 1, 'port inserted')
 })
+
+// ---------------------------------------------------------------- N6 attachments (WP-E1)
+t('T12.1', 'api_attach_file — ghi metadata sau upload thành công', async () => {
+  // Tạo PO, lấy ID hợp lệ
+  const poId = await newPo('muahang')
+  await as('muahang')
+
+  // Gọi api_attach_file với storage_path giả (hàm không xác nhận file tồn tại thực tế)
+  const r = await call('api_attach_file', {
+    p_document_id:  poId,
+    p_file_name:    'po-confirmation.pdf',
+    p_mime:         'application/pdf',
+    p_size_bytes:   102400,
+    p_storage_path: `${poId}/1234567890_po-confirmation.pdf`,
+    p_checksum:     'abc123checksum',
+  })
+  assert.equal(r.ok, true, `api_attach_file ok: ${JSON.stringify(r)}`)
+  assert.ok(r.id, 'trả về attachment id')
+
+  // Kiểm tra audit trail ghi bản ghi upload (dùng sys() — bypass RLS)
+  const audit = await sys(
+    `SELECT table_name, action, new_value FROM public.audit_trail WHERE table_name = 'attachments' AND record_id = $1`,
+    [r.id]
+  )
+  assert.equal(audit.length, 1, 'audit trail có 1 bản ghi UPLOAD')
+  assert.equal(audit[0].action, 'UPLOAD', 'action = UPLOAD')
+  assert.equal(audit[0].new_value.file_name, 'po-confirmation.pdf', 'new_value.file_name đúng')
+})
+
+t('T12.2', 'api_get_attachments — liệt kê file đã đính kèm', async () => {
+  const poId = await newPo('muahang')
+  await as('muahang')
+
+  // Upload 2 file
+  const r1 = await call('api_attach_file', {
+    p_document_id:  poId, p_file_name: 'file-a.pdf', p_mime: 'application/pdf',
+    p_size_bytes: 1024, p_storage_path: `${poId}/file-a.pdf`,
+  })
+  assert.equal(r1.ok, true, 'attach file-a.pdf ok')
+
+  const r2 = await call('api_attach_file', {
+    p_document_id:  poId, p_file_name: 'file-b.xlsx', p_mime: 'application/vnd.ms-excel',
+    p_size_bytes: 2048, p_storage_path: `${poId}/file-b.xlsx`,
+  })
+  assert.equal(r2.ok, true, 'attach file-b.xlsx ok')
+
+  // Lấy danh sách
+  const list = await call('api_get_attachments', { p_document_id: poId })
+  assert.equal(list.ok, true, `api_get_attachments ok: ${JSON.stringify(list)}`)
+  assert.ok(Array.isArray(list.attachments), 'attachments là array')
+  assert.ok(list.attachments.length >= 2, `có ít nhất 2 file (got ${list.attachments.length})`)
+
+  const names = list.attachments.map((a) => a.file_name)
+  assert.ok(names.includes('file-a.pdf'), 'file-a.pdf trong danh sách')
+  assert.ok(names.includes('file-b.xlsx'), 'file-b.xlsx trong danh sách')
+
+  // Kiểm tra user khác không có quyền → bị từ chối
+  // kinhdoanh không có quyền VIEW PO → FORBIDDEN
+  await as('kinhdoanh')
+  const rForbid = await call('api_get_attachments', { p_document_id: poId })
+  assert.equal(rForbid.ok, false, 'kinhdoanh không thấy attachments của PO')
+  assert.equal(rForbid.code, 'FORBIDDEN', 'code = FORBIDDEN')
+})
+
+t('T12.3', 'api_missing_attachments — cảnh báo chứng từ chưa đính kèm file', async () => {
+  // Tạo PO và submit (ghi vào audit_trail) nhưng không attach file
+  const poId = await newPo('muahang')
+  await as('muahang')
+  ok(await act('muahang', poId, 'submit'), 'submit PO thành công')
+
+  // kiemtoan có AUDIT_TRAIL VIEW → được gọi api_missing_attachments
+  await as('kiemtoan')
+  const r = await call('api_missing_attachments', { p_limit: 100 })
+  assert.equal(r.ok, true, `api_missing_attachments ok: ${JSON.stringify(r)}`)
+  assert.ok(typeof r.total === 'number', 'total là number')
+  assert.ok(Array.isArray(r.rows), 'rows là array')
+
+  // PO vừa tạo (có audit trail, chưa có attachment) phải xuất hiện
+  const found = r.rows.some((row) => row.id === poId)
+  assert.ok(found, 'PO chưa đính kèm file xuất hiện trong danh sách cảnh báo')
+
+  // Sau khi attach file → PO không còn trong danh sách
+  await as('muahang')
+  ok(await call('api_attach_file', {
+    p_document_id:  poId,
+    p_file_name:    'po-doc.pdf',
+    p_mime:         'application/pdf',
+    p_size_bytes:   512,
+    p_storage_path: `${poId}/po-doc.pdf`,
+  }), 'attach file cho PO')
+
+  await as('kiemtoan')
+  const r2 = await call('api_missing_attachments', { p_limit: 100 })
+  assert.equal(r2.ok, true, 'api_missing_attachments ok sau khi đính kèm')
+  const foundAfter = r2.rows.some((row) => row.id === poId)
+  assert.ok(!foundAfter, 'PO đã đính kèm file không còn trong danh sách cảnh báo')
+
+  // ketoan (chỉ có ACCOUNTANT role, không có AUDIT_TRAIL VIEW) → FORBIDDEN
+  await as('ketoan')
+  const rForbid = await call('api_missing_attachments', {})
+  assert.equal(rForbid.ok, false, 'ketoan không có quyền → fail')
+  assert.equal(rForbid.code, 'FORBIDDEN', 'code = FORBIDDEN')
+})
