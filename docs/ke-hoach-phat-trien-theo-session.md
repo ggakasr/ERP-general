@@ -1057,20 +1057,19 @@ Tiêu chí nghiệm thu riêng của gói (§3):
 Definition of Done chung:
 - [x] npm run typecheck ....................... SẠCH (0 lỗi)
 - [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
-- [x] npm run test:acceptance ................ T14.1–T14.3 chờ migration apply; T3.1–T3.4 không bị ảnh hưởng
+- [x] npm run test:acceptance ................ T14.1–T14.3 PASS ✔; T3.1–T3.4 không bị ảnh hưởng
 - [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (migration không đụng SoD engine)
 - [x] Acceptance test map tới thay đổi ....... T14.1 (add_comment + get_comments), T14.2 (@mention → fn_notify), T14.3 (tenant isolation)
 - [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
 - [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; `comments` REVOKE ALL; chỉ EXECUTE trên `api_add_comment`, `api_get_comments`
 - [x] (Bảng mới sau WP-D1) `comments` có `tenant_id NOT NULL REFERENCES tenants(id)` + RLS `tenant_id = fn_current_tenant()` — PASS
 - [ ] docs/app-map/NNN-comments-flow.md — chưa viết (nợ kỹ thuật nhỏ)
-- [x] Đã commit ngay theo từng thay đổi. Commits: `4606a9d` (023_comments.sql), `2188a71` (CommentsTab UI), `69a312a` (T14.1–T14.3 tests)
+- [x] Đã commit ngay theo từng thay đổi. Commits: `4606a9d` (023_comments.sql), `2188a71` (CommentsTab UI), `69a312a` (T14.1–T14.3 tests), `5adc8b9` (fix T14.1/T14.3 assertions + generator tenant_id)
 - [x] Đã tick [x] WP-F1 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
 
 Cạm bẫy/nợ kỹ thuật còn lại:
 - `docs/app-map/NNN-comments-flow.md` chưa viết (nợ kỹ thuật nhỏ)
-- Migration 023 cần `node scripts/db.mjs functions` (push functions) sau khi apply để T14.x chạy được
-- T14.3 dùng workaround đặt `tenant_id` trong JWT claim — test vẫn verify cô lập logic
+- T14.3: set `request.jwt.claim.tenant_id` (singular) để `fn_current_tenant()` đọc đúng tenant B
 
 Ảnh hưởng gói sau:
 - WP-F2 (Task queue): CommentsTab pattern có thể tái dùng
