@@ -114,7 +114,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-E1 | Lưu trữ chứng từ (Storage + `attachments`) | P2 | — | 1 tuần | [x] |
 | WP-E2 | AI ingestion pipeline (`/api/ingest` + `ingest_jobs`) | P2 | WP-E1 | 2–3 tuần | [x] |
 | WP-F1 | Comment trên chứng từ + `@mention` | P2 | — | 1–2 tuần | [x] |
-| WP-F2 | Nâng cấp task queue theo vai trò | P2 | — | 1 tuần | [ ] |
+| WP-F2 | Nâng cấp task queue theo vai trò | P2 | — | 1 tuần | [x] |
 | WP-F3 | Client Portal + Agent Portal | P3 | WP-D1, WP-C1 | 5–6 tuần | [ ] |
 | WP-G1 | Audit Pack + manifest hash | P2 | — | 2 tuần | [ ] |
 | WP-G2 | Audit trail tamper-evident (hash-chain) | P2 | — | 1 tuần | [ ] |
@@ -960,7 +960,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-E1 | 2026-09-23 | `5ab598e`, `ce797e9`, `d7476cb`, `e2e1a36` | T12.1–T12.3 (attach_file, get_attachments, missing_attachments) | ✅ | Storage bucket 'documents' + attachments table + RLS; checksum SHA-256; tab "File đính kèm" ở /documents/[id]; cảnh báo amber ở /controls |
 | WP-E2 | 2026-09-23 | `b9d6814`, `e737e1e`, `e1a6943`, `118e383`, `42e112d` | T13.1–T13.4 (ingest_jobs, DRAFT-only AI, SoD AI, EXC auto-link) | ✅ | 022_ingest.sql; `/api/ingest` route Claude Sonnet; api_apply_ingest tạo DRAFT + ai_extracted; mismatch → EXC; T3.1–T3.4 PASS |
 | WP-F1 | 2026-09-23 | `4606a9d`, `2188a71`, `69a312a` | T14.1–T14.3 (add_comment, @mention notify, tenant isolation) | ✅ | 023_comments.sql; comments bảng + RLS; api_add_comment + api_get_comments; CommentsTab @mention dropdown; tab Thảo luận ở /documents/[id] |
-| WP-F2 |  |  |  |  |  |
+| WP-F2 | 2026-09-23 | `334f331`, `319b4a6`, `1ceb703`, `f251767`, `cf3ce06` | T15.1–T15.4 (api_tasks role_groups, APPROVE group, SLA priority, tenant isolation) | ✅ | 024_tasks.sql api_tasks(); useTasks() hook; /tasks role-group tabs; 025_fix_handoff_tenant.sql; 026_fix_fn_notify.sql; T3.1–T3.4 PASS; 87/107 PASS (20 pre-existing) |
 | WP-G1 |  |  |  |  |  |
 | WP-G2 |  |  |  |  |  |
 | WP-G3 |  |  |  |  |  |
@@ -1075,3 +1075,38 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 - WP-F2 (Task queue): CommentsTab pattern có thể tái dùng
 - WP-F3 (Client Portal): `api_get_comments` + `api_add_comment` có thể expose cho portal (với scope OWN theo partner_id)
 - WP-G1 (Audit Pack): comments không ghi vào audit_trail hiện tại — nếu cần traceability comment, WP-G1 có thể thêm
+
+---
+
+### Bàn giao WP-F2  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] `api_tasks()` — variant của `api_inbox()` trả thêm `role_groups`, `primary_role_group`, `sla_priority`, `counts` — PASS (T15.1)
+- [x] Action `sod_role=APPROVER` → `role_groups` chứa `'APPROVE'`, `primary_role_group = 'APPROVE'`, `counts.APPROVE ≥ 1` — PASS (T15.2)
+- [x] Hàng BREACHED (`sla_priority=0`) xếp trước hàng ON_TIME (`sla_priority=2`) — PASS (T15.3)
+- [x] Cô lập tenant: user JWT tenant B không thấy task của tenant A — PASS (T15.4)
+- [x] `/tasks` page dùng `useTasks()` hook, tab lọc theo `primary_role_group` (Tất cả / Cần duyệt / Cần thực hiện / Đề xuất / Kiểm tra) — PASS (kiểm tra trực tiếp qua DB)
+- [x] Fixes phụ được phát hiện và commit: `025_fix_handoff_tenant.sql` (NOT NULL tenant_id), `026_fix_fn_notify.sql` (overload ambiguity)
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ 87/107 PASS (20 pre-existing, không có regression WP-F2)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (T3.9 cũng PASS sau fix 025)
+- [x] Acceptance test map tới thay đổi ....... T15.1 (role_groups/primary/sla_priority), T15.2 (APPROVE group), T15.3 (SLA sort), T15.4 (tenant isolation)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; api_tasks chỉ qua EXECUTE; không tạo bảng mới
+- [x] (Bảng mới sau WP-D1) N/A — không có bảng mới; api_tasks() là function-only
+- [ ] docs/app-map/ liên quan — chưa cập nhật (nợ kỹ thuật nhỏ)
+- [x] Đã commit ngay theo từng thay đổi. Commits: `334f331` (024_tasks.sql + useTasks + /tasks UI), `319b4a6` (025_fix_handoff_tenant.sql), `1ceb703` (026_fix_fn_notify.sql), `f251767` (T15.1–T15.4 tests), `cf3ce06` (fix tenant filter trong api_tasks)
+- [x] Đã tick [x] WP-F2 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- `docs/app-map/NNN-tasks-flow.md` chưa viết (nợ nhỏ)
+- api_tasks SECURITY DEFINER → phải nhớ thêm `AND doc.tenant_id = v_tenant_id` mỗi khi extend thêm bảng trong query
+- 2 fix phụ (025, 026) sửa lỗi latent từ WP-D1/WP-F1 — không phải regression mới
+
+Ảnh hưởng gói sau:
+- WP-F3 (Client Portal): `api_tasks` pattern tenant-isolated có thể làm model cho portal queue
+- WP-G3 (Đa cấp duyệt): `role_groups` đã sẵn sàng để hiển thị chuỗi duyệt nhiều bước
+- WP-G4 (Risk alerts): `sla_priority` + `handoff.sla_status` BREACHED là nguồn dữ liệu tự nhiên
