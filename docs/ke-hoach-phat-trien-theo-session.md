@@ -116,7 +116,7 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-F1 | Comment trên chứng từ + `@mention` | P2 | — | 1–2 tuần | [x] |
 | WP-F2 | Nâng cấp task queue theo vai trò | P2 | — | 1 tuần | [x] |
 | WP-F3 | Client Portal + Agent Portal | P3 | WP-D1, WP-C1 | 5–6 tuần | [ ] |
-| WP-G1 | Audit Pack + manifest hash | P2 | — | 2 tuần | [ ] |
+| WP-G1 | Audit Pack + manifest hash | P2 | — | 2 tuần | [x] |
 | WP-G2 | Audit trail tamper-evident (hash-chain) | P2 | — | 1 tuần | [ ] |
 | WP-G3 | Duyệt đa cấp + SoD theo mức rủi ro + delegation | P2 | — | 2–3 tuần | [ ] |
 | WP-G4 | Widget phát hiện bất thường (risk alerts) | P2 | WP-B1 | 1 tuần | [ ] |
@@ -961,7 +961,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-E2 | 2026-09-23 | `b9d6814`, `e737e1e`, `e1a6943`, `118e383`, `42e112d` | T13.1–T13.4 (ingest_jobs, DRAFT-only AI, SoD AI, EXC auto-link) | ✅ | 022_ingest.sql; `/api/ingest` route Claude Sonnet; api_apply_ingest tạo DRAFT + ai_extracted; mismatch → EXC; T3.1–T3.4 PASS |
 | WP-F1 | 2026-09-23 | `4606a9d`, `2188a71`, `69a312a` | T14.1–T14.3 (add_comment, @mention notify, tenant isolation) | ✅ | 023_comments.sql; comments bảng + RLS; api_add_comment + api_get_comments; CommentsTab @mention dropdown; tab Thảo luận ở /documents/[id] |
 | WP-F2 | 2026-09-23 | `334f331`, `319b4a6`, `1ceb703`, `f251767`, `cf3ce06` | T15.1–T15.4 (api_tasks role_groups, APPROVE group, SLA priority, tenant isolation) | ✅ | 024_tasks.sql api_tasks(); useTasks() hook; /tasks role-group tabs; 025_fix_handoff_tenant.sql; 026_fix_fn_notify.sql; T3.1–T3.4 PASS; 87/107 PASS (20 pre-existing) |
-| WP-G1 |  |  |  |  |  |
+| WP-G1 | 2026-09-23 | `24c2be5`, `7161942` | T16.1–T16.3 (api_audit_pack hash stable, hash changes on mutation, scope BUYER≠JV) | ✅ | 027_audit_pack.sql; api_audit_pack(from,to,scope) SECURITY DEFINER; 6 sections (audit_trail/sod/links/handoff/exc/gl) + SHA-256 manifest; T3.1–T3.4 PASS |
 | WP-G2 |  |  |  |  |  |
 | WP-G3 |  |  |  |  |  |
 | WP-H1 |  |  |  |  |  |
@@ -1110,3 +1110,36 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 - WP-F3 (Client Portal): `api_tasks` pattern tenant-isolated có thể làm model cho portal queue
 - WP-G3 (Đa cấp duyệt): `role_groups` đã sẵn sàng để hiển thị chuỗi duyệt nhiều bước
 - WP-G4 (Risk alerts): `sla_priority` + `handoff.sla_status` BREACHED là nguồn dữ liệu tự nhiên
+
+---
+
+### Bàn giao WP-G1  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] `api_audit_pack(from, to, scope)` kết xuất 6 sections: `audit_trail`, `sod_check_log`, `document_links`, `handoff_records`, `exception_register` (doc_type=EXC), `gl_entries` — PASS
+- [x] Manifest có `sha256` riêng mỗi section + `sha256_total` = SHA-256 của 6 hash nối chuỗi — PASS (T16.1)
+- [x] Hash ổn định khi chạy 2 lần trên cùng dữ liệu bất biến — PASS (T16.1)
+- [x] Hash tổng lệch khi thêm bản ghi `sod_check_log` trong kỳ — PASS (T16.2)
+- [x] Scope enforcement: BUYER (không có quyền JV) gọi với `p_scope='JV'` → `document_count = 0`; CHIEF_ACCOUNTANT (COMPANY VIEW) → `document_count ≥ 1` — PASS (T16.3)
+- [x] Tôn trọng `fn_doc_in_scope` — mọi document trong kết xuất đều đã qua kiểm tra quyền VIEW
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ T16.1–T16.3 PASS; T3.1–T3.4 PASS
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (không đụng state machine / SoD engine)
+- [x] Acceptance test map tới thay đổi ....... T16.1 (hash stable), T16.2 (hash changes on mutation), T16.3 (fn_doc_in_scope scope check)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; api_audit_pack SECURITY DEFINER; chỉ GRANT EXECUTE
+- [x] (Bảng mới sau WP-D1) N/A — không tạo bảng mới; chỉ đọc qua SECURITY DEFINER
+- [ ] docs/app-map/NNN-audit-pack.md — chưa viết (nợ kỹ thuật nhỏ)
+- [x] Đã commit ngay theo từng thay đổi. Commits: `24c2be5` (027_audit_pack.sql + T16.1–T16.3), `7161942` (fix T16.3: dùng ketoan tạo JV)
+- [x] Đã tick [x] WP-G1 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- Sau khi chạy `node scripts/db.mjs functions` (re-apply 004_engine.sql), phải re-apply `025_fix_handoff_tenant.sql` và `026_fix_fn_notify.sql` vì chúng fix hàm trong 004 và bị ghi đè
+- `exception_register` không phải bảng riêng — đây là documents với `doc_type = 'EXC'`; nếu thêm bảng exception riêng trong tương lai, cần cập nhật query
+
+Ảnh hưởng gói sau:
+- WP-G2 (hash-chain): audit_trail đã được hash section trong WP-G1 — WP-G2 thêm `prev_hash`+`row_hash` per-row để Audit Pack có thể kiểm chứng tính toàn vẹn chuỗi
+- WP-G4 (Risk alerts): `sod_check_log` được kết xuất đầy đủ — cơ sở cho widget phát hiện bất thường SoD
