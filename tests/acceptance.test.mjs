@@ -1668,6 +1668,14 @@ t('T13.3', 'SoD: user tạo chứng từ qua AI ingestion không thể tự phê
   ok(r, 'AI created DRAFT PR')
   const prId = r.id
 
+  // api_apply_ingest không tạo lines → thêm line để PR có thể submit
+  await as('muahang')
+  ok(await call('api_update_document', {
+    p_doc_id: prId,
+    p_header: {},
+    p_lines:  [{ product_id: await product('RM-BOLT'), quantity: 1, unit_price: 1000000 }],
+  }), 'line added to AI-created PR')
+
   // muahang submit (vẫn ổn — là REQUESTER)
   const submitR = await act('muahang', prId, 'submit')
   ok(submitR, 'muahang can submit own PR')

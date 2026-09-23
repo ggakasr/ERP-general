@@ -16,7 +16,7 @@ DO $$ BEGIN
     EXECUTE 'CREATE POLICY documents_bucket_select ON storage.objects FOR SELECT TO authenticated USING (bucket_id = ''documents'')';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='documents_bucket_delete') THEN
-    EXECUTE 'CREATE POLICY documents_bucket_delete ON storage.objects FOR DELETE TO authenticated USING (bucket_id = ''documents'' AND owner = auth.uid()::text)';
+    EXECUTE 'CREATE POLICY documents_bucket_delete ON storage.objects FOR DELETE TO authenticated USING (bucket_id = ''documents'' AND owner = auth.uid())';
   END IF;
 END $$;
 
