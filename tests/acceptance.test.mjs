@@ -1943,3 +1943,119 @@ t('T15.4', 'api_tasks không lộ tasks của tenant khác', async () => {
   const found = rows.find((row) => row.document.id === poId)
   assert.ok(!found, 'Tenant B không thấy PO của Tenant A trong api_tasks')
 })
+
+// ---------------------------------------------------------------- N7 audit pack (WP-G1)
+
+t('T16.1', 'api_audit_pack: hash tổng ổn định khi chạy 2 lần trên cùng dữ liệu bất biến', async () => {
+  // Tạo PO và submit để có audit trail + sod_check_log
+  const poId = await newPo('muahang')
+  ok(await act('muahang', poId, 'submit'), 'submit PO')
+
+  const FROM = new Date(Date.now() - 60_000).toISOString()  // 1 phút trước
+  const TO   = new Date(Date.now() + 60_000).toISOString()  // 1 phút sau
+
+  await as('muahang.tp')
+  const r1 = await call('api_audit_pack', { p_from: FROM, p_to: TO, p_scope: null })
+  ok(r1, 'pack lần 1 ok')
+  assert.ok(r1.manifest?.sha256_total, 'lần 1 có sha256_total')
+
+  // Gọi lại lần 2 — không có thay đổi dữ liệu
+  const r2 = await call('api_audit_pack', { p_from: FROM, p_to: TO, p_scope: null })
+  ok(r2, 'pack lần 2 ok')
+
+  assert.equal(
+    r2.manifest.sha256_total,
+    r1.manifest.sha256_total,
+    `hash tổng phải khớp: ${r1.manifest.sha256_total} vs ${r2.manifest.sha256_total}`
+  )
+  // Kiểm tra từng section hash cũng khớp
+  for (const section of ['audit_trail', 'sod_check_log', 'document_links', 'handoff_records', 'exception_register', 'gl_entries']) {
+    assert.equal(
+      r2.manifest.files[section].sha256,
+      r1.manifest.files[section].sha256,
+      `hash section ${section} phải khớp`
+    )
+  }
+})
+
+t('T16.2', 'api_audit_pack: hash tổng lệch khi có thêm 1 bản ghi trong kỳ', async () => {
+  // Tạo PO để có docs trong tenant
+  const poId = await newPo('muahang')
+  ok(await act('muahang', poId, 'submit'), 'submit PO')
+
+  const FROM = new Date(Date.now() - 60_000).toISOString()
+  const TO   = new Date(Date.now() + 60_000).toISOString()
+
+  await as('muahang.tp')
+  const r1 = await call('api_audit_pack', { p_from: FROM, p_to: TO, p_scope: null })
+  ok(r1, 'pack trước khi thêm bản ghi')
+  const hashBefore = r1.manifest.sha256_total
+
+  // Thêm bản ghi vào sod_check_log (giả lập SoD check) → làm thay đổi dữ liệu trong kỳ
+  const tenantId = (await sys(`SELECT tenant_id::text FROM public.documents WHERE id = $1`, [poId]))[0]?.tenant_id
+  await sys(
+    `INSERT INTO public.sod_check_log
+       (document_id, doc_type, document_number, action, user_id, attempted_role, result, checked_at, tenant_id)
+     VALUES
+       ($1, 'PO', 'TEST-HASH', 'test_action', (SELECT id FROM public.app_users WHERE email='muahang@erp.demo'),
+        'REQUESTER', 'PASSED', now(), $2)`,
+    [poId, tenantId]
+  )
+
+  // Pack lại sau khi có bản ghi mới
+  const r2 = await call('api_audit_pack', { p_from: FROM, p_to: TO, p_scope: null })
+  ok(r2, 'pack sau khi thêm bản ghi')
+  const hashAfter = r2.manifest.sha256_total
+
+  assert.notEqual(hashAfter, hashBefore, `hash tổng PHẢI lệch sau khi thêm bản ghi: ${hashBefore}`)
+
+  // section sod_check_log cụ thể phải lệch
+  assert.notEqual(
+    r2.manifest.files.sod_check_log.sha256,
+    r1.manifest.files.sod_check_log.sha256,
+    'hash sod_check_log phải lệch'
+  )
+  assert.ok(r2.manifest.files.sod_check_log.rows > r1.manifest.files.sod_check_log.rows,
+    `rows tăng: ${r1.manifest.files.sod_check_log.rows} → ${r2.manifest.files.sod_check_log.rows}`)
+})
+
+t('T16.3', 'api_audit_pack: kết xuất tôn trọng fn_doc_in_scope (user OWN chỉ thấy docs của mình)', async () => {
+  // muahang tạo PO — OWN scope
+  const po1 = await newPo('muahang')
+
+  // muahang.tp tạo PO khác — dùng as() nên muahang.tp là owner
+  await as('muahang.tp')
+  const tp_poId = await call('api_create_document', {
+    p_doc_type: 'PO',
+    p_header: { title: 'TP PO', partner_id: await partner('SUP-001'), warehouse_id: await wh('WH-HN-01') },
+    p_lines: [{ product_id: await product('RM-BOLT'), quantity: 5, unit_price: 3000 }],
+  })
+  ok(tp_poId, 'muahang.tp tạo PO ok')
+  const tp_docId = tp_poId.id
+
+  const FROM = new Date(Date.now() - 60_000).toISOString()
+  const TO   = new Date(Date.now() + 60_000).toISOString()
+
+  // Pack as muahang (EMPLOYEE — chỉ xem OWN)
+  await as('muahang')
+  const rMuahang = await call('api_audit_pack', { p_from: FROM, p_to: TO, p_scope: null })
+  ok(rMuahang, 'pack as muahang')
+  const muahangDocCount = rMuahang.manifest.document_count
+
+  // Pack as muahang.tp (PROC_MANAGER — xem COMPANY scope cho PO)
+  await as('muahang.tp')
+  const rTp = await call('api_audit_pack', { p_from: FROM, p_to: TO, p_scope: null })
+  ok(rTp, 'pack as muahang.tp')
+  const tpDocCount = rTp.manifest.document_count
+
+  // muahang.tp (COMPANY scope) phải thấy >= muahang (OWN scope)
+  assert.ok(
+    tpDocCount >= muahangDocCount,
+    `COMPANY scope (${tpDocCount} docs) phải >= OWN scope (${muahangDocCount} docs)`
+  )
+
+  // muahang chỉ thấy PO của mình, không thấy PO của muahang.tp
+  const muahangAuditData = rMuahang.data.audit_trail
+  const tpDocInMuahangPack = muahangAuditData.some((row) => row.record_id === tp_docId)
+  assert.ok(!tpDocInMuahangPack, 'muahang không thấy audit của PO do muahang.tp tạo')
+})
