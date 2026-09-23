@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Download, RefreshCw } from "lucide-react"
+import { Download, FileWarning, RefreshCw } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { RESOURCE_LABELS, ACTION_LABELS, SLA_LABELS, statusLabel, SOD_LABELS } from "@/lib/labels"
 import { cn, downloadCsv, formatDateTime } from "@/lib/utils"
@@ -25,6 +25,62 @@ interface ControlSummary {
   audit_24h: number
   gl_balanced: boolean
   overlapping_permissions: { user_name: string; resource: string; actions: string[] }[]
+}
+
+// ------------------------------------------------------------------
+// Missing-attachments warning — api_missing_attachments()
+// ------------------------------------------------------------------
+interface MissingRow {
+  id: string
+  number: string
+  doc_type: string
+  doc_type_name: string
+  status: string
+}
+
+function MissingAttachmentsCard() {
+  const [total, setTotal] = useState<number | null>(null)
+  const [rows, setRows] = useState<MissingRow[]>([])
+
+  useEffect(() => {
+    rpc<{ total: number; rows: MissingRow[] }>("api_missing_attachments", { p_limit: 20 }).then((res) => {
+      if (res.ok) {
+        setTotal(res.total)
+        setRows(res.rows || [])
+      }
+    })
+  }, [])
+
+  if (total === null || total === 0) return null
+
+  return (
+    <Card className="border-amber-400">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base text-amber-700">
+          <FileWarning className="h-4 w-4" />
+          Chứng từ thiếu file đính kèm ({total})
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Các chứng từ sau đã có hoạt động trong audit trail nhưng chưa có file gốc đính kèm.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <ul className="flex flex-wrap gap-2">
+          {rows.map((r) => (
+            <li key={r.id} className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-sm dark:border-amber-800 dark:bg-amber-950">
+              <DocLink id={r.id} number={r.number} />
+              <span className="ml-1.5 text-xs text-muted-foreground">{r.doc_type_name || r.doc_type}</span>
+            </li>
+          ))}
+          {total > rows.length && (
+            <li className="rounded-md border border-dashed px-2 py-1 text-xs text-muted-foreground">
+              +{total - rows.length} chứng từ khác…
+            </li>
+          )}
+        </ul>
+      </CardContent>
+    </Card>
+  )
 }
 
 export function OverviewTab() {
@@ -153,6 +209,8 @@ export function OverviewTab() {
           />
         </CardContent>
       </Card>
+
+      <MissingAttachmentsCard />
     </div>
   )
 }
