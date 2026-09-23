@@ -15,7 +15,7 @@ function BomList() {
           <p className="font-medium">{b.product_name}</p>
           <p className="text-xs text-muted-foreground">Định mức cho {formatNumber(b.output_qty)} đơn vị thành phẩm</p>
           <table className="mt-3 w-full text-sm">
-            <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-1">Vật tư</th><th className="py-1 text-right">Số lượng</th></tr></thead>
+            <thead><tr className="border-b text-left text-xs text-muted-foreground uppercase tracking-wide"><th className="py-1">Vật tư</th><th className="py-1 text-right">Số lượng</th></tr></thead>
             <tbody>
               {b.lines?.map((l) => (
                 <tr key={l.product_id} className="border-b last:border-0"><td className="py-1">{l.product_name}</td><td className="py-1 text-right tabular-nums">{formatNumber(l.quantity)} {l.unit}</td></tr>

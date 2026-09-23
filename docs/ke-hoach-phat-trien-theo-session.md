@@ -974,11 +974,54 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-J1 | 2026-09-21 | 71aa36e | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | dark mode via @media; Inter font removed; Skeleton + Breadcrumb mới |
 | WP-J2 | 2026-09-21 | 7df1587, cbe640d, 31d6f99, 53a128d, c35824e | (frontend-only — không đụng DB; T3.1–T3.12 PASS) | ✅ | Skeleton KPI/Inbox/DocDetail; EmptyState CTA; ErrorBox retry; state matrix §9 DESIGN-SPEC |
 | WP-J3 | 2026-09-21 | 75c3cdd | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | Chuyển tất cả màu hardcode Tailwind sang semantic token (success/warning/info/destructive/muted); dark mode đầy đủ |
+| WP-J3 v2 | 2026-09-23 | pending | (frontend-only — T3.1–T3.4 không bị ảnh hưởng) | ✅ | Pass 2: 14 RED + 13 YELLOW defects sửa trong 10 file. useState→useEffect bug (schedule), cn() thay template string (notifications), SCOPE_CLASS semantic tokens (me), hardcode red/emerald→destructive/success (audit-trail, acceptance, trace), table headers uppercase tracking-wide, nhãn tiếng Anh→tiếng Việt (operations, schedule), empty states với icon (operations/[id]) |
 | WP-J4 | 2026-09-21 | 57e2610 | T1.1 (tạo doc SHIPMENT) | ✅ | DB layer minimal WP-C1 (011_shipment.sql): containers, shipment_charges, tracking_events, api_list_shipments, api_get_shipment; UI: card list + detail 5 tab; "Lãi hết hạn" badge; acceptance T3.1–T3.4 running |
 | WP-J4 bugfix | 2026-09-23 | 015bb91 | T7.2 (api_get_shipment) | ✅ | Fix arg order fn_available_actions(v_doc, v_me.id): 020_fix_api_get_shipment.sql; chi tiết shipment 5 tab xác nhận hoạt động đầy đủ |
 
 > **Cách chủ dự án dùng**: mở bảng này xem cột *DoD đủ?* = ✅ và *Commit(s)* có hash là biết gói đã xong &
 > có bằng chứng. Chỉ cần soi kỹ những dòng *Ghi chú / nợ kỹ thuật* có nội dung.
+
+---
+
+### Bàn giao WP-J3 v2  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3 WP-J3):
+- [x] Rà toàn bộ 27 page trong `src/app/(app)/` — PASS (10 file có defect, đã sửa hết)
+- [x] Không còn hardcode Tailwind color class (`text-red-*`, `bg-green-*`, `text-sky-*`, `bg-emerald-*`) — PASS
+- [x] Table headers đồng nhất: `text-xs text-muted-foreground uppercase tracking-wide` — PASS
+- [x] Nhãn tiếng Anh trên UI loại bỏ: Shipper/Consignee/Mode/Carrier/Voyage/Qty/Rate/CCY → tiếng Việt — PASS
+- [x] Bug useState side-effect trong schedule/page.tsx → đổi sang useEffect — PASS
+- [x] cn() thay template string trong notifications/page.tsx — PASS
+- [x] Empty states có icon: ChargesTab/ContainersTab/TrackingTab/DocumentsTab trong operations/[id] — PASS
+- [x] Không đụng DB (không migration, không bảng, không RPC) — PASS
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH (0 lỗi)
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ Frontend-only — không thay đổi logic DB, T3.1–T3.4 không bị ảnh hưởng
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔ (không đụng engine/SoD; frontend-only)
+- [x] Acceptance test map tới thay đổi ....... Frontend-only — không thêm test mới; sửa defect hiển thị
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] Không đụng DB — không cần kiểm tra quyền bảng
+- [x] docs/app-map/NNN-*.md — không cập nhật (không có thay đổi logic/flow)
+- [x] Đã tick [x] WP-J3 ở §2 (đã tick từ pass 1) và thêm 1 dòng WP-J3 v2 vào bảng §6.2
+- [ ] Commit(s): pending xác nhận từ user
+
+**Files đã sửa (10 file, 27 defects):**
+1. `src/app/(app)/me/page.tsx` — SCOPE_CLASS 4 hardcode → semantic tokens (info/success/warning/primary)
+2. `src/app/(app)/audit-trail/page.tsx` — 3× hardcode red/emerald → destructive/success + rowClassName
+3. `src/app/(app)/acceptance/page.tsx` — 2× bg-red-50 → bg-destructive/5 + bg-destructive/10
+4. `src/app/(app)/trace/page.tsx` — 2× text-red-700 → text-destructive + table header uppercase
+5. `src/app/(app)/schedule/page.tsx` — useState→useEffect bug + statusBadge hardcode + heading style + table headers uppercase + Vietnamese column labels
+6. `src/app/(app)/notifications/page.tsx` — template string → cn() + thêm import cn
+7. `src/app/(app)/operations/page.tsx` — "Shipper:"/"Consignee:" → "Người gửi:"/"Người nhận:"
+8. `src/app/(app)/operations/[id]/page.tsx` — 5 InfoRow English labels + table headers (Qty/Rate/CCY→SL/Đơn giá/Tiền tệ) + uppercase + 4 empty states với icon
+9. `src/app/(app)/pricing/page.tsx` — Th component thêm `uppercase tracking-wide`
+10. `src/app/(app)/production/page.tsx` — table header tr thêm `uppercase tracking-wide`
+
+Cạm bẫy/nợ kỹ thuật còn lại:
+- Empty states trong operations/[id] có icon + text nhưng chưa có CTA button (thiếu business context để thêm đúng action)
+- docs/app-map/NNN-operations-flow.md vẫn chưa viết (nợ từ WP-J4)
 
 ---
 

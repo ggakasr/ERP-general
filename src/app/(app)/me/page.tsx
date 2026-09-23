@@ -10,10 +10,10 @@ import { EmptyState, PageHeader } from "@/components/shared/bits"
 const ACTIONS = ["VIEW", "CREATE", "EDIT", "APPROVE", "EXECUTE", "AUDIT", "EXPORT"]
 
 const SCOPE_CLASS: Record<string, string> = {
-  OWN: "bg-sky-50 text-sky-700 ring-sky-200",
-  DEPARTMENT: "bg-teal-50 text-teal-700 ring-teal-200",
-  BRANCH: "bg-violet-50 text-violet-700 ring-violet-200",
-  COMPANY: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  OWN: "bg-info-subtle text-info ring-info/20",
+  DEPARTMENT: "bg-success-subtle text-success ring-success/20",
+  BRANCH: "bg-warning-subtle text-warning ring-warning/20",
+  COMPANY: "bg-primary/10 text-primary ring-primary/20",
 }
 
 export default function MePage() {

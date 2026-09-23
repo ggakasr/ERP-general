@@ -104,8 +104,8 @@ function ShipmentCardItem({ card }: { card: ShipmentCard }) {
       {/* Row 4: shipper/consignee */}
       {(card.shipper || card.consignee) && (
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {card.shipper && <span className="truncate max-w-[14rem]">Shipper: <span className="text-foreground">{card.shipper}</span></span>}
-          {card.consignee && <span className="truncate max-w-[14rem]">Consignee: <span className="text-foreground">{card.consignee}</span></span>}
+          {card.shipper && <span className="truncate max-w-[14rem]">Người gửi: <span className="text-foreground">{card.shipper}</span></span>}
+          {card.consignee && <span className="truncate max-w-[14rem]">Người nhận: <span className="text-foreground">{card.consignee}</span></span>}
         </div>
       )}
 

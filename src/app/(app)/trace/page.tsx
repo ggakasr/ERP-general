@@ -222,7 +222,7 @@ function ResponsibilityTrace({ id }: { id: string }) {
               <div className="mt-1.5 flex flex-wrap gap-1">
                 {p.sod_roles.length ? p.sod_roles.map((r: string) => <SodBadge key={r} role={r} />) : <span className="text-xs text-muted-foreground">Không giữ vai trò SoD</span>}
               </div>
-              {p.conflict && <p className="mt-1 flex items-center gap-1 text-xs text-red-700"><ShieldAlert className="h-3 w-3" /> Giữ vai trò xung đột</p>}
+              {p.conflict && <p className="mt-1 flex items-center gap-1 text-xs text-destructive"><ShieldAlert className="h-3 w-3" /> Giữ vai trò xung đột</p>}
             </div>
           ))}
         </div>
@@ -239,12 +239,12 @@ function ResponsibilityTrace({ id }: { id: string }) {
               <span className="ml-auto text-xs">
                 {d.owner ? (
                   <>Chủ sở hữu ({d.owner.flow_code} {d.owner.process}): <b>{d.owner.owner_name}</b> — {d.owner.owner_position}{d.owner.deputy_name ? ` · dự phòng ${d.owner.deputy_name}` : ""}</>
-                ) : <span className="text-red-700">Chưa có chủ sở hữu</span>}
+                ) : <span className="text-destructive">Chưa có chủ sở hữu</span>}
               </span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead><tr className="border-b bg-muted/30 text-left text-muted-foreground">
+                <thead><tr className="border-b bg-muted/30 text-left text-xs text-muted-foreground uppercase tracking-wide">
                   <th className="px-3 py-1.5">Thời điểm</th><th className="px-3 py-1.5">Hành động</th><th className="px-3 py-1.5">Người dùng</th>
                   <th className="px-3 py-1.5">Vai trò hệ thống</th><th className="px-3 py-1.5">Phòng ban</th><th className="px-3 py-1.5">Vai trò SoD</th>
                 </tr></thead>

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SkeletonDocDetail } from "@/components/ui/skeleton"
 import { Tabs } from "@/components/ui/tabs"
-import { ErrorBox, StatusBadge } from "@/components/shared/bits"
+import { EmptyState, ErrorBox, StatusBadge } from "@/components/shared/bits"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ function OverviewTab({ detail }: { detail: ShipmentDetail }) {
             </svg>
             <span>{d.pod ?? "—"}</span>
           </div>
-          <InfoRow label="Mode" value={d.mode} />
+          <InfoRow label="Phương thức" value={d.mode} />
           <InfoRow label="Loại" value={d.shipment_type} />
           <InfoRow label="ETD" value={d.etd} />
           <InfoRow label="ETA" value={d.eta} />
@@ -63,9 +63,9 @@ function OverviewTab({ detail }: { detail: ShipmentDetail }) {
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Hãng vận chuyển</CardTitle></CardHeader>
         <CardContent className="pt-0">
-          <InfoRow label="Carrier" value={d.carrier} />
+          <InfoRow label="Hãng" value={d.carrier} />
           <InfoRow label="Tàu/Chuyến" value={d.vessel} />
-          <InfoRow label="Voyage/Flight" value={d.voyage} />
+          <InfoRow label="Chuyến" value={d.voyage} />
         </CardContent>
       </Card>
 
@@ -73,8 +73,8 @@ function OverviewTab({ detail }: { detail: ShipmentDetail }) {
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Các bên liên quan</CardTitle></CardHeader>
         <CardContent className="pt-0">
-          <InfoRow label="Shipper" value={detail.shipper?.name} />
-          <InfoRow label="Consignee" value={detail.consignee?.name} />
+          <InfoRow label="Người gửi" value={detail.shipper?.name} />
+          <InfoRow label="Người nhận" value={detail.consignee?.name} />
           <InfoRow label="Số chứng từ" value={doc.number} mono />
           <InfoRow label="Trạng thái" value={statusLabel(doc.status)} />
         </CardContent>
@@ -134,12 +134,12 @@ function ChargesTab({ charges }: { charges: ShipmentDetail["charges"] }) {
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Khoản phí</th>
-                <th className="px-3 py-2 text-right font-medium text-muted-foreground">Qty</th>
-                <th className="px-3 py-2 text-right font-medium text-muted-foreground">Rate</th>
-                <th className="px-3 py-2 text-right font-medium text-muted-foreground">CCY</th>
-                <th className="px-3 py-2 text-right font-medium text-muted-foreground">Thành tiền (VND)</th>
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Hết hạn</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Khoản phí</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">SL</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Đơn giá</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Tiền tệ</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Thành tiền (VND)</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Hết hạn</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -189,7 +189,10 @@ function ChargesTab({ charges }: { charges: ShipmentDetail["charges"] }) {
       <ChargeGroup rows={ar} title="Thu (AR)" tone="success" />
       <ChargeGroup rows={ap} title="Chi (AP)" tone="destructive" />
       {charges.length === 0 && (
-        <p className="py-8 text-center text-sm text-muted-foreground">Chưa có khoản phí nào.</p>
+        <EmptyState>
+          <FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+          Chưa có khoản phí nào.
+        </EmptyState>
       )}
       {charges.length > 0 && (
         <div className="flex flex-wrap gap-6 text-sm border-t pt-3">
@@ -205,7 +208,12 @@ function ChargesTab({ charges }: { charges: ShipmentDetail["charges"] }) {
 // ── Containers tab ───────────────────────────────────────────────────────────
 
 function ContainersTab({ containers }: { containers: ShipmentDetail["containers"] }) {
-  if (!containers.length) return <p className="py-8 text-center text-sm text-muted-foreground">Chưa có container.</p>
+  if (!containers.length) return (
+    <EmptyState>
+      <Ship className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+      Chưa có container.
+    </EmptyState>
+  )
   return (
     <div className="overflow-x-auto rounded-lg border">
       <table className="w-full text-sm">
@@ -419,7 +427,10 @@ function TrackingTab({
       )}
 
       {events.length === 0 && !showForm ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">Chưa có sự kiện tracking.</p>
+        <EmptyState>
+          <Ship className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+          Chưa có sự kiện tracking.
+        </EmptyState>
       ) : (
         <ol className="relative border-l border-border ml-4 space-y-0 mt-2">
           {events.map((e, i) => {
@@ -460,7 +471,12 @@ function TrackingTab({
 // ── Documents tab ─────────────────────────────────────────────────────────────
 
 function DocumentsTab({ docs }: { docs: ShipmentDetail["child_docs"] }) {
-  if (!docs.length) return <p className="py-8 text-center text-sm text-muted-foreground">Chưa có chứng từ liên quan.</p>
+  if (!docs.length) return (
+    <EmptyState>
+      <FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+      Chưa có chứng từ liên quan.
+    </EmptyState>
+  )
   return (
     <div className="space-y-2">
       {docs.map((d) => (

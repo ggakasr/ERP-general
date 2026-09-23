@@ -146,7 +146,7 @@ export default function AcceptancePage() {
                   rows={groupRows}
                   rowKey={(r) => r.test_code}
                   empty={all.length === 0 ? "Chưa khai báo tiêu chí cho nhóm này" : "Không có tiêu chí phù hợp bộ lọc"}
-                  rowClassName={(r) => (r.is_blocker ? "bg-red-50/40" : undefined)}
+                  rowClassName={(r) => (r.is_blocker ? "bg-destructive/5" : undefined)}
                   columns={[
                     { key: "code", label: "Mã", className: "whitespace-nowrap", render: (r) => <span className="font-mono font-medium">{r.test_code}</span> },
                     { key: "title", label: "Tiêu chí", className: "min-w-[240px]", render: (r) => r.title },
@@ -199,7 +199,7 @@ export default function AcceptancePage() {
       >
         <div className="space-y-3">
           {editing?.is_blocker && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-800">
+            <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
               Đây là điều kiện chặn go-live. Chỉ đánh dấu “Đạt” khi có bằng chứng kiểm thử rõ ràng.
             </p>
           )}

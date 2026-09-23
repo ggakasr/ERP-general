@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { Bell, BellOff, CheckCheck } from "lucide-react"
 import { rpc } from "@/lib/api"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { EmptyState, PageHeader } from "@/components/shared/bits"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -81,10 +81,10 @@ export default function NotificationsPage() {
           <ul className="divide-y rounded-xl border bg-card shadow-sm">
             {data.rows.map((n) => (
               <li key={n.id}
-                className={`px-4 py-3 transition-colors ${n.is_read ? "opacity-60" : "bg-primary/5"}`}
+                className={cn("px-4 py-3 transition-colors", n.is_read ? "opacity-60" : "bg-primary/5")}
               >
                 <div className="flex items-start gap-3">
-                  <div className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${n.is_read ? "bg-muted-foreground/30" : "bg-primary"}`} />
+                  <div className={cn("mt-0.5 h-2 w-2 shrink-0 rounded-full", n.is_read ? "bg-muted-foreground/30" : "bg-primary")} />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{n.title}</p>
                     {n.body && <p className="text-xs text-muted-foreground">{n.body}</p>}

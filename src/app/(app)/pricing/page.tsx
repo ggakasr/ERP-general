@@ -426,7 +426,7 @@ export default function PricingPage() {
 // ---- Sub-components --------------------------------------------------------
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">{children}</th>
+  return <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">{children}</th>
 }
 
 function StatCard({ label, value, warn = false }: { label: string; value: string; warn?: boolean }) {

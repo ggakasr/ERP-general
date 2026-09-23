@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
+import { cn } from "@/lib/utils"
 import { rpc } from "@/lib/api"
 import type { VesselSchedule, Carrier, Port } from "@/lib/types"
 import { useToast } from "@/components/ui/toast"
@@ -168,10 +169,10 @@ export default function SchedulePage() {
   const [showImport, setShowImport] = useState(false)
 
   // Load carriers + ports on mount for dropdowns
-  useState(() => {
+  useEffect(() => {
     rpc<{ ok: boolean; rows: Carrier[] }>("api_carriers", {}).then((r) => { if (r.ok) setCarriers(r.rows) })
     rpc<{ ok: boolean; rows: Port[] }>("api_ports", {}).then((r) => { if (r.ok) setPorts(r.rows) })
-  })
+  }, [])
 
   const search = useCallback(async () => {
     setLoading(true)
@@ -194,15 +195,15 @@ export default function SchedulePage() {
   const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—"
 
   const statusBadge = (s: string) => {
-    const cls = s === "OPEN" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-    return <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{s}</span>
+    const cls = s === "OPEN" ? "bg-success-subtle text-success" : "bg-destructive/10 text-destructive"
+    return <span className={cn("inline-flex px-2 py-0.5 rounded-full text-xs font-medium", cls)}>{s}</span>
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Lịch tàu</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Lịch tàu</h1>
           <p className="text-sm text-muted-foreground">Tra cứu lịch tàu / chuyến bay theo tuyến đường</p>
         </div>
         <button
@@ -287,17 +288,17 @@ export default function SchedulePage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-muted/50">
-                    <th className="text-left px-4 py-2.5 font-medium">Tàu</th>
-                    <th className="text-left px-4 py-2.5 font-medium">Hãng</th>
-                    <th className="text-left px-4 py-2.5 font-medium">Voyage</th>
-                    <th className="text-left px-4 py-2.5 font-medium">POL</th>
-                    <th className="text-left px-4 py-2.5 font-medium">POD</th>
-                    <th className="text-left px-4 py-2.5 font-medium">ETD</th>
-                    <th className="text-left px-4 py-2.5 font-medium">ETA</th>
-                    <th className="text-right px-4 py-2.5 font-medium">Transit</th>
-                    <th className="text-left px-4 py-2.5 font-medium">Cutoff</th>
-                    <th className="text-left px-4 py-2.5 font-medium">Trạng thái</th>
+                  <tr className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
+                    <th className="text-left px-4 py-2.5">Tàu</th>
+                    <th className="text-left px-4 py-2.5">Hãng</th>
+                    <th className="text-left px-4 py-2.5">Chuyến</th>
+                    <th className="text-left px-4 py-2.5">Cảng xếp</th>
+                    <th className="text-left px-4 py-2.5">Cảng dỡ</th>
+                    <th className="text-left px-4 py-2.5">ETD</th>
+                    <th className="text-left px-4 py-2.5">ETA</th>
+                    <th className="text-right px-4 py-2.5">Hành trình</th>
+                    <th className="text-left px-4 py-2.5">Cắt hàng</th>
+                    <th className="text-left px-4 py-2.5">Trạng thái</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">

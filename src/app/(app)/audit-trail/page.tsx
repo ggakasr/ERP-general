@@ -59,9 +59,9 @@ function AuditDiff({ row }: { row: AuditRow }) {
           <li key={f} className="break-words">
             <span className="font-medium" title={f}>{FIELD_LABELS[f] || f}</span>
             <span className="text-muted-foreground">: </span>
-            <span className="rounded bg-red-50 px-1 font-mono text-red-700 line-through decoration-red-300">{short(row.old_value?.[f])}</span>
+            <span className="rounded bg-destructive/10 px-1 font-mono text-destructive line-through decoration-destructive/50">{short(row.old_value?.[f])}</span>
             <span className="text-muted-foreground"> → </span>
-            <span className="rounded bg-emerald-50 px-1 font-mono text-emerald-700">{short(row.new_value?.[f])}</span>
+            <span className="rounded bg-success-subtle px-1 font-mono text-success">{short(row.new_value?.[f])}</span>
           </li>
         ))}
       </ul>
@@ -72,7 +72,7 @@ function AuditDiff({ row }: { row: AuditRow }) {
     const nv = row.new_value || {}
     const ov = row.old_value || {}
     return (
-      <p className="min-w-[280px] text-xs text-red-800">
+      <p className="min-w-[280px] text-xs text-destructive">
         Cố thực hiện <b>{String(nv.action ?? "—")}</b> với vai trò <b>{String(nv.attempted_role ?? "—")}</b>, trong khi đã là{" "}
         <b>{String(ov.existing_role ?? "—")}</b> trên {String(ov.document_number ?? "chứng từ liên quan")}
         {ov.rule ? ` (${String(ov.rule)})` : ""}.
@@ -221,7 +221,7 @@ export default function AuditTrailPage() {
         loading={loading}
         rowKey={(r) => r.id}
         empty="Không có bản ghi phù hợp"
-        rowClassName={(r) => (r.action === "SOD_VIOLATION" ? "bg-red-50/40" : undefined)}
+        rowClassName={(r) => (r.action === "SOD_VIOLATION" ? "bg-destructive/5" : undefined)}
         columns={[
           { key: "id", label: "#", render: (r) => <span className="font-mono text-xs text-muted-foreground">{r.id}</span> },
           { key: "time", label: "Thời điểm", className: "whitespace-nowrap", render: (r) => formatDateTime(r.created_at) },
