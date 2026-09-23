@@ -2533,3 +2533,131 @@ t('T22.3', 'api_risk_alerts phát hiện off-hours activity nếu có chứng t�
   const offHours = r.alerts.filter(a => a.type === 'OFF_HOURS')
   assert.ok(offHours.length >= 0, 'off-hours detection runs without error')
 })
+
+// ---------------------------------------------------------------- T23 portal (WP-F3)
+
+async function setupPortalUser() {
+  // Pick a partner and assign it to the 'cskh2' user, turning them into a portal customer
+  const partners = await sys('SELECT id FROM partners LIMIT 1')
+  assert.ok(partners[0], 'at least one partner exists')
+  const partnerId = partners[0].id
+
+  // Update user to portal type
+  await sys(`
+    UPDATE app_users SET partner_id = $1, user_type = 'PORTAL_CUSTOMER'
+    WHERE email = 'cskh2@erp.demo'
+  `, [partnerId])
+
+  // Add portal role
+  const userId = (await sys("SELECT id FROM app_users WHERE email = 'cskh2@erp.demo'"))[0].id
+  await sys(`
+    INSERT INTO user_roles (user_id, role_code, granted_at)
+    VALUES ($1, 'PORTAL_CUSTOMER', now())
+    ON CONFLICT DO NOTHING
+  `, [userId])
+
+  // Create a SHIPMENT linked to this partner
+  await sys(`
+    INSERT INTO documents (tenant_id, doc_type, number, status, partner_id, branch_id, department_id,
+      data, created_by, created_at)
+    SELECT fn_current_tenant(), 'SHIPMENT', 'SHIP-TEST-PORTAL', 'CONFIRMED', $1,
+      u.branch_id, u.department_id, '{"pol":"VNHPH","pod":"SGSIN","mode":"SEA"}'::jsonb,
+      u.id, now()
+    FROM app_users u WHERE u.email = 'kinhdoanh@erp.demo'
+  `, [partnerId])
+
+  // Create a QUOT linked to this partner in SUBMITTED status
+  await sys(`
+    INSERT INTO documents (tenant_id, doc_type, number, status, partner_id, branch_id, department_id,
+      data, created_by, created_at)
+    SELECT fn_current_tenant(), 'QUOT', 'QT-TEST-PORTAL', 'SUBMITTED', $1,
+      u.branch_id, u.department_id, '{"total_amount":5000000}'::jsonb,
+      u.id, now()
+    FROM app_users u WHERE u.email = 'kinhdoanh@erp.demo'
+  `, [partnerId])
+
+  return { partnerId, userId }
+}
+
+t('T23.1', 'api_portal_shipments trả về danh sách lô hàng cho portal user', async () => {
+  await as('ceo') // set tenant context
+  await setupPortalUser()
+  await as('cskh2')
+  const r = await call('api_portal_shipments', {})
+  ok(r, 'api_portal_shipments')
+  assert.ok(Array.isArray(r.rows), 'rows is array')
+  const ship = r.rows.find(s => s.number === 'SHIP-TEST-PORTAL')
+  assert.ok(ship, 'portal user sees their partner shipment')
+  assert.equal(ship.data.internal_notes, undefined, 'internal_notes stripped')
+})
+
+t('T23.2', 'api_portal_shipments FORBIDDEN cho user không có partner_id', async () => {
+  await as('muahang')
+  const r = await call('api_portal_shipments', {})
+  fail(r, 'FORBIDDEN')
+})
+
+t('T23.3', 'api_portal_tracking trả về tracking events cho shipment thuộc partner', async () => {
+  await as('ceo')
+  await setupPortalUser()
+  const shipDoc = await doc('SHIP-TEST-PORTAL')
+  assert.ok(shipDoc, 'test shipment exists')
+  await as('cskh2')
+  const r = await call('api_portal_tracking', { p_shipment_id: shipDoc.id })
+  ok(r, 'api_portal_tracking')
+  assert.ok(r.shipment, 'has shipment info')
+  assert.equal(r.shipment.number, 'SHIP-TEST-PORTAL')
+  assert.ok(Array.isArray(r.events), 'events is array')
+})
+
+t('T23.4', 'api_portal_tracking FORBIDDEN cho shipment không thuộc partner', async () => {
+  await as('ceo')
+  await setupPortalUser()
+  // Find a shipment NOT linked to portal user's partner
+  const others = await sys(`
+    SELECT id FROM documents
+    WHERE doc_type = 'SHIPMENT'
+    AND (partner_id IS NULL OR partner_id <> (SELECT partner_id FROM app_users WHERE email = 'cskh2@erp.demo'))
+    LIMIT 1
+  `)
+  if (others[0]) {
+    await as('cskh2')
+    const r = await call('api_portal_tracking', { p_shipment_id: others[0].id })
+    fail(r, 'FORBIDDEN')
+  }
+})
+
+t('T23.5', 'api_portal_confirm_quote ACCEPT chuyển báo giá sang ACCEPTED', async () => {
+  await as('ceo')
+  await setupPortalUser()
+  const qt = await doc('QT-TEST-PORTAL')
+  assert.ok(qt, 'test quotation exists')
+  await as('cskh2')
+  const r = await call('api_portal_confirm_quote', { p_quote_id: qt.id, p_action: 'ACCEPT' })
+  ok(r, 'confirm quote')
+  assert.equal(r.new_status, 'ACCEPTED')
+  const updated = await sys('SELECT status FROM documents WHERE id = $1', [qt.id])
+  assert.equal(updated[0].status, 'ACCEPTED')
+})
+
+t('T23.6', 'api_portal_confirm_quote REJECT chuyển báo giá sang REJECTED', async () => {
+  await as('ceo')
+  await setupPortalUser()
+  const qt = await doc('QT-TEST-PORTAL')
+  await as('cskh2')
+  const r = await call('api_portal_confirm_quote', { p_quote_id: qt.id, p_action: 'REJECT' })
+  ok(r, 'reject quote')
+  assert.equal(r.new_status, 'REJECTED')
+})
+
+t('T23.7', 'api_portal_documents trả về chứng từ thuộc partner', async () => {
+  await as('ceo')
+  await setupPortalUser()
+  await as('cskh2')
+  const r = await call('api_portal_documents', {})
+  ok(r, 'api_portal_documents')
+  assert.ok(Array.isArray(r.rows), 'rows is array')
+  // QUOT we created should appear
+  const qt = r.rows.find(d => d.number === 'QT-TEST-PORTAL')
+  assert.ok(qt, 'portal user sees quotation')
+})
