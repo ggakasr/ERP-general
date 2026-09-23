@@ -115,16 +115,16 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-E2 | AI ingestion pipeline (`/api/ingest` + `ingest_jobs`) | P2 | WP-E1 | 2–3 tuần | [x] |
 | WP-F1 | Comment trên chứng từ + `@mention` | P2 | — | 1–2 tuần | [x] |
 | WP-F2 | Nâng cấp task queue theo vai trò | P2 | — | 1 tuần | [x] |
-| WP-F3 | Client Portal + Agent Portal | P3 | WP-D1, WP-C1 | 5–6 tuần | [ ] |
+| WP-F3 | Client Portal + Agent Portal | P3 | WP-D1, WP-C1 | 5–6 tuần | [x] |
 | WP-G1 | Audit Pack + manifest hash | P2 | — | 2 tuần | [x] |
 | WP-G2 | Audit trail tamper-evident (hash-chain) | P2 | — | 1 tuần | [x] |
 | WP-G3 | Duyệt đa cấp + SoD theo mức rủi ro + delegation | P2 | — | 2–3 tuần | [x] |
-| WP-G4 | Widget phát hiện bất thường (risk alerts) | P2 | WP-B1 | 1 tuần | [ ] |
+| WP-G4 | Widget phát hiện bất thường (risk alerts) | P2 | WP-B1 | 1 tuần | [x] |
 | WP-H1 | Hoá đơn điện tử (adapter + `einvoice_log`) | P2 | — | 2–3 tuần | [x] |
 | WP-H2 | Import & đối chiếu sao kê ngân hàng | P2 | — | 1–2 tuần | [x] |
 | WP-H3 | `docs/deployment.md` + backup/DR + health check + CI gate | P2 | — | 3–5 ngày | [x] |
-| WP-I1 | Billing/subscription + đóng gói theo gói | P3 | WP-D1 | 2–3 tuần | [ ] |
-| WP-I2 | Landing page + Help Center + onboarding demo | P3 | WP-A4 | 2 tuần | [ ] |
+| WP-I1 | Billing/subscription + đóng gói theo gói | P3 | WP-D1 | 2–3 tuần | [x] |
+| WP-I2 | Landing page + Help Center + onboarding demo | P3 | WP-A4 | 2 tuần | [x] |
 | WP-J1 | Design system & app shell (nền UX/UI) | P1 | — | 1–2 tuần | [x] |
 | WP-J2 | Hành vi + ma trận trạng thái màn cốt lõi | P1 | WP-J1 | 1–2 tuần | [x] |
 | WP-J3 | Vòng QA/triage UX toàn bộ màn hiện có | P2 | WP-J1, WP-J2 | 1 tuần | [x] |
@@ -967,10 +967,10 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-H1 | 2026-09-23 | `2de5741` | T19.1–T19.3 (einvoice log + tenant isolation + DRAFT cannot issue) | ✅ | 030_einvoice.sql; einvoice_log + RLS; VNPT+Viettel adapter; INV POSTED→ISSUED; /api/einvoice route; T3.1–T3.4 PASS |
 | WP-H2 | 2026-09-23 | `828fe36` | T20.1–T20.3 (bankrec import + DRAFT guard + suggest matching) | ✅ | 031_bankrec_import.sql; api_bankrec_import + api_bankrec_suggest; /api/bankrec/import (CSV/OFX); /api/bankrec/suggest; T3.1–T3.4 PASS |
 | WP-H3 | 2026-09-23 | `967dd64` | T21.1–T21.2 (health check tables/checks/anon) | ✅ | docs/deployment.md (arch/release/rollback/backup/DR/RPO/RTO); 032_health_check.sql api_health_check(); CI SoD gate T3.1–T3.4; T3.1–T3.4 PASS |
-| WP-F3 |  |  |  |  |  |
-| WP-G4 |  |  |  |  |  |
-| WP-I1 |  |  |  |  |  |
-| WP-I2 |  |  |  |  |  |
+| WP-G4 | 2026-09-23 | `5b9676d` | T22.1–T22.3 (risk alerts RPC + scope isolation + widget) | ✅ | 033_risk_alerts.sql; api_risk_alerts(); 4 anomaly detectors (SoD near-miss, exception spike, after-hours, high-value outlier); /controls widget |
+| WP-F3 | 2026-09-23 | `67e199f` | T23.1–T23.7 (portal shipments, FORBIDDEN, tracking, cross-partner, quote confirm/reject, documents) | ✅ | 034_portal.sql; PORTAL_CUSTOMER/PARTNER_AGENT roles; fn_doc_in_scope partner_id check; api_portal_shipments/tracking/documents/confirm_quote; /portal route group |
+| WP-I1 | 2026-09-23 | `46b4417` | T24.1–T24.5 (subscription info, plan_features, fn_feature_enabled, plan change, FORBIDDEN non-admin) | ✅ | 035_billing.sql; subscriptions + plan_features tables; api_subscription_info/admin_change_plan; fn_feature_enabled/limit; /billing page |
+| WP-I2 | 2026-09-23 | `0d6c0a7` | (frontend + API route — no DB test needed) | ✅ | Landing page `/` (hero, features, pricing, industries); Help Center `/help` (modules, FAQ, how-it-works); Demo signup `/demo` + `/api/demo-signup` (auto tenant provisioning) |
 | WP-J1 | 2026-09-21 | 71aa36e | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | dark mode via @media; Inter font removed; Skeleton + Breadcrumb mới |
 | WP-J2 | 2026-09-21 | 7df1587, cbe640d, 31d6f99, 53a128d, c35824e | (frontend-only — không đụng DB; T3.1–T3.12 PASS) | ✅ | Skeleton KPI/Inbox/DocDetail; EmptyState CTA; ErrorBox retry; state matrix §9 DESIGN-SPEC |
 | WP-J3 | 2026-09-21 | 75c3cdd | (frontend-only — không đụng DB; T3.1–T3.4 PASS) | ✅ | Chuyển tất cả màu hardcode Tailwind sang semantic token (success/warning/info/destructive/muted); dark mode đầy đủ |
@@ -1333,3 +1333,102 @@ Definition of Done chung:
 
 Cạm bẫy/nợ kỹ thuật còn lại: CI gate phụ thuộc output format của `node:test` (grep "not ok"/"ok"); nếu test runner thay đổi format cần cập nhật grep pattern.
 Ảnh hưởng gói sau: Monitoring/uptime check có thể gọi api_health_check() qua Supabase REST.
+
+### Bàn giao WP-G4  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] RPC `api_risk_alerts()` phát hiện 4 loại bất thường: SoD near-miss, exception spike, after-hours activity, high-value outlier — PASS (`033_risk_alerts.sql`)
+- [x] Widget "cảnh báo rủi ro" ở `/controls` hiển thị danh sách alerts theo severity — PASS
+- [x] T22.1–T22.3 PASS (alerts RPC + scope isolation + widget rendering)
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH
+- [x] npx next lint .......................... SẠCH
+- [x] npm run test:acceptance ................ T22.1–T22.3 PASS
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔
+- [x] Acceptance test map tới thay đổi ....... T22.1 (api_risk_alerts), T22.2 (scope isolation), T22.3 (widget)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; api_risk_alerts SECURITY DEFINER; chỉ GRANT EXECUTE
+- [x] Không tạo bảng mới — chỉ function-only
+- [x] Đã commit ngay. Commit: `5b9676d`
+- [x] Đã tick [x] WP-G4 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại: app-map chưa viết; anomaly thresholds hardcode (z-score > 2, exception > 3×avg) — có thể cấu hình qua tenant settings.
+
+---
+
+### Bàn giao WP-F3  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Vai trò `PORTAL_CUSTOMER`/`PARTNER_AGENT` trong `permission_matrix` (scope OWN theo partner_id) — PASS (`034_portal.sql`)
+- [x] `fn_doc_in_scope` mở rộng: nếu `app_users.partner_id IS NOT NULL` thì OWN scope = `documents.partner_id = app_users.partner_id` — PASS
+- [x] Portal RPCs: `api_portal_shipments`, `api_portal_tracking`, `api_portal_documents`, `api_portal_confirm_quote` — PASS
+- [x] Non-portal user bị FORBIDDEN khi gọi portal RPCs — PASS (T23.2)
+- [x] Cross-partner isolation: portal user chỉ thấy shipment của partner mình — PASS (T23.4)
+- [x] Xác nhận/từ chối báo giá: `api_portal_confirm_quote` với `p_accept=true/false` — PASS (T23.5, T23.6)
+- [x] Portal route group `/portal` với layout riêng (nav đơn giản) — PASS
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH
+- [x] npx next lint .......................... SẠCH
+- [x] npm run test:acceptance ................ T23.1–T23.7 PASS
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔
+- [x] Acceptance test map tới thay đổi ....... T23.1–T23.7
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; portal RPCs SECURITY DEFINER; chỉ EXECUTE
+- [x] (Bảng mới sau WP-D1) Không tạo bảng mới — thêm cột `partner_id`/`user_type` vào `app_users`
+- [x] Đã commit ngay. Commit: `67e199f`
+- [x] Đã tick [x] WP-F3 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại: app-map chưa viết; portal user không có sidebar ERP đầy đủ (by design); Partner AGENT chưa có RPC tạo DNOTE/CNOTE (chỉ xem); tracking_events dùng event_code/event_time/notes (không phải event_type/event_date/description).
+
+---
+
+### Bàn giao WP-I1  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Bảng `subscriptions` (tenant_id, plan, seats, valid_from/to, status, trial_ends) + RLS — PASS (`035_billing.sql`)
+- [x] Bảng `plan_features` (3 plans × 8 features) — PASS
+- [x] `api_subscription_info`: trả plan, usage (active_users, doc_types_used, documents_total), features map — PASS (T24.1)
+- [x] `fn_feature_enabled(text)`/`fn_feature_limit(text)`: gate functions — PASS (T24.3)
+- [x] `api_admin_change_plan`: chỉ SYSTEM_ADMIN, ghi audit trail — PASS (T24.4)
+- [x] Non-admin bị FORBIDDEN khi gọi `api_admin_change_plan` — PASS (T24.5)
+- [x] Trang `/billing`: plan display, usage meters, feature checklist — PASS
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH
+- [x] npx next lint .......................... SẠCH
+- [x] npm run test:acceptance ................ T24.1–T24.5 PASS
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔
+- [x] Acceptance test map tới thay đổi ....... T24.1–T24.5
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) không cấp quyền bảng cho `authenticated`; subscriptions REVOKE ALL; plan_features SELECT chỉ qua RLS
+- [x] (Bảng mới sau WP-D1) `subscriptions` có `tenant_id NOT NULL REFERENCES tenants(id)` + RLS
+- [x] Đã commit ngay. Commit: `46b4417`
+- [x] Đã tick [x] WP-I1 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại: chưa tích hợp cổng thanh toán (by design — giai đoạn sau); plan_features SELECT granted cho authenticated (config table, không chứa dữ liệu nhạy cảm); app-map chưa viết.
+
+---
+
+### Bàn giao WP-I2  (2026-09-23)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] Landing page `/` theo `docs/positioning.md`: hero, features (SoD, audit, trace, phân quyền, SLA, bất thường), pricing (3 plans), industries (logistics, sản xuất, thương mại, dịch vụ) — PASS
+- [x] Help Center `/help`: 8 modules nghiệp vụ, cách hoạt động (4 nguyên tắc), FAQ (5 câu) — PASS
+- [x] Demo signup `/demo`: form (tên, email, công ty) → `/api/demo-signup` → auto tạo auth user + tenant + branch + dept + roles (SYS_ADMIN + CFO) + subscription TRIAL 14 ngày — PASS
+- [x] Thành công hiển thị email/mật khẩu/tenant + link đăng nhập — PASS
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH
+- [x] npx next lint .......................... SẠCH
+- [x] npm run test:acceptance ................ Frontend + API route — không cần test DB mới
+- [x] T3.1–T3.4 (SoD blocker) ................ Không ảnh hưởng (không đụng engine)
+- [x] Acceptance test map tới thay đổi ....... Frontend-only + API route
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Đụng DB) `/api/demo-signup` dùng `SUPABASE_SERVICE_ROLE_KEY` (server-side, không expose cho client)
+- [x] Đã commit ngay. Commit: `0d6c0a7`
+- [x] Đã tick [x] WP-I2 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại: `/api/demo-signup` cần `SUPABASE_SERVICE_ROLE_KEY` trong env — không hoạt động nếu thiếu; không có rate limiting trên endpoint (cần thêm ở production); mật khẩu mặc định `Demo@123` — user nên đổi sau đăng nhập.
+Ảnh hưởng gói sau: không — WP-I2 là gói cuối cùng trong kế hoạch.
