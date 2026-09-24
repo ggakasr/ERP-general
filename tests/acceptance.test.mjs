@@ -2763,3 +2763,98 @@ t('T25.3', 'api_cskh_config_set records audit trail', async () => {
   const nv = typeof rows[0].new_value === 'string' ? JSON.parse(rows[0].new_value) : rows[0].new_value
   assert.equal(nv.persona, 'Bot Test')
 })
+
+t('T25.4', 'tra_cuu_don_hang: unverified order hides sensitive fields (R2)', async () => {
+  await as('kinhdoanh')
+  const tid = (await sys('SELECT fn_current_tenant() AS t'))[0].t
+  const custId = await partner('CUS-001')
+
+  await sys('UPDATE partners SET phone = $1 WHERE id = $2', ['0912345678', custId])
+
+  await as('kinhdoanh')
+  const so = await call('api_create_document', {
+    p_doc_type: 'SO',
+    p_header: { title: 'CSKH Tra Don Test', partner_id: custId, warehouse_id: await wh('WH-HN-01') },
+    p_lines: [{ product_id: await product('RM-BOLT'), quantity: 5, unit_price: 10000 }],
+  })
+  ok(so, 'create SO')
+
+  const soNum = (await sys('SELECT number FROM documents WHERE id = $1', [so.id]))[0].number
+
+  // Unverified: phone/address/amount hidden
+  await sys('RESET ROLE')
+  const r = await call('api_cskh_tra_don', { p_tenant_id: tid, p_ma_don: soNum, p_verified_orders: [] })
+  assert.equal(r.ok, true)
+  assert.equal(r.number, soNum)
+  assert.equal(r.phone, undefined, 'phone must be hidden when unverified')
+  assert.equal(r.address, undefined, 'address must be hidden when unverified')
+  assert.equal(r.amount, undefined, 'amount must be hidden when unverified')
+
+  // Verified: sensitive fields visible
+  const rv = await call('api_cskh_tra_don', { p_tenant_id: tid, p_ma_don: soNum, p_verified_orders: [so.id] })
+  assert.equal(rv.ok, true)
+  assert.equal(rv.phone, '0912345678', 'phone visible when verified')
+  assert.ok(rv.amount !== undefined, 'amount visible when verified')
+})
+
+t('T25.5', 'tra_cuu_don_hang: non-existent order returns not_found (R1)', async () => {
+  await as('kinhdoanh')
+  const tid = (await sys('SELECT fn_current_tenant() AS t'))[0].t
+  await sys('RESET ROLE')
+  const r = await call('api_cskh_tra_don', { p_tenant_id: tid, p_ma_don: 'SO-999999-99999' })
+  assert.equal(r.ok, false)
+  assert.equal(r.error, 'not_found')
+})
+
+t('T25.6', 'de_xuat_handoff: creates TICKET + sets awaiting_human', async () => {
+  await as('cs_agent')
+  const tid = (await sys('SELECT fn_current_tenant() AS t'))[0].t
+
+  // Create a session
+  await sys('RESET ROLE')
+  const sess = await call('api_cskh_start_session', { p_tenant_id: tid })
+  assert.equal(sess.ok, true)
+  const sessId = sess.session_id
+
+  // Handoff
+  const r = await call('api_cskh_handoff', { p_tenant_id: tid, p_session_id: sessId, p_reason: 'Khách khiếu nại — test' })
+  assert.equal(r.ok, true, JSON.stringify(r))
+  assert.ok(r.ticket_number, 'ticket number returned')
+  assert.ok(r.ticket_id, 'ticket id returned')
+
+  // Verify session status = awaiting_human
+  const sessRow = (await sys('SELECT status, ticket_id FROM cskh_sessions WHERE id = $1', [sessId]))[0]
+  assert.equal(sessRow.status, 'awaiting_human')
+  assert.equal(sessRow.ticket_id, r.ticket_id)
+
+  // Verify ticket exists and is OPEN
+  const tkRow = (await sys('SELECT * FROM documents WHERE id = $1', [r.ticket_id]))[0]
+  assert.ok(tkRow, 'ticket document exists')
+  assert.equal(tkRow.doc_type, 'TICKET')
+  assert.equal(tkRow.status, 'OPEN')
+  assert.equal(tkRow.data.source, 'cskh_bot')
+})
+
+t('T25.7', 'bot user cannot perform financial transitions', async () => {
+  const po = await newPo()
+  ok(await act('muahang', po, 'submit'))
+
+  const botRows = await sys("SELECT id FROM app_users WHERE email = 'system-cskh-bot@erp.local' LIMIT 1")
+  assert.ok(botRows.length > 0, 'bot user exists')
+  const botId = botRows[0].id
+
+  // Set JWT to bot user and try approve — should fail
+  await db.query('RESET ROLE')
+  await db.query(`SELECT set_config('request.jwt.claim.sub', $1, true), set_config('request.jwt.claims', $2, true)`,
+    [botId, JSON.stringify({ sub: botId, role: 'authenticated' })])
+  await db.query('SET LOCAL ROLE authenticated')
+
+  const v = (await sys('SELECT version FROM public.documents WHERE id = $1', [po]))[0].version
+  await db.query('RESET ROLE')
+  await db.query(`SELECT set_config('request.jwt.claim.sub', $1, true), set_config('request.jwt.claims', $2, true)`,
+    [botId, JSON.stringify({ sub: botId, role: 'authenticated' })])
+  await db.query('SET LOCAL ROLE authenticated')
+
+  const rApprove = await call('api_transition', { p_doc_id: po, p_action: 'approve', p_expected_version: v })
+  assert.equal(rApprove.ok, false, `bot must not approve PO: ${JSON.stringify(rApprove)}`)
+})
