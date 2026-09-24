@@ -784,8 +784,9 @@ t('T5.2', 'Import hàng loạt 100 bản ghi master data — hoàn tất đúng 
   // Scaled down from 10,000 → 100; semantic preserved: batch inserts work correctly
   const start = Date.now()
   const codes = Array.from({ length: 100 }, (_, i) => `TEST-BULK-${i.toString().padStart(4, '0')}`)
-  const values = codes.map((c, i) => `('${c}', 'Sản phẩm bulk ${i}', 'COMPONENT', 'EA', 0, true)`).join(',\n')
-  await sys(`INSERT INTO public.products (code, name, category, unit, cost, is_active) VALUES ${values}`)
+  const [{ tenant_id: tid }] = await sys(`SELECT tenant_id FROM public.app_users WHERE email = 'admin@erp.demo'`)
+  const values = codes.map((c, i) => `('${c}', 'Sản phẩm bulk ${i}', 'RAW', 'EA', 0, 'ACTIVE', '${tid}')`).join(',\n')
+  await sys(`INSERT INTO public.products (code, name, product_type, unit, standard_cost, status, tenant_id) VALUES ${values}`)
   const { rows } = await db.query(`SELECT count(*)::int c FROM public.products WHERE code LIKE 'TEST-BULK-%'`)
   assert.equal(rows[0].c, 100, '100 records inserted correctly')
   const elapsed = Date.now() - start
@@ -806,8 +807,8 @@ t('T5.3', 'Tạo báo cáo tài chính trên toàn bộ dữ liệu — hoàn t�
 })
 
 t('T5.7', 'Chuỗi phê duyệt nhiều bước — hoàn tất đúng', async () => {
-  // BUDGET: DRAFT → SUBMITTED → APPROVED → ACTIVE → CLOSED  (5 transitions, 3 distinct actors)
-  await as('ketoan')
+  // BUDGET: DRAFT → SUBMITTED → APPROVED → ACTIVE (requester DEPT_HEAD ≠ approver CFO)
+  await as('muahang.tp')
   const r = await call('api_create_document', {
     p_doc_type: 'BUDGET',
     p_header: { title: 'NS Kiểm thử chuỗi phê duyệt', fiscal_year: 2026 },
@@ -815,11 +816,11 @@ t('T5.7', 'Chuỗi phê duyệt nhiều bước — hoàn tất đúng', async (
   })
   ok(r, 'BUDGET created')
   // Step 1: REQUESTER submits
-  ok(await act('ketoan', r.id, 'submit'), 'step 1 submit')
+  ok(await act('muahang.tp', r.id, 'submit'), 'step 1 submit')
   // Step 2: CFO (APPROVER) approves — different from requester
-  ok(await act('giamdoc.tc', r.id, 'approve'), 'step 2 approve')
+  ok(await act('cfo', r.id, 'approve'), 'step 2 approve')
   // Step 3: EXECUTOR activates
-  ok(await act('giamdoc.tc', r.id, 'activate'), 'step 3 activate')
+  ok(await act('cfo', r.id, 'activate'), 'step 3 activate')
   // Step 4: verify final status
   const final = await sys('SELECT status FROM public.documents WHERE id = $1', [r.id])
   assert.equal(final[0].status, 'ACTIVE', 'budget reached ACTIVE after full chain')
@@ -831,7 +832,7 @@ t('T5.10', 'Gọi RPC liên tục nhiều lần — DB không lỗi, không corr
   await as('sanxuat')
   const calls = []
   for (let i = 0; i < 20; i++) {
-    calls.push(call('api_list_documents', { p_doc_type: 'PR', p_limit: 5, p_offset: 0 }))
+    calls.push(call('api_list_documents', { p_doc_types: ['PR'], p_limit: 5, p_offset: 0 }))
   }
   // Execute serially (same connection) — verifies no session state corruption
   const results = []
@@ -881,9 +882,10 @@ t('T5.12', 'Draft tự động giữ nguyên sau khi phiên hết hạn (đăng 
   await db.query('RESET ROLE')
   await as('sanxuat') // new session
   // Draft must still be retrievable via api_get_document
-  const fetched = await call('api_get_document', { p_doc_id: r.id })
+  const fetched = await call('api_get_document', { p_id: r.id })
   assert.ok(fetched, 'document fetched after re-auth')
-  assert.equal(fetched.status, 'DRAFT', 'document is still DRAFT — not lost on session expiry')
+  ok(fetched, 'api_get_document after re-auth')
+  assert.equal(fetched.document.status, 'DRAFT', 'document is still DRAFT — not lost on session expiry')
 })
 
 // ---------------------------------------------------------------- N6 tenant isolation (WP-D1)
@@ -1044,9 +1046,8 @@ t('T7.1', 'BLOCKER SoD: cùng user không vừa tạo vừa duyệt cùng SHIPME
   await as('muahang')
   const r = await call('api_create_document', {
     p_doc_type: 'SHIPMENT',
-    p_header: { title: 'T7.1 SoD Test Shipment', partner_id: await partner('CUST-LOG-01') },
-    p_data: { mode: 'FCL', shipment_type: 'EXPORT', pol: 'VNSGN', pod: 'USLAX',
-               etd: '2026-10-01', eta: '2026-10-28', carrier: 'TEST', incoterm: 'FOB' },
+    p_header: { title: 'T7.1 SoD Test Shipment', partner_id: await partner('CUST-LOG-01'), data: { mode: 'FCL', shipment_type: 'EXPORT', pol: 'VNSGN', pod: 'USLAX',
+               etd: '2026-10-01', eta: '2026-10-28', carrier: 'TEST', incoterm: 'FOB' } },
   })
   ok(r, 'create SHIPMENT')
   const sptId = r.id
@@ -1377,9 +1378,8 @@ t('T10.5', 'api_quote_build: trả về margin đúng cho shipment có container
   // Create a SHIPMENT + add containers
   const spt = await call('api_create_document', {
     p_doc_type: 'SHIPMENT',
-    p_header: { title: 'T10.5 quote test', partner_id: await partner('CUST-LOG-01') },
-    p_data: { mode: 'FCL', shipment_type: 'EXPORT', pol: 'VNSGN', pod: 'CNSHA',
-               etd: '2026-11-01', eta: '2026-11-28', carrier: 'TEST-C', incoterm: 'FOB' },
+    p_header: { title: 'T10.5 quote test', partner_id: await partner('CUST-LOG-01'), data: { mode: 'FCL', shipment_type: 'EXPORT', pol: 'VNSGN', pod: 'CNSHA',
+               etd: '2026-11-01', eta: '2026-11-28', carrier: 'TEST-C', incoterm: 'FOB' } },
   })
   ok(spt, 'SHIPMENT created for T10.5')
 
@@ -1443,12 +1443,15 @@ t('T11.3', 'api_vessel_schedules lọc theo POL + POD', async () => {
 })
 
 t('T11.4', 'api_add_tracking_event: unauthenticated bị từ chối', async () => {
-  // Tạo shipment trước để có ID hợp lệ
+  // Tạo shipment trước để có ID hợp lệ (muahang + OPS_STAFF có quyền CREATE SHIPMENT)
+  await sys(`INSERT INTO public.user_roles (user_id, role_code)
+             SELECT id, 'OPS_STAFF' FROM public.app_users
+             WHERE email = 'muahang@erp.demo' ON CONFLICT DO NOTHING`)
+  await as('muahang')
   const spt = await call('api_create_document', {
     p_doc_type: 'SHIPMENT',
-    p_header: { title: 'T11.4 test shipment', partner_id: await partner('CUST-LOG-01') },
-    p_data: { mode: 'FCL', shipment_type: 'EXPORT', pol: 'VNSGN', pod: 'USHOU',
-               etd: '2026-12-01', eta: '2027-01-10', carrier: 'EVER', incoterm: 'CIF' },
+    p_header: { title: 'T11.4 test shipment', partner_id: await partner('CUST-LOG-01'), data: { mode: 'FCL', shipment_type: 'EXPORT', pol: 'VNSGN', pod: 'USHOU',
+               etd: '2026-12-01', eta: '2027-01-10', carrier: 'EVER', incoterm: 'CIF' } },
   })
   ok(spt, 'SHIPMENT tạo thành công T11.4')
 
@@ -2114,18 +2117,25 @@ t('T17.3', 'Mỗi bản ghi audit: prev_hash bằng row_hash của bản ghi li�
   ok(await act('muahang', po2, 'submit'), 'submit PO 2')
 
   // Kiểm tra liên kết chuỗi trực tiếp bằng SQL (không qua API)
+  // legacy_gap: có bản ghi cũ chưa băm (row_hash NULL, trước 028/037) nằm giữa → đoạn chuỗi mới bắt đầu từ 64 số 0
   const rows = await sys(
-    `SELECT id, prev_hash, row_hash
-     FROM public.audit_trail
-     WHERE row_hash IS NOT NULL
-     ORDER BY id ASC`
+    `WITH h AS (
+       SELECT id, prev_hash, row_hash, lag(id) OVER (ORDER BY id) AS prev_id
+       FROM public.audit_trail WHERE row_hash IS NOT NULL
+     )
+     SELECT h.id, h.prev_hash, h.row_hash,
+            EXISTS (SELECT 1 FROM public.audit_trail a
+                    WHERE a.row_hash IS NULL AND a.id < h.id AND a.id > coalesce(h.prev_id, 0)) AS legacy_gap
+     FROM h ORDER BY h.id ASC`
   )
   assert.ok(rows.length >= 4, `Cần ít nhất 4 bản ghi có hash, thực tế: ${rows.length}`)
 
-  // Mỗi bản ghi (trừ bản đầu) phải có prev_hash = row_hash của bản ghi trước đó
+  // Mỗi bản ghi (trừ bản đầu) phải có prev_hash = row_hash của bản ghi có hash liền trước
+  // (hoặc 64 số 0 nếu ngay trước nó là bản ghi cũ chưa băm)
   let broken = null
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i].prev_hash !== rows[i - 1].row_hash) {
+    const expected = rows[i].legacy_gap ? '0'.repeat(64) : rows[i - 1].row_hash
+    if (rows[i].prev_hash !== expected) {
       broken = { at: rows[i].id, expected: rows[i - 1].row_hash, stored: rows[i].prev_hash }
       break
     }
@@ -2341,6 +2351,27 @@ t('T19.3', 'INV ở DRAFT không thể issue — chỉ POSTED mới chuyển ISS
 })
 
 // ---------------------------------------------------------------- T20 bank reconciliation import (WP-H2)
+// Helper: P2P tới phiếu chi PAID (PO → GRN → SINV match/post → PMT submit/approve/execute), trả về PMT
+async function paidPmt(qty, price) {
+  const po = await newPo('muahang', qty, price)
+  ok(await act('muahang', po, 'submit'))
+  ok(await act('muahang.tp', po, 'approve'))
+  ok(await act('muahang', po, 'send'))
+  ok(await act('muahang', po, 'confirm'))
+  await receiveAll(po)
+  await as('ketoan')
+  const sinv = await call('api_create_document', { p_doc_type: 'SINV', p_header: {}, p_parent_id: po })
+  ok(sinv, 'create SINV')
+  ok(await act('ketoan', sinv.id, 'match'))
+  ok(await act('ketoantruong', sinv.id, 'post'))
+  await as('ketoan')
+  const pmt = await call('api_create_document', { p_doc_type: 'PMT', p_header: { title: 'Chi NCC', amount: qty * price }, p_parent_id: sinv.id })
+  ok(pmt, 'create PMT')
+  ok(await act('ketoan', pmt.id, 'submit'))
+  ok(await act('cfo', pmt.id, 'approve'))
+  ok(await act('thuquy', pmt.id, 'execute'))
+  return pmt
+}
 t('T20.1', 'api_bankrec_import nhập hàng loạt dòng sao kê vào BANKREC DRAFT', async () => {
   // Create a BANKREC in DRAFT
   await as('ketoan')
@@ -2382,21 +2413,8 @@ t('T20.2', 'api_bankrec_import: BANKREC phải ở DRAFT, dòng amount=0 bị b�
   })
   ok(br, 'create BANKREC')
 
-  // Create a PMT to match against, then match BANKREC
-  await as('ketoan')
-  const so = await call('api_create_document', { p_doc_type: 'SO', p_header: { title: 'T20.2 SO', partner_id: await partner('CUS-001'), warehouse_id: await wh('WH-HN-01') },
-    p_lines: [{ product_id: await product('SP-A4'), quantity: 1, unit_price: 45000 }] })
-  ok(so)
-  ok(await act('kinhdoanh.tp', so.id, 'confirm'))
-  await as('kho')
-  const dn = await call('api_create_document', { p_doc_type: 'DN', p_header: {}, p_parent_id: so.id })
-  ok(dn)
-  ok(await act('kho', dn.id, 'pick'))
-  ok(await act('kho.tp', dn.id, 'ship'))
-  await as('ketoan')
-  const inv = await call('api_create_document', { p_doc_type: 'INV', p_header: {}, p_parent_id: so.id })
-  ok(inv)
-  ok(await act('ketoantruong', inv.id, 'approve'))
+  // Create a PAID PMT of 45 000 to match against (same P2P flow as T4.10)
+  await paidPmt(10, 4500)
 
   // Match the BANKREC to transition DRAFT → MATCHED
   ok(await act('ketoan', br.id, 'match'))
@@ -2433,30 +2451,7 @@ t('T20.2', 'api_bankrec_import: BANKREC phải ở DRAFT, dòng amount=0 bị b�
 
 t('T20.3', 'api_bankrec_suggest gợi ý match PMT/RCPT theo amount', async () => {
   // Create a PMT (PAID status) to be matchable
-  const po = await newPo('muahang', 5, 10000)
-  ok(await act('muahang', po, 'submit'))
-  ok(await act('muahang.tp', po, 'approve'))
-  ok(await act('muahang', po, 'send'))
-  ok(await act('muahang', po, 'confirm'))
-
-  await as('kho')
-  const grn = await call('api_create_document', { p_doc_type: 'GRN', p_header: {}, p_parent_id: po })
-  ok(grn)
-  ok(await act('kho', grn.id, 'receive'))
-  ok(await act('kho.tp', grn.id, 'accept'))
-
-  await as('ketoan')
-  const sinv = await call('api_create_document', { p_doc_type: 'SINV', p_header: { amount: 50000 }, p_parent_id: po })
-  ok(sinv)
-  ok(await act('ketoan', sinv.id, 'submit'))
-  ok(await act('ketoantruong', sinv.id, 'approve'))
-  ok(await act('ketoan', sinv.id, 'match_po'))
-
-  const pmt = await call('api_create_document', { p_doc_type: 'PMT', p_header: { title: 'T20.3 chi NCC', amount: 50000 }, p_parent_id: sinv.id })
-  ok(pmt)
-  ok(await act('ketoan', pmt.id, 'submit'))
-  ok(await act('cfo', pmt.id, 'approve'))
-  ok(await act('thuquy', pmt.id, 'execute'))
+  const pmt = await paidPmt(5, 10000)
 
   // PMT now in PAID status with amount 50000
   // Create BANKREC with matching line
@@ -2469,7 +2464,7 @@ t('T20.3', 'api_bankrec_suggest gợi ý match PMT/RCPT theo amount', async () =
   ok(br)
   const imp = await call('api_bankrec_import', {
     p_document_id: br.id,
-    p_lines: [{ date: '2026-09-15', description: 'UNC thanh toán', amount: -50000 }],
+    p_lines: [{ date: '2026-09-15', description: `UNC thanh toán ${pmt.number}`, amount: -50000 }],
   })
   ok(imp)
 
@@ -2509,7 +2504,7 @@ t('T21.2', 'api_health_check accessible without authenticated user (anon)', asyn
 
 // ---------------------------------------------------------------- T22 risk alerts (WP-G4)
 t('T22.1', 'api_risk_alerts trả về ok + alerts array + total cho user có quyền CONTROLS VIEW', async () => {
-  await as('giam_doc')
+  await as('ceo')
   const r = await call('api_risk_alerts', { p_days: 30 })
   ok(r, 'api_risk_alerts')
   assert.ok(Array.isArray(r.alerts), 'alerts is array')
@@ -2525,14 +2520,14 @@ t('T22.2', 'api_risk_alerts FORBIDDEN cho user không có quyền CONTROLS hoặ
 })
 
 t('T22.3', 'api_risk_alerts phát hiện off-hours activity nếu có chứng từ tạo ngoài giờ', async () => {
-  await as('giam_doc')
+  await as('ceo')
   // Seed a document with off-hours timestamp (2 AM VN = 19:00 UTC previous day)
   await sys(`
     UPDATE documents SET created_at = date_trunc('day', now()) + interval '19 hours'
     WHERE tenant_id = fn_current_tenant()
     AND id = (SELECT id FROM documents WHERE tenant_id = fn_current_tenant() LIMIT 1)
   `)
-  await as('giam_doc')
+  await as('ceo')
   const r = await call('api_risk_alerts', { p_days: 90 })
   ok(r, 'api_risk_alerts')
   // Off-hours detection works on 7h-19h VN time; 19:00 UTC = 2:00 AM VN = off-hours
