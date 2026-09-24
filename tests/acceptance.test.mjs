@@ -14,7 +14,13 @@ for (const line of existsSync('.env.local') ? readFileSync('.env.local', 'utf8')
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2]
 }
 
-const db = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL, ssl: { rejectUnauthorized: false } })
+const db = new pg.Client({
+  connectionString: process.env.SUPABASE_DB_URL,
+  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 15000, // fail fast if the DB is unreachable instead of hanging forever
+  statement_timeout: 30000,       // server aborts any single statement after 30s
+  query_timeout: 30000,           // client aborts a query after 30s (guards against a stalled connection)
+})
 const results = []
 
 before(async () => { await db.connect() })
