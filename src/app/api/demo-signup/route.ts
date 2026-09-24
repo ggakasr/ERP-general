@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
 
+const RATE_LIMIT = { maxPerIp: 5, maxPerEmail: 2, windowMinutes: 60 }
+
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
   if (!body?.email || !body?.company || !body?.name) {
@@ -14,6 +16,28 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
+
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
+  const emailInput = String(body.email).toLowerCase().trim()
+  const cutoff = new Date(Date.now() - RATE_LIMIT.windowMinutes * 60_000).toISOString()
+
+  const { count: ipCount } = await admin
+    .from("demo_signups")
+    .select("id", { count: "exact", head: true })
+    .eq("ip_address", ip)
+    .gte("created_at", cutoff)
+  if ((ipCount ?? 0) >= RATE_LIMIT.maxPerIp) {
+    return NextResponse.json({ ok: false, error: "Quá nhiều yêu cầu, vui lòng thử lại sau" }, { status: 429 })
+  }
+
+  const { count: emailCount } = await admin
+    .from("demo_signups")
+    .select("id", { count: "exact", head: true })
+    .eq("email", emailInput)
+    .gte("created_at", cutoff)
+  if ((emailCount ?? 0) >= RATE_LIMIT.maxPerEmail) {
+    return NextResponse.json({ ok: false, error: "Email này đã đăng ký gần đây" }, { status: 429 })
+  }
 
   const email = String(body.email).toLowerCase().trim()
   const company = String(body.company).trim()
@@ -87,6 +111,8 @@ export async function POST(request: NextRequest) {
     status: "TRIAL",
     trial_ends: new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10),
   })
+
+  await admin.from("demo_signups").insert({ email, ip_address: ip })
 
   return NextResponse.json({
     ok: true,

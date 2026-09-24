@@ -79,6 +79,42 @@ async function functions() {
     }
     console.log(`→ ${file}: ${blocks.length} functions`)
   }
+  // Re-apply later migrations that override fn_* from 004/005
+  // Order matters: each file may depend on the previous one's changes
+  const patches = [
+    '010_email_outbox.sql',
+    '015_multitenant.sql',
+    '016_fix_tenant_engine.sql',
+    '018_shipment_full.sql',
+    '025_fix_handoff_tenant.sql',
+    '026_fix_fn_notify.sql',
+    '028_audit_hash_chain.sql',
+    '029_multi_level_approval.sql',
+    '034_portal.sql',
+    '035_billing.sql',
+    '036_tech_debt_fixes.sql',
+  ]
+  for (const file of patches) {
+    const path = join(dir, file)
+    if (!existsSync(path)) continue
+    const sql = readFileSync(path, 'utf8')
+    const blocks = sql.split(/\n(?=CREATE OR REPLACE FUNCTION )/).filter((b) => b.startsWith('CREATE OR REPLACE FUNCTION '))
+    if (blocks.length === 0 && !file.includes('026')) continue
+    if (file.includes('026')) {
+      // 026 drops ambiguous overload — run the DROP statement
+      const drop = sql.match(/DROP FUNCTION[^;]+;/)?.[0]
+      if (drop) await client.query(drop)
+      console.log(`→ ${file}: drop ambiguous fn_notify`)
+      continue
+    }
+    for (const b of blocks) {
+      const end = b.indexOf('$$;')
+      if (end < 0) continue
+      const body = b.slice(0, end + 3)
+      await client.query(body)
+    }
+    console.log(`→ ${file}: ${blocks.length} function patches`)
+  }
   await client.query(`
     REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon, authenticated;
     DO $$ DECLARE f record; BEGIN
@@ -87,6 +123,7 @@ async function functions() {
         EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated', f.sig);
       END LOOP;
     END $$;
+    GRANT EXECUTE ON FUNCTION api_health_check() TO anon;
     NOTIFY pgrst, 'reload schema';`)
   console.log('→ grants refreshed')
 }
