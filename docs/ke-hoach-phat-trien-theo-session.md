@@ -2,7 +2,7 @@
 covers: docs/, supabase/migrations/, src/, tests/
 last_verified: 2026-09-24
 ttl_days: 60
-status: KẾ HOẠCH PHÁT TRIỂN — A–J HOÀN TẤT 28/28 GÓI · Nhóm K (AI CSKH) 0/7 — mở 2026-09-24
+status: KẾ HOẠCH PHÁT TRIỂN — A–J HOÀN TẤT 28/28 GÓI · Nhóm K (AI CSKH) 1/7 — mở 2026-09-24
 nguon: docs/phan-tich-canh-tranh-freightek.md (§5, §8, §9, §10, §12)
 ---
 
@@ -14,7 +14,7 @@ nguon: docs/phan-tich-canh-tranh-freightek.md (§5, §8, §9, §10, §12)
 > (hoặc ghi ngắn "làm gói WP-B1 theo `docs/ke-hoach-phat-trien-theo-session.md`").
 >
 > **Trạng thái**: ✅ **Nhóm A–J HOÀN TẤT 28/28 GÓI** (review cuối 2026-09-24). 🆕 **Nhóm K — AI CSKH hợp nhất
-> vào ERP: 0/7 gói**, bắt đầu từ WP-K1. Xem tiến độ ở §2 và bảng bàn giao §6.2.
+> vào ERP: 1/7 gói** (WP-K1 xong 2026-09-24). Xem tiến độ ở §2 và bảng bàn giao §6.2.
 
 ---
 
@@ -135,7 +135,7 @@ K1 dữ liệu ──► K2 bộ não ──┬► K3 widget khách ──┐
 | WP-J2 | Hành vi + ma trận trạng thái màn cốt lõi | P1 | WP-J1 | 1–2 tuần | [x] |
 | WP-J3 | Vòng QA/triage UX toàn bộ màn hiện có | P2 | WP-J1, WP-J2 | 1 tuần | [x] |
 | WP-J4 | UI Shipment/Operations ngang mobile Freightek | P1 | WP-C1, WP-J1 | 1–2 tuần | [x] |
-| WP-K1 | Nền dữ liệu bot CSKH (`041_cskh_bot.sql`, tri thức có duyệt) | P1 | — | 3–4 ngày | [ ] |
+| WP-K1 | Nền dữ liệu bot CSKH (`041_cskh_bot.sql`, tri thức có duyệt) | P1 | — | 3–4 ngày | [x] 2026-09-24 |
 | WP-K2 | Bộ não bot: LLM đa nhà cung cấp (mặc định Claude) + 4 tool + rails R1–R4 | P1 | WP-K1 | 1 tuần | [ ] |
 | WP-K3 | Bong bóng chat cho khách (Portal + landing), bỏ widget ngoài | P1 | WP-K2 | 3–4 ngày | [ ] |
 | WP-K4 | Màn điều hành bot cho NV/TP CSKH (`/customer-service/bot`) | P1 | WP-K2 | 1–1,5 tuần | [ ] |
@@ -1204,6 +1204,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-J3 v2 | 2026-09-23 | `b3373a6` | (frontend-only — T3.1–T3.4 không bị ảnh hưởng) | ✅ | Pass 2: 14 RED + 13 YELLOW defects sửa trong 10 file. useState→useEffect bug (schedule), cn() thay template string (notifications), SCOPE_CLASS semantic tokens (me), hardcode red/emerald→destructive/success (audit-trail, acceptance, trace), table headers uppercase tracking-wide, nhãn tiếng Anh→tiếng Việt (operations, schedule), empty states với icon (operations/[id]) |
 | WP-J4 | 2026-09-21 | 57e2610 | T1.1 (tạo doc SHIPMENT) | ✅ | DB layer minimal WP-C1 (011_shipment.sql): containers, shipment_charges, tracking_events, api_list_shipments, api_get_shipment; UI: card list + detail 5 tab; "Lãi hết hạn" badge; acceptance T3.1–T3.4 running |
 | WP-J4 bugfix | 2026-09-23 | 015bb91 | T7.2 (api_get_shipment) | ✅ | Fix arg order fn_available_actions(v_doc, v_me.id): 020_fix_api_get_shipment.sql; chi tiết shipment 5 tab xác nhận hoạt động đầy đủ |
+| WP-K1 | 2026-09-24 | `a93a6b7` | T25.1–T25.3 (KB SoD, tenant isolation, config audit) | ✅ | 041_cskh_bot.sql: 4 bảng CSKH + RLS + REVOKE; KB_ARTICLE doc type DRAFT→SUBMITTED→PUBLISHED→ARCHIVED SoD; CS_AGENT/CS_MANAGER roles+perms; 5 api_cskh_* functions; 5 KB seed articles PUBLISHED; 039 fn_build_lines KB_ARTICLE no-lines |
 
 > **Cách chủ dự án dùng**: mở bảng này xem cột *DoD đủ?* = ✅ và *Commit(s)* có hash là biết gói đã xong &
 > có bằng chứng. Chỉ cần soi kỹ những dòng *Ghi chú / nợ kỹ thuật* có nội dung.
