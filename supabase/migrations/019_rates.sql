@@ -98,7 +98,7 @@ BEGIN
   PERFORM _perm('OPS_STAFF',    'RATE,CHARGE_CODE', 'VIEW',             'BRANCH');
   PERFORM _perm('CS_FREIGHT',   'RATE,CHARGE_CODE', 'VIEW,CREATE',      'BRANCH');
   PERFORM _perm('CFO',          'RATE,CHARGE_CODE', 'VIEW',             'COMPANY');
-  PERFORM _perm('SYSTEM_ADMIN', 'RATE,CHARGE_CODE', 'VIEW,CREATE,EDIT,APPROVE', 'COMPANY');
+  PERFORM _perm('SYS_ADMIN', 'RATE,CHARGE_CODE', 'VIEW,CREATE,EDIT,APPROVE', 'COMPANY');
 END $$;
 
 DROP FUNCTION IF EXISTS _perm(text, text, text, text, text[]);
@@ -516,7 +516,7 @@ GRANT EXECUTE ON FUNCTION api_rate_import(jsonb) TO authenticated;
 -- ============================================================
 -- api_rate_expiry_check — cảnh báo rate sắp hết hạn (≤7 ngày)
 -- Ghi email_outbox cho OPS_MANAGER trong cùng tenant.
--- Gọi từ Next.js cron hoặc thủ công bởi SYSTEM_ADMIN.
+-- Gọi từ Next.js cron hoặc thủ công bởi SYS_ADMIN.
 -- ============================================================
 CREATE OR REPLACE FUNCTION api_rate_expiry_check(
   p_warn_days int DEFAULT 7
@@ -533,7 +533,7 @@ DECLARE
   v_body    text;
 BEGIN
   IF v_me.id IS NULL THEN RETURN fn_fail('UNAUTHENTICATED', 'Chưa đăng nhập'); END IF;
-  -- Allow OPS_MANAGER or SYSTEM_ADMIN to run
+  -- Allow OPS_MANAGER or SYS_ADMIN to run
   IF fn_perm_scope(v_me.id, 'RATE', 'VIEW') = 0 THEN
     RETURN fn_fail('FORBIDDEN', 'Bạn không có quyền kiểm tra cảnh báo cước');
   END IF;

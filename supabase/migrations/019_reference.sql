@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS vessel_schedules (
                            CHECK (status IN ('OPEN','CLOSED','CANCELLED')),
   notes        text,
   created_at   timestamptz DEFAULT fn_now(),
-  UNIQUE (tenant_id, carrier_id, voyage_no, pol_code, pod_code) NULLS NOT DISTINCT
+  UNIQUE NULLS NOT DISTINCT (tenant_id, carrier_id, voyage_no, pol_code, pod_code)
 );
 
 CREATE INDEX IF NOT EXISTS idx_vs_tenant  ON vessel_schedules(tenant_id);
@@ -326,9 +326,9 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM user_roles ur
     WHERE ur.user_id = v_me.id
-      AND ur.role_code IN ('SYSTEM_ADMIN','OPS_MANAGER','CEO','COO')
+      AND ur.role_code IN ('SYS_ADMIN','OPS_MANAGER','CEO')
   ) THEN
-    RETURN fn_fail('FORBIDDEN','Chỉ SYSTEM_ADMIN / OPS_MANAGER mới được import danh mục');
+    RETURN fn_fail('FORBIDDEN','Chỉ SYS_ADMIN / OPS_MANAGER mới được import danh mục');
   END IF;
 
   v_tid := fn_current_tenant();
@@ -418,7 +418,7 @@ BEGIN
             nullif(v_row->>'cutoff_date','')::date,
             nullif(trim(v_row->>'notes'),'')
           )
-          ON CONFLICT (tenant_id, carrier_id, voyage_no, pol_code, pod_code) NULLS NOT DISTINCT
+          ON CONFLICT (tenant_id, carrier_id, voyage_no, pol_code, pod_code)
           DO UPDATE SET
             etd          = excluded.etd,
             eta          = excluded.eta,
@@ -522,7 +522,7 @@ FROM (VALUES
   ('HMM ALGECIRAS',       'HMM',   'KRPUS', 'VNSGN', '0024N', 3,  10),
   ('EVER LIVING',         'EVER',  'VNSGN', 'USHOU', '0140W', 35, 65)
 ) vs(vname, ccode, pol, pod, voy, d_etd, d_eta)
-ON CONFLICT (tenant_id, carrier_id, voyage_no, pol_code, pod_code) NULLS NOT DISTINCT DO NOTHING;
+ON CONFLICT (tenant_id, carrier_id, voyage_no, pol_code, pod_code) DO NOTHING;
 
 RAISE NOTICE 'Seed 019: carriers/ports/vessels/schedules OK';
 END $$;
