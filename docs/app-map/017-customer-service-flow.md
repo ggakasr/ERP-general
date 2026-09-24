@@ -50,3 +50,9 @@ Customer service module manages support tickets from creation through resolution
 - CS_MANAGER: ASSIGN/REASSIGN/CLOSE TICKET (BRANCH)
 - SALES_STAFF: CREATE TICKET linked to SO (OWN)
 - CEO/CFO: VIEW all tickets (COMPANY)
+
+## AI CSKH chat widget
+
+- `src/components/cskh/widget-chat.tsx`, mounted in `src/app/(app)/layout.tsx` (every authenticated page).
+- Loads `${NEXT_PUBLIC_CSKH_API}/widget.js` from the separate **AI CSKH** FastAPI app; token = `NEXT_PUBLIC_CSKH_TOKEN` (= server `WIDGET_TOKEN`).
+- Env unset → widget not rendered. No ERP data access: the bot's order lookup uses its own Supabase `orders` table, not ERP `api_*`.

@@ -37,7 +37,8 @@ function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <BottomNav />
       <WidgetChat
-        apiBase={process.env.NEXT_PUBLIC_CSKH_API || "http://localhost:8000"}
+        apiBase={process.env.NEXT_PUBLIC_CSKH_API}
+        token={process.env.NEXT_PUBLIC_CSKH_TOKEN}
         title="Hỗ trợ khách hàng"
         welcome="Dạ chào anh/chị! Em là trợ lý AI của cửa hàng. Anh/chị cần hỗ trợ gì ạ?"
       />
