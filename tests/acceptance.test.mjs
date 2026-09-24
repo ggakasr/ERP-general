@@ -49,7 +49,7 @@ async function call(fn, args = {}) {
   const sql = `SELECT public.${fn}(${keys.map((k, i) => `${k} => $${i + 1}`).join(', ')}) AS r`
   const { rows } = await db.query(sql, keys.map((k) => {
     const v = args[k]
-    return v !== null && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : Array.isArray(v) && typeof v[0] === 'object' ? JSON.stringify(v) : v
+    return v !== null && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : Array.isArray(v) && (v.length === 0 || typeof v[0] === 'object') ? JSON.stringify(v) : v
   }))
   return rows[0].r
 }

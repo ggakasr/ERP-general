@@ -1,10 +1,12 @@
--- ERP General — 039 Logistics documents without document_lines
+-- ERP General — 039 Documents that may be created without document_lines
 --
 -- SHIPMENT / BOOKING / HBL / DO keep their detail in containers / shipment_charges; the UI
 -- (src/lib/doc-config.ts lineMode "container" / "none") sends p_lines = NULL for them.
 -- fn_build_lines (004) still demanded at least one line, so these documents could not be
 -- created at all ("Chứng từ cần ít nhất một dòng chi tiết") — T7.1, T10.5, T11.4.
--- Only change vs 004: the four logistics types join the "no lines required" list.
+-- BANKREC: 031 api_bankrec_import fills the statement lines of a DRAFT BANKREC, so it must be
+-- possible to create one empty first (T20.x).
+-- Only change vs 004: these five types join the "no lines required" list.
 
 CREATE OR REPLACE FUNCTION fn_build_lines(p_doc documents, p_parent documents, p_lines jsonb) RETURNS numeric
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -133,9 +135,9 @@ BEGIN
     v_src := NULL;
   END LOOP;
 
-  -- logistics documents keep their detail in containers / shipment_charges, not document_lines
+  -- logistics documents keep their detail in containers / shipment_charges; BANKREC lines come from api_bankrec_import
   IF v_no = 0 AND p_doc.doc_type NOT IN ('PMT','RCPT','ASSET','HIRE','TICKET','EXC','MDC',
-                                         'SHIPMENT','BOOKING','HBL','DO') THEN
+                                         'SHIPMENT','BOOKING','HBL','DO','BANKREC') THEN
     RAISE EXCEPTION 'Chứng từ cần ít nhất một dòng chi tiết';
   END IF;
   RETURN CASE WHEN p_doc.doc_type IN ('ST','ADJ') THEN 0 ELSE v_total END;
