@@ -1,5 +1,5 @@
 ---
-covers: supabase/migrations/027_audit_pack.sql, supabase/migrations/028_audit_hash_chain.sql, supabase/migrations/033_risk_alerts.sql
+covers: supabase/migrations/027_audit_pack.sql, supabase/migrations/028_audit_hash_chain.sql, supabase/migrations/033_risk_alerts.sql, supabase/migrations/037_fix_tenant_regressions.sql
 last_verified: 2026-09-24
 ttl_days: 30
 ---
@@ -28,14 +28,18 @@ Ba module kiểm toán nâng cao: Audit Pack (WP-G1) kết xuất bộ bằng ch
   - Tôn trọng fn_doc_in_scope (user chỉ thấy docs có quyền VIEW)
 
 ### Hash-chain (WP-G2)
-- `fn_audit_row()` — trigger INSERT trên audit_trail, tính:
-  - `prev_hash` = row_hash của bản ghi liền trước (hoặc 64x'0' nếu bảng rỗng)
-  - `row_hash` = SHA-256(prev_hash + table + record_id + action + old/new + user + timestamp)
-  - Dùng `pg_advisory_xact_lock` để serialize trong cùng transaction
+- `trg_audit_chain_hash` (BEFORE INSERT trên audit_trail, hàm `fn_audit_chain_hash()`, từ 037) — băm MỌI bản ghi,
+  kể cả INSERT trực tiếp (034/035) và kể cả khi `fn_audit_row()` bị nạp lại bản 004:
+  - `prev_hash` = row_hash của bản ghi có hash gần nhất (hoặc 64x'0' nếu chưa có)
+  - `row_hash` = `fn_audit_hash(...)` = SHA-256(convert_to(prev_hash + table + record_id + action + old/new + changed + user + timestamp, 'UTF8'))
+  - `pg_advisory_xact_lock` + cấp lại `id` sau khi giữ khóa → thứ tự chuỗi = thứ tự id khi chạy song song
+  - Bản ghi đã có row_hash khi INSERT được giữ nguyên (verify sẽ kiểm tra)
+- `fn_audit_row()` — trigger trên bảng nghiệp vụ, chỉ ghi dòng audit (không tự băm nữa)
 - `api_audit_chain_verify(p_from, p_to)` — kiểm tra tính toàn vẹn:
   - Tái tính row_hash, so sánh với giá trị lưu
-  - Kiểm tra prev_hash trỏ đúng row_hash bản ghi trước
-  - Trả về: ok, total, valid, broken_at_id, reason
+  - Kiểm tra prev_hash trỏ đúng row_hash bản ghi có hash trước đó
+  - Sau khoảng bản ghi cũ chưa băm (row_hash NULL), đoạn chuỗi mới bắt đầu từ 64x'0' — hợp lệ, đếm vào `legacy_gaps`
+  - Trả về: ok, total, valid, legacy_gaps, broken_at_id, reason
 
 ### Risk Alerts (WP-G4)
 - `api_risk_alerts(p_days)` — phát hiện 4 loại bất thường:
@@ -47,7 +51,8 @@ Ba module kiểm toán nâng cao: Audit Pack (WP-G1) kết xuất bộ bằng ch
 ## Quy tắc nghiệp vụ
 
 1. Audit Pack: hash ổn định khi dữ liệu không đổi (deterministic JSONB sort)
-2. Hash-chain: bản ghi cũ (row_hash IS NULL) được bỏ qua khi verify (tương thích ngược)
+2. Hash-chain: bản ghi cũ (row_hash IS NULL) được bỏ qua khi verify (tương thích ngược); không sửa bản ghi audit cũ để "nối lại" chuỗi.
+   028 dùng `text::bytea` (lỗi khi JSON chứa dấu `\`) — 037 đổi sang `convert_to`; hash cũ không đổi vì không bản ghi nào chứa `\`
 3. Risk alerts: yêu cầu quyền CONTROLS VIEW hoặc AUDIT_TRAIL VIEW
 4. Không thêm bảng mới — risk alerts chỉ đọc bảng sẵn có
 

@@ -1,5 +1,5 @@
 ---
-covers: src/app/api/einvoice/**, src/app/api/bankrec/**, supabase/migrations/030_einvoice.sql, supabase/migrations/031_bankrec_import.sql, supabase/migrations/032_health_check.sql
+covers: src/app/api/einvoice/**, src/app/api/bankrec/**, supabase/migrations/030_einvoice.sql, supabase/migrations/031_bankrec_import.sql, supabase/migrations/032_health_check.sql, supabase/migrations/038_fix_030_035_rpcs.sql
 last_verified: 2026-09-24
 ttl_days: 30
 ---
@@ -45,9 +45,10 @@ và cấu hình hệ thống.
 
 ### Health Check (WP-H3)
 - `api_health_check()` — kiểm tra hệ thống (cho cả anon + authenticated):
-  - Bảng core tồn tại + row count
-  - Config checks: state_transitions, sod_matrix, doc_type_config, roles
-  - Migration version (supabase_migrations.schema_migrations)
+  - Bảng core tồn tại + row count (-1 = thiếu bảng): tenants, app_users, documents, document_lines, gl_entries, audit_trail, state_transitions, sod_matrix, roles, permission_matrix
+  - Config checks: state_transitions, sod_matrix, doc_types, roles, permission_matrix
+  - Migration version = migration mới nhất trong `public._migrations` (ghi bởi `node scripts/db.mjs migrate`)
+  - 038: sửa bảng không tồn tại của bản 032; api_log_einvoice / api_bankrec_* sửa lỗi gọi `fn_perm_scope(record, …)`
 
 ## Quy tắc nghiệp vụ
 
