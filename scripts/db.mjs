@@ -96,6 +96,7 @@ async function functions() {
     '037_fix_tenant_regressions.sql',
     '038_fix_030_035_rpcs.sql',
     '039_shipment_no_lines.sql',
+    '040_fix_bankrec_suggest_dates.sql',
   ]
   for (const file of patches) {
     const path = join(dir, file)
