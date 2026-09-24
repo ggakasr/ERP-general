@@ -188,7 +188,7 @@ BEGIN
     updated_at = now()
   WHERE tenant_id = p_tenant_id AND status IN ('ACTIVE','TRIAL');
 
-  INSERT INTO audit_trail (tenant_id, table_name, record_id, action, old_vals, new_vals, user_id)
+  INSERT INTO audit_trail (tenant_id, table_name, record_id, action, old_value, new_value, user_id)
   VALUES (fn_current_tenant(), 'tenants', p_tenant_id::text, 'PLAN_CHANGE',
     jsonb_build_object('plan', v_old),
     jsonb_build_object('plan', p_new_plan),

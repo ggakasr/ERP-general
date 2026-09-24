@@ -35,22 +35,24 @@ REVOKE ALL ON einvoice_log FROM authenticated;
 -- 2. Add ISSUED state to INV transitions --------------------------
 -- INV: POSTED → ISSUED (phát hành HĐĐT)
 INSERT INTO state_transitions
-  (doc_type, from_state, to_state, action, label, sod_role, creates_child, create_sod_role, conditions, variant, auto_transition, sort_order)
+  (doc_type, from_status, to_status, action, label, permission_action, permission_resource, sod_role, conditions, style, system_only, sort)
 VALUES
-  ('INV','POSTED','ISSUED','issue','Phát hành HĐĐT','EXECUTE',NULL,NULL,'{}','success',false,2);
+  ('INV','POSTED','ISSUED','issue','Phát hành HĐĐT','EXECUTE',NULL,NULL,'{}','success',false,6);
 
 -- ISSUED → payment (mirror existing POSTED → payment transitions)
 INSERT INTO state_transitions
-  (doc_type, from_state, to_state, action, label, sod_role, creates_child, create_sod_role, conditions, variant, auto_transition, sort_order)
+  (doc_type, from_status, to_status, action, label, permission_action, permission_resource, sod_role, conditions, style, system_only, sort)
 VALUES
-  ('INV','ISSUED','PARTIALLY_PAID','paid_partial','Thu một phần','EXECUTE','RCPT',NULL,'{}','default',true,6),
-  ('INV','ISSUED','PAID','paid','Đã thu đủ','EXECUTE','RCPT',NULL,'{}','default',true,7),
-  ('INV','ISSUED','CANCELLED','cancel_einvoice','Hủy HĐĐT','APPROVE',NULL,'APPROVER','{}','danger',false,8);
+  ('INV','ISSUED','PARTIALLY_PAID','paid_partial','Thu một phần','EXECUTE','RCPT',NULL,'{}','default',true,7),
+  ('INV','ISSUED','PAID','paid','Đã thu đủ','EXECUTE','RCPT',NULL,'{}','default',true,8),
+  ('INV','ISSUED','CANCELLED','cancel_einvoice','Hủy HĐĐT','APPROVE',NULL,'APPROVER','{}','danger',false,9);
 
--- Add handoff SLA for ISSUED state
-INSERT INTO handoff_sla (flow_code, doc_type, trigger_status, responsible_role, description, sla_hours)
-VALUES ('L7','INV','ISSUED','ACCOUNTANT','Theo dõi thu tiền sau phát hành HĐĐT',720)
-ON CONFLICT DO NOTHING;
+-- Cấp quyền EXECUTE trên INV cho Kế toán viên để phát hành HĐĐT (api_log_einvoice + transition 'issue')
+INSERT INTO permission_matrix (role_code, resource, action, data_scope, field_restrictions, status)
+SELECT 'ACCOUNTANT','INV','EXECUTE','BRANCH','{}'::jsonb,'ACTIVE'
+WHERE NOT EXISTS (
+  SELECT 1 FROM permission_matrix WHERE role_code='ACCOUNTANT' AND resource='INV' AND action='EXECUTE'
+);
 
 -- 3. RPCs ---------------------------------------------------------
 

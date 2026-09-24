@@ -65,7 +65,7 @@ BEGIN
       FROM audit_trail at3
       JOIN documents d2 ON d2.id::text = at3.record_id AND d2.tenant_id = v_tenant
       WHERE at3.tenant_id = v_tenant
-        AND at3.new_vals->>'status' IN ('APPROVED','POSTED')
+        AND at3.new_value->>'status' IN ('APPROVED','POSTED')
         AND at3.table_name = 'documents'
         AND at3.created_at >= v_from
     ) ap ON cr.user_id = ap.user_id

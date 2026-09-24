@@ -286,7 +286,7 @@ BEGIN
     updated_at = fn_now()
   WHERE id = p_quote_id;
 
-  INSERT INTO audit_trail (tenant_id, table_name, record_id, action, new_vals, user_id)
+  INSERT INTO audit_trail (tenant_id, table_name, record_id, action, new_value, user_id)
   VALUES (v_tenant, 'documents', p_quote_id::text, 'PORTAL_CONFIRM',
     jsonb_build_object('action', p_action, 'by', v_me.full_name), v_me.id);
 
