@@ -146,8 +146,8 @@ BEGIN
     v_alerts := v_alerts || jsonb_build_object(
       'type', 'EXCEPTION_SPIKE',
       'severity', CASE WHEN v_curr_exc::numeric / greatest(v_prev_exc, 1) > v_exc_spike * 2 THEN 'HIGH' ELSE 'MEDIUM' END,
-      'detail', format('Ngoại lệ tăng từ %s → %s (%.0f%%)', v_prev_exc, v_curr_exc,
-        (v_curr_exc::numeric / greatest(v_prev_exc, 1) - 1) * 100),
+      'detail', format('Ngoại lệ tăng từ %s → %s (%s%%)', v_prev_exc, v_curr_exc,
+        round((v_curr_exc::numeric / greatest(v_prev_exc, 1) - 1) * 100)),
       'current_count', v_curr_exc,
       'previous_count', v_prev_exc,
       'period_days', p_days
@@ -225,8 +225,8 @@ BEGIN
       'std', round(v_row.std_amt, 2),
       'z_score', round(v_row.z_score, 2),
       'user_name', v_row.full_name,
-      'detail', format('%s: %s = %s (trung bình %s, z=%.1f)', v_row.doc_type, v_row.number,
-        to_char(v_row.amount, 'FM999,999,999,999'), to_char(v_row.mean_amt, 'FM999,999,999,999'), v_row.z_score),
+      'detail', format('%s: %s = %s (trung bình %s, z=%s)', v_row.doc_type, v_row.number,
+        to_char(v_row.amount, 'FM999,999,999,999'), to_char(v_row.mean_amt, 'FM999,999,999,999'), round(v_row.z_score,1)),
       'created_at', v_row.created_at
     );
   END LOOP;
