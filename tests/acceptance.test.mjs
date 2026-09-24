@@ -49,7 +49,7 @@ async function call(fn, args = {}) {
   const sql = `SELECT public.${fn}(${keys.map((k, i) => `${k} => $${i + 1}`).join(', ')}) AS r`
   const { rows } = await db.query(sql, keys.map((k) => {
     const v = args[k]
-    return v !== null && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : Array.isArray(v) && (v.length === 0 || typeof v[0] === 'object') ? JSON.stringify(v) : v
+    return v !== null && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : Array.isArray(v) && typeof v[0] === 'object' ? JSON.stringify(v) : v
   }))
   return rows[0].r
 }
@@ -2382,7 +2382,7 @@ t('T20.1', 'api_bankrec_import nhập hàng loạt dòng sao kê vào BANKREC DR
   const br = await call('api_create_document', {
     p_doc_type: 'BANKREC',
     p_header: { title: 'T20.1 import test', data: { bank_account: '0011-IMPORT' } },
-    p_lines: [],
+    p_lines: null, // dòng sao kê được nhập sau bằng api_bankrec_import
   })
   ok(br, 'create BANKREC')
 
@@ -2438,7 +2438,7 @@ t('T20.2', 'api_bankrec_import: BANKREC phải ở DRAFT, dòng amount=0 bị b�
   const br2 = await call('api_create_document', {
     p_doc_type: 'BANKREC',
     p_header: { title: 'T20.2 zero test', data: { bank_account: '0011-ZERO' } },
-    p_lines: [],
+    p_lines: null, // dòng sao kê được nhập sau bằng api_bankrec_import
   })
   ok(br2)
   const imp = await call('api_bankrec_import', {
@@ -2463,7 +2463,7 @@ t('T20.3', 'api_bankrec_suggest gợi ý match PMT/RCPT theo amount', async () =
   const br = await call('api_create_document', {
     p_doc_type: 'BANKREC',
     p_header: { title: 'T20.3 suggest', data: { bank_account: '0011-SUG' } },
-    p_lines: [],
+    p_lines: null, // dòng sao kê được nhập sau bằng api_bankrec_import
   })
   ok(br)
   const imp = await call('api_bankrec_import', {
