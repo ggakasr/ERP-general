@@ -1384,9 +1384,9 @@ t('T10.5', 'api_quote_build: trả về margin đúng cho shipment có container
   ok(spt, 'SHIPMENT created for T10.5')
 
   // Insert 2 containers: 1×20DC + 1×40HC
-  await sys(`INSERT INTO public.containers (shipment_id, tenant_id, container_number, container_type, size_ft)
-             VALUES ($1, '00000000-0000-0000-0000-000000000001', 'TCKU1234560', '20DC', 20),
-                    ($1, '00000000-0000-0000-0000-000000000001', 'MSCU9876541', '40HC', 40)`,
+  await sys(`INSERT INTO public.containers (shipment_id, tenant_id, container_no, container_type)
+             VALUES ($1, '00000000-0000-0000-0000-000000000001', 'TCKU1234560', '20DC'),
+                    ($1, '00000000-0000-0000-0000-000000000001', 'MSCU9876541', '40HC')`,
     [spt.id])
 
   const r = await call('api_quote_build', { p_shipment_id: spt.id })
@@ -1423,7 +1423,7 @@ t('T11.1', 'api_carriers trả danh sách carriers của tenant hiện tại', a
 
 t('T11.2', 'api_ports tìm kiếm theo keyword (search)', async () => {
   await as('muahang')
-  const r = await call('api_ports', { p_search: 'Chi Minh' })
+  const r = await call('api_ports', { p_search: 'Chí Minh' }) // tên cảng lưu có dấu (seed 019)
   assert.equal(r.ok, true, 'api_ports ok')
   assert.ok(Array.isArray(r.rows), 'rows is array')
   assert.ok(r.rows.length >= 1, 'tìm thấy cảng TP.HCM')
