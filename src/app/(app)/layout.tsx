@@ -7,7 +7,6 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { Breadcrumb } from "@/components/layout/breadcrumb"
 import { BottomNav } from "@/components/layout/bottom-nav"
-import WidgetChat from "@/components/cskh/widget-chat"
 import { rpc } from "@/lib/api"
 
 function AppShell({ children }: { children: React.ReactNode }) {
@@ -36,12 +35,6 @@ function AppShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto p-4 pb-20 lg:p-6 lg:pb-6">{children}</main>
       </div>
       <BottomNav />
-      <WidgetChat
-        apiBase={process.env.NEXT_PUBLIC_CSKH_API}
-        token={process.env.NEXT_PUBLIC_CSKH_TOKEN}
-        title="Hỗ trợ khách hàng"
-        welcome="Dạ chào anh/chị! Em là trợ lý AI của cửa hàng. Anh/chị cần hỗ trợ gì ạ?"
-      />
     </div>
   )
 }

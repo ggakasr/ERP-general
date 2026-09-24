@@ -64,11 +64,13 @@ export async function executeTool(
 
   switch (toolCall.name) {
     case "tra_cuu_don_hang": {
-      const { data } = await db.rpc("api_cskh_tra_don", {
+      const params: Record<string, unknown> = {
         p_tenant_id: ctx.tenantId,
         p_ma_don: String(toolCall.args.ma_don || ""),
         p_verified_orders: ctx.verifiedOrders,
-      })
+      }
+      if (ctx.customerId) params.p_customer_id = ctx.customerId
+      const { data } = await db.rpc("api_cskh_tra_don", params)
       return (data as Record<string, unknown>) || { ok: false, error: "rpc_error" }
     }
 

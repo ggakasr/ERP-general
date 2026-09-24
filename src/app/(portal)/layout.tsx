@@ -1,10 +1,12 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { FileText, Home, LogOut, Package, Ship } from "lucide-react"
 import { SessionProvider, useSession } from "@/lib/session"
 import { ToastProvider } from "@/components/ui/toast"
+import { ChatBubble } from "@/components/cskh/chat-bubble"
 import { cn } from "@/lib/utils"
 
 const NAV = [
@@ -53,6 +55,16 @@ function PortalNav() {
 }
 
 function PortalShell({ children }: { children: React.ReactNode }) {
+  const { me } = useSession()
+  const [widgetKey, setWidgetKey] = useState<string>("")
+
+  useEffect(() => {
+    fetch("/api/cskh/widget-key")
+      .then(r => r.json())
+      .then(d => { if (d.ok && d.widget_key) setWidgetKey(d.widget_key) })
+      .catch(() => {})
+  }, [])
+
   return (
     <div className="flex min-h-screen flex-col bg-muted/30">
       <PortalNav />
@@ -60,6 +72,12 @@ function PortalShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t py-4 text-center text-xs text-muted-foreground">
         ERP-General Portal
       </footer>
+      {widgetKey && (
+        <ChatBubble
+          widgetKey={widgetKey}
+          portalContext={{ customerId: me.user.id, customerName: me.user.full_name }}
+        />
+      )}
     </div>
   )
 }

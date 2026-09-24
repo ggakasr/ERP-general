@@ -34,7 +34,8 @@ END $$;
 
 -- 1a. Lookup order by number — public fields only; sensitive gated by verified list (R2)
 CREATE OR REPLACE FUNCTION api_cskh_tra_don(
-  p_tenant_id uuid, p_ma_don text, p_verified_orders uuid[] DEFAULT '{}'
+  p_tenant_id uuid, p_ma_don text, p_verified_orders uuid[] DEFAULT '{}',
+  p_customer_id uuid DEFAULT NULL
 )
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -45,6 +46,7 @@ BEGIN
   SELECT * INTO v_doc FROM documents
   WHERE tenant_id = p_tenant_id AND number = upper(trim(p_ma_don))
     AND doc_type IN ('SO','SHIPMENT','DN','INV')
+    AND (p_customer_id IS NULL OR partner_id = p_customer_id)
   LIMIT 1;
 
   IF v_doc IS NULL THEN

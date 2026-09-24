@@ -3,6 +3,7 @@ import {
   ArrowLeft, BarChart3, BookOpen, ClipboardCheck, FileSearch, HelpCircle, Landmark,
   Package, Settings, Shield, ShieldCheck, ShoppingBag, ShoppingCart, Users,
 } from "lucide-react"
+import { PublicChat } from "@/components/cskh/public-chat"
 
 const MODULES = [
   {
@@ -207,6 +208,7 @@ export default function HelpPage() {
       <footer className="border-t px-4 py-6 text-center text-xs text-gray-500">
         ERP General — Hệ thống kiểm soát nội bộ có bằng chứng
       </footer>
+      <PublicChat />
     </div>
   )
 }

@@ -3,6 +3,7 @@ import {
   ArrowRight, BarChart3, CheckCircle2, FileSearch, Globe, Headphones, Lock,
   Package, Shield, ShieldCheck, Ship, Users, Zap,
 } from "lucide-react"
+import { PublicChat } from "@/components/cskh/public-chat"
 
 const FEATURES = [
   {
@@ -224,6 +225,7 @@ export default function LandingPage() {
           <p className="mt-4">ERP General — Hệ thống kiểm soát nội bộ có bằng chứng</p>
         </div>
       </footer>
+      <PublicChat />
     </div>
   )
 }

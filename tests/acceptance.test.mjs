@@ -2858,3 +2858,35 @@ t('T25.7', 'bot user cannot perform financial transitions', async () => {
   const rApprove = await call('api_transition', { p_doc_id: po, p_action: 'approve', p_expected_version: v })
   assert.equal(rApprove.ok, false, `bot must not approve PO: ${JSON.stringify(rApprove)}`)
 })
+
+t('T25.8', 'portal customer can only look up own orders via bot (p_customer_id filter)', async () => {
+  await as('kinhdoanh')
+  const tid = (await sys('SELECT fn_current_tenant() AS t'))[0].t
+  const custA = await partner('CUS-001')
+  const custB = await partner('CUS-002')
+
+  // Create SO for customer A
+  await as('kinhdoanh')
+  const soA = await call('api_create_document', {
+    p_doc_type: 'SO',
+    p_header: { title: 'Order for CUS-A', partner_id: custA, warehouse_id: await wh('WH-HN-01') },
+    p_lines: [{ product_id: await product('RM-BOLT'), quantity: 1, unit_price: 5000 }],
+  })
+  ok(soA, 'create SO for custA')
+  const soANum = (await sys('SELECT number FROM documents WHERE id = $1', [soA.id]))[0].number
+
+  // Customer A can see their own order
+  await sys('RESET ROLE')
+  const rA = await call('api_cskh_tra_don', { p_tenant_id: tid, p_ma_don: soANum, p_customer_id: custA })
+  assert.equal(rA.ok, true, 'customer A sees own order')
+  assert.equal(rA.number, soANum)
+
+  // Customer B cannot see customer A's order
+  const rB = await call('api_cskh_tra_don', { p_tenant_id: tid, p_ma_don: soANum, p_customer_id: custB })
+  assert.equal(rB.ok, false, 'customer B must not see customer A order')
+  assert.equal(rB.error, 'not_found')
+
+  // Without p_customer_id (public/anonymous), order is still visible (but sensitive fields gated by R2)
+  const rPub = await call('api_cskh_tra_don', { p_tenant_id: tid, p_ma_don: soANum })
+  assert.equal(rPub.ok, true, 'public lookup still works without customer filter')
+})
