@@ -93,6 +93,8 @@ async function functions() {
     '034_portal.sql',
     '035_billing.sql',
     '036_tech_debt_fixes.sql',
+    '037_fix_tenant_regressions.sql',
+    '038_fix_030_035_rpcs.sql',
   ]
   for (const file of patches) {
     const path = join(dir, file)
@@ -124,6 +126,9 @@ async function functions() {
       END LOOP;
     END $$;
     GRANT EXECUTE ON FUNCTION api_health_check() TO anon;
+    -- RLS policies evaluate fn_current_tenant() as the calling role
+    GRANT EXECUTE ON FUNCTION fn_current_tenant() TO authenticated;
+    GRANT EXECUTE ON FUNCTION fn_feature_enabled(text), fn_feature_limit(text) TO authenticated;
     NOTIFY pgrst, 'reload schema';`)
   console.log('→ grants refreshed')
 }
