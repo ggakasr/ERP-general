@@ -1,8 +1,8 @@
 ---
 covers: docs/, supabase/migrations/, src/, tests/
-last_verified: 2026-09-20
+last_verified: 2026-09-24
 ttl_days: 60
-status: KẾ HOẠCH PHÁT TRIỂN CHIA THEO SESSION (ĐÃ DUYỆT 2026-09-20)
+status: KẾ HOẠCH PHÁT TRIỂN — HOÀN TẤT 28/28 GÓI (review cuối 2026-09-24)
 nguon: docs/phan-tich-canh-tranh-freightek.md (§5, §8, §9, §10, §12)
 ---
 
@@ -13,7 +13,7 @@ nguon: docs/phan-tich-canh-tranh-freightek.md (§5, §8, §9, §10, §12)
 > Claude Code riêng**. Khi mở session mới, chủ dự án chỉ cần dán **prompt mẫu** của gói đó
 > (hoặc ghi ngắn "làm gói WP-B1 theo `docs/ke-hoach-phat-trien-theo-session.md`").
 >
-> **Trạng thái**: ✅ ĐÃ DUYỆT (2026-09-20) — đang thực thi. Xem tiến độ ở §2 và bảng bàn giao §6.2.
+> **Trạng thái**: ✅ **HOÀN TẤT 28/28 GÓI** (review cuối 2026-09-24). Xem tiến độ ở §2 và bảng bàn giao §6.2.
 
 ---
 
