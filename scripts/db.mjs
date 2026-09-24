@@ -99,6 +99,7 @@ async function functions() {
     '040_fix_bankrec_suggest_dates.sql',
     '041_cskh_bot.sql',
     '042_cskh_tools.sql',
+    '043_cskh_console.sql',
   ]
   for (const file of patches) {
     const path = join(dir, file)

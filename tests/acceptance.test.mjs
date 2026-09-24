@@ -2890,3 +2890,70 @@ t('T25.8', 'portal customer can only look up own orders via bot (p_customer_id f
   const rPub = await call('api_cskh_tra_don', { p_tenant_id: tid, p_ma_don: soANum })
   assert.equal(rPub.ok, true, 'public lookup still works without customer filter')
 })
+
+t('T25.9', 'CS_AGENT cannot reply to session assigned to another agent', async () => {
+  await as('cs_agent')
+  const tid = (await sys('SELECT fn_current_tenant() AS t'))[0].t
+
+  // Create session + handoff so it goes to awaiting_human
+  await sys('RESET ROLE')
+  const sess = await call('api_cskh_start_session', { p_tenant_id: tid })
+  ok(sess, 'start session')
+  const sessId = sess.session_id
+
+  await call('api_cskh_handoff', { p_tenant_id: tid, p_session_id: sessId, p_reason: 'test T25.9' })
+
+  // cs_manager claims the session
+  await as('cs_manager')
+  const claimR = await call('api_cskh_claim_session', { p_session_id: sessId })
+  ok(claimR, 'manager claims session')
+
+  // cs_agent tries to reply → should fail with not_your_session
+  await as('cs_agent')
+  const replyR = await call('api_cskh_staff_reply', { p_session_id: sessId, p_content: 'test' })
+  assert.equal(replyR.ok, false, `agent must not reply to another's session: ${JSON.stringify(replyR)}`)
+  assert.equal(replyR.error, 'not_your_session')
+})
+
+t('T25.10', 'agent reply creates audit trail and is visible to customer via poll', async () => {
+  await as('cs_agent')
+  const tid = (await sys('SELECT fn_current_tenant() AS t'))[0].t
+  const agentId = (await sys("SELECT id FROM app_users WHERE email = 'cs_agent@erp.demo'"))[0].id
+
+  // Create session + handoff
+  await sys('RESET ROLE')
+  const sess = await call('api_cskh_start_session', { p_tenant_id: tid })
+  ok(sess, 'start session')
+  const sessId = sess.session_id
+
+  await call('api_cskh_handoff', { p_tenant_id: tid, p_session_id: sessId, p_reason: 'test T25.10' })
+
+  // cs_agent claims
+  await as('cs_agent')
+  ok(await call('api_cskh_claim_session', { p_session_id: sessId }), 'claim')
+
+  // cs_agent replies
+  const replyR = await call('api_cskh_staff_reply', { p_session_id: sessId, p_content: 'Xin chào, tôi hỗ trợ bạn' })
+  ok(replyR, 'reply')
+
+  // Verify audit trail
+  const audit = await sys(
+    "SELECT * FROM audit_trail WHERE table_name = 'cskh_messages' AND action = 'STAFF_REPLY' ORDER BY created_at DESC LIMIT 1"
+  )
+  assert.ok(audit.length > 0, 'audit trail entry for staff reply exists')
+  assert.equal(audit[0].user_id, agentId, 'audit records agent user')
+
+  // Verify message visible to customer (via session load — simulates poll)
+  await sys('RESET ROLE')
+  const load = await call('api_cskh_session_load', { p_tenant_id: tid, p_session_id: sessId })
+  ok(load, 'session load')
+  const agentMsgs = (load.messages || []).filter(m => m.role === 'agent')
+  assert.ok(agentMsgs.length > 0, 'agent message visible in session')
+  assert.equal(agentMsgs[agentMsgs.length - 1].content, 'Xin chào, tôi hỗ trợ bạn')
+})
+
+t('T25.11', 'CS_AGENT cannot update bot config (CS_MANAGER only)', async () => {
+  await as('cs_agent')
+  const r = await call('api_cskh_config_set', { p_changes: { persona: 'Hacked persona' } })
+  assert.equal(r.ok, false, `CS_AGENT must not change bot config: ${JSON.stringify(r)}`)
+})
