@@ -811,7 +811,7 @@ t('T5.7', 'Chuỗi phê duyệt nhiều bước — hoàn tất đúng', async (
   await as('muahang.tp')
   const r = await call('api_create_document', {
     p_doc_type: 'BUDGET',
-    p_header: { title: 'NS Kiểm thử chuỗi phê duyệt', fiscal_year: 2026 },
+    p_header: { title: 'NS Kiểm thử chuỗi phê duyệt', data: { fiscal_year: 2026 } },
     p_lines: [{ account_code: '642', amount: 50000000, note: 'Chi phí vận hành' }],
   })
   ok(r, 'BUDGET created')
@@ -1410,6 +1410,7 @@ t('T10.5', 'api_quote_build: trả về margin đúng cho shipment có container
 // N11 — WP-C3: Reference catalog (carriers, ports, vessels, schedules) + tracking events
 // ════════════════════════════════════════════════════════════════════
 t('T11.1', 'api_carriers trả danh sách carriers của tenant hiện tại', async () => {
+  await as('muahang')
   const r = await call('api_carriers', { p_mode: 'SEA' })
   assert.equal(r.ok, true, 'api_carriers ok')
   assert.ok(Array.isArray(r.rows), 'rows is array')
@@ -1421,6 +1422,7 @@ t('T11.1', 'api_carriers trả danh sách carriers của tenant hiện tại', a
 })
 
 t('T11.2', 'api_ports tìm kiếm theo keyword (search)', async () => {
+  await as('muahang')
   const r = await call('api_ports', { p_search: 'Chi Minh' })
   assert.equal(r.ok, true, 'api_ports ok')
   assert.ok(Array.isArray(r.rows), 'rows is array')
@@ -1431,6 +1433,7 @@ t('T11.2', 'api_ports tìm kiếm theo keyword (search)', async () => {
 })
 
 t('T11.3', 'api_vessel_schedules lọc theo POL + POD', async () => {
+  await as('muahang')
   const r = await call('api_vessel_schedules', { p_pol: 'VNSGN', p_pod: 'USHOU', p_limit: 10 })
   assert.equal(r.ok, true, 'api_vessel_schedules ok')
   assert.ok(Array.isArray(r.rows), 'rows is array')
@@ -1481,6 +1484,7 @@ t('T11.5', 'api_import_reference bulk import carriers và ports', async () => {
     { code: 'TST1', name: 'Test Carrier One', scac: 'TST1', mode: 'SEA' },
     { code: 'TST2', name: 'Test Carrier Two', scac: 'TST2', mode: 'AIR' },
   ]
+  await as('admin') // SYS_ADMIN được import danh mục
   const r = await call('api_import_reference', { p_type: 'carrier', p_rows: carrRows })
   assert.equal(r.ok, true, 'import carriers ok')
   assert.ok(r.inserted >= 2, `inserted >= 2 (got ${r.inserted})`)
