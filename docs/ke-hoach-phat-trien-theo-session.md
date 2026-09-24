@@ -2,7 +2,7 @@
 covers: docs/, supabase/migrations/, src/, tests/
 last_verified: 2026-09-24
 ttl_days: 60
-status: KẾ HOẠCH PHÁT TRIỂN — HOÀN TẤT 28/28 GÓI (review cuối 2026-09-24)
+status: KẾ HOẠCH PHÁT TRIỂN — A–J HOÀN TẤT 28/28 GÓI · Nhóm K (AI CSKH) 0/7 — mở 2026-09-24
 nguon: docs/phan-tich-canh-tranh-freightek.md (§5, §8, §9, §10, §12)
 ---
 
@@ -13,7 +13,8 @@ nguon: docs/phan-tich-canh-tranh-freightek.md (§5, §8, §9, §10, §12)
 > Claude Code riêng**. Khi mở session mới, chủ dự án chỉ cần dán **prompt mẫu** của gói đó
 > (hoặc ghi ngắn "làm gói WP-B1 theo `docs/ke-hoach-phat-trien-theo-session.md`").
 >
-> **Trạng thái**: ✅ **HOÀN TẤT 28/28 GÓI** (review cuối 2026-09-24). Xem tiến độ ở §2 và bảng bàn giao §6.2.
+> **Trạng thái**: ✅ **Nhóm A–J HOÀN TẤT 28/28 GÓI** (review cuối 2026-09-24). 🆕 **Nhóm K — AI CSKH hợp nhất
+> vào ERP: 0/7 gói**, bắt đầu từ WP-K1. Xem tiến độ ở §2 và bảng bàn giao §6.2.
 
 ---
 
@@ -54,6 +55,7 @@ NHÓM G  Kiểm soát nâng cao (bảo vệ lợi thế)(P2 — Audit Pack, hash
 NHÓM H  Tích hợp & vận hành                (P2 — hoá đơn ĐT, sao kê NH, backup/DR)
 NHÓM I  Thương mại hoá                     (P3 — billing, landing, help center)
 NHÓM J  Lớp trải nghiệm (UX/UI)            (P1–P2 — design system, hành vi màn, QA UX; để BẰNG/HƠN Freightek)
+NHÓM K  AI CSKH hợp nhất vào ERP           (P1 — chuyển toàn bộ app "AI CSKH" (FastAPI) vào ERP; thêm 2026-09-24)
 ```
 
 ### Sơ đồ phụ thuộc (mũi tên = "phải xong trước")
@@ -85,6 +87,10 @@ J4 UI shipment ──► cần C1 + J1
 
 H1/H2/H3 ─── độc lập với nhau
 I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) làm nền
+
+K1 dữ liệu ──► K2 bộ não ──┬► K3 widget khách ──┐
+                           ├► K4 màn điều hành ─┼► K5 dashboard ──► K7 test+tài liệu+retire
+                           └► K6 khung voice ───┘
 ```
 
 ### Có thể chạy SONG SONG (nhiều session cùng lúc) — nếu có nhiều người/nhiều máy
@@ -129,6 +135,13 @@ I1 Billing ──► cần D1 ;  I2 Landing/Help ─── cần A4 (app-map) l�
 | WP-J2 | Hành vi + ma trận trạng thái màn cốt lõi | P1 | WP-J1 | 1–2 tuần | [x] |
 | WP-J3 | Vòng QA/triage UX toàn bộ màn hiện có | P2 | WP-J1, WP-J2 | 1 tuần | [x] |
 | WP-J4 | UI Shipment/Operations ngang mobile Freightek | P1 | WP-C1, WP-J1 | 1–2 tuần | [x] |
+| WP-K1 | Nền dữ liệu bot CSKH (`041_cskh_bot.sql`, tri thức có duyệt) | P1 | — | 3–4 ngày | [ ] |
+| WP-K2 | Bộ não bot: LLM đa nhà cung cấp (mặc định Claude) + 4 tool + rails R1–R4 | P1 | WP-K1 | 1 tuần | [ ] |
+| WP-K3 | Bong bóng chat cho khách (Portal + landing), bỏ widget ngoài | P1 | WP-K2 | 3–4 ngày | [ ] |
+| WP-K4 | Màn điều hành bot cho NV/TP CSKH (`/customer-service/bot`) | P1 | WP-K2 | 1–1,5 tuần | [ ] |
+| WP-K5 | Dashboard hoạt động bot cho lãnh đạo | P2 | WP-K4 | 3–4 ngày | [ ] |
+| WP-K6 | Khung voice trả lời cuộc gọi (adapter STT/TTS/tổng đài, mặc định mock) | P2 | WP-K2 | 1 tuần | [ ] |
+| WP-K7 | Test T25.x + hướng dẫn demo/đăng ký dùng thật + retire app cũ | P1 | WP-K3..K6 | 2–3 ngày | [ ] |
 
 ---
 
@@ -590,6 +603,210 @@ thể** — thứ mà B1/B2 và các gói nghiệp vụ không tự đảm bảo
 
 ---
 
+### NHÓM K — AI CSKH hợp nhất vào ERP (thêm 2026-09-24)
+
+**Bối cảnh**: bot AI CSKH đang là app riêng (`C:\Users\ThinkPad\Documents\AI CSKH` — FastAPI/Python, Supabase
+riêng, trang `/quan-ly` dùng mật khẩu chung, đơn hàng là 3 bản ghi giả, LLM đang `mock`). ERP chỉ nhúng
+`widget.js` qua `src/components/cskh/widget-chat.tsx` và bong bóng không hiện vì thiếu `NEXT_PUBLIC_CSKH_API`.
+Hệ quả: 2 server, 2 DB, không phân quyền 3 tầng (ĐK8), không audit (ĐK4), bot không đọc được dữ liệu ERP.
+
+**Mục tiêu nhóm**: bot trở thành **một module của ERP** — cùng DB, cùng đăng nhập, cùng audit/SoD/tenant.
+Nhân viên CSKH và TP CSKH vận hành bot trong ERP; lãnh đạo xem tình hình hoạt động. Sau K7 **không cần chạy app
+AI CSKH nữa**.
+
+**Quyết định của chủ dự án (2026-09-24)** — mọi session nhóm K phải theo:
+1. **Người dùng bot = CHỈ khách hàng** (qua Client Portal `(portal)` và trang công khai/landing). Không làm
+   trợ lý nội bộ hỏi cách dùng ERP. Gỡ widget khỏi layout `(app)` nội bộ.
+2. **Nhà cung cấp AI chọn được**: kiến trúc adapter đa nhà cung cấp; **mặc định Claude** (`@anthropic-ai/sdk`
+   đã có trong repo, dùng ở `src/app/api/ingest/route.ts`). Adapter OpenAI-compatible cho DeepSeek/Gemini/
+   OpenAI/Vilao để chủ dự án đổi khi có key. Luôn có `mock` để test/demo offline. API key chỉ nằm ở env server,
+   **không** lưu trong DB, không lộ ra trình duyệt.
+3. **Giữ khung voice** trả lời cuộc gọi (STT → agent → TTS, webhook tổng đài) — dựng khung + mock, chưa cần nhà
+   cung cấp thật.
+4. **Hướng dẫn demo & đăng ký dùng thật** viết thành tài liệu (K7) để trả lời khi chủ dự án hỏi.
+
+**Nguồn cần đọc (app cũ, chỉ để port logic — không copy Python)**: `AI CSKH/app/cskh/agent.py` (vòng agent +
+SafetyRails R1–R4), `tools.py` (4 tool), `llm.py` (provider + mock rule-based), `memory.py`, `storage.py`,
+`notify.py`, `speech.py`/`voice.py`/`vapi.py` (voice), `app/static/widget.js` + `quan-ly.html` (UI),
+`knowledge/*.md` (tri thức + kịch bản), `config/config.yaml` (ngưỡng), `docs/app-map/01-cskh-ai-ba-spec.md`
+(ba-spec: AC-1..AC-6, R1–R5), `tools/test_acceptance.py`.
+
+**Ràng buộc riêng nhóm K** (ngoài quy tắc chung §0):
+- Mọi bảng mới có `tenant_id` (chuẩn WP-D1). Truy cập chỉ qua `api_*`; khách vô danh **không** có session
+  Supabase → route Next.js server xác định tenant từ `widget_key` công khai + rate limit, gọi hàm `api_cskh_*`
+  bằng service role nhưng **hàm tự kiểm tenant + phạm vi**, không mở bảng.
+- Bot là một **actor hệ thống** riêng (user `system-cskh-bot` theo tenant). Bot chỉ được: đọc trường public của
+  đơn, tạo TICKET khi chuyển người. **Không** được gọi `SUBMIT/APPROVE/POST` hay bất cứ transition tài chính nào.
+- R2: dữ liệu nhạy cảm (SĐT, địa chỉ, giá trị đơn) chỉ trả khi đã xác thực (mã đơn + SĐT khớp khách hàng trong
+  ERP) — kiểm bằng code trong hàm SQL, không chỉ dựa prompt. Khách đăng nhập Portal = đã xác thực, nhưng chỉ
+  thấy đơn của chính khách hàng đó (phạm vi F3).
+- Tri thức (FAQ/kịch bản) sửa theo luồng **DRAFT → PUBLISHED** qua state machine cấu hình; người soạn ≠ người
+  đăng (SoD). Bot chỉ đọc bản PUBLISHED.
+- Mọi lượt chuyển người, trả lời của nhân viên, đổi cấu hình bot, đăng tri thức → ghi `audit_trail`.
+
+#### WP-K1 — Nền dữ liệu bot CSKH
+
+- **Mục tiêu**: toàn bộ dữ liệu của bot nằm trong DB ERP, có tenant, quyền, audit.
+- **Phụ thuộc**: không.
+- **File đụng tới**: `supabase/migrations/041_cskh_bot.sql` (mới), `src/lib/doc-config.ts`, `src/lib/labels.ts`.
+- **Các bước**:
+  1. Bảng `cskh_sessions` (kênh chat|voice, nguồn portal|public|phone, customer_id nullable, trạng thái
+     `serving → awaiting_human → human_serving → closed`, handoff_reason, ticket_id, verified_orders, csat),
+     `cskh_messages` (role user|assistant|agent|tool, content, tool_calls, agent_user_id, tokens), `cskh_usage`
+     (provider, model, tokens vào/ra, chi phí ước tính), `cskh_bot_config` (theo tenant: provider, model,
+     persona/tên bot, lời chào, ngưỡng handoff, từ cấm hứa R3, trường nhạy cảm R2, bật/tắt voice, `widget_key`).
+  2. Tri thức: loại chứng từ `KB_ARTICLE` qua **cấu hình** (`doc_types` + `state_transitions`: DRAFT → SUBMITTED
+     → PUBLISHED → ARCHIVED), trường `kind` = faq|script_chat|script_call|script_handoff, `topic`, `body`.
+     SoD: người tạo ≠ người PUBLISH. Seed nội dung 5 file `knowledge/*.md` của app cũ ở trạng thái PUBLISHED.
+  3. Quyền (qua `_perm`, không hard-code): CS_AGENT — VIEW/REPLY phiên, CREATE/EDIT KB_ARTICLE;
+     CS_MANAGER — toàn bộ + PUBLISH KB + sửa `cskh_bot_config`; CEO/CFO — VIEW thống kê (COMPANY).
+     Field-level: che SĐT/địa chỉ khách qua `fn_mask` với vai trò không cần.
+  4. Hàm `api_cskh_*` tối thiểu: `api_cskh_config_get/set`, `api_cskh_sessions(filter)`,
+     `api_cskh_session_get(id)`, `api_cskh_kb_published(tenant)`. Thêm vào `006_security`-style grant EXECUTE.
+- **Tiêu chí nghiệm thu**: T25.1 (KB: người soạn không tự PUBLISH được), T25.2 (CS_AGENT tenant A không thấy
+  phiên tenant B), T25.3 (sửa config ghi audit); `test:acceptance` + T3.1–T3.4 PASS.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-K1** theo `docs/ke-hoach-phat-trien-theo-session.md` §3, Nhóm K. Đọc phần "Bối cảnh / Quyết
+  > định / Ràng buộc riêng nhóm K" trước. Tạo `041_cskh_bot.sql`: bảng phiên/tin nhắn/usage/config có tenant_id,
+  > loại chứng từ KB_ARTICLE qua cấu hình (DRAFT→SUBMITTED→PUBLISHED→ARCHIVED, SoD người soạn ≠ người đăng),
+  > seed tri thức từ `C:\Users\ThinkPad\Documents\AI CSKH\knowledge\*.md`, quyền CS_AGENT/CS_MANAGER/CEO/CFO,
+  > các hàm `api_cskh_*`. Viết test T25.1–T25.3. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
+
+#### WP-K2 — Bộ não bot (LLM đa nhà cung cấp + tool + rails)
+
+- **Mục tiêu**: port vòng agent từ Python sang TypeScript chạy trong Next.js; bot trả lời bằng **dữ liệu ERP thật**.
+- **Phụ thuộc**: **WP-K1**.
+- **File đụng tới**: `src/lib/cskh/llm/{index,claude,openai-compat,mock}.ts`, `src/lib/cskh/agent.ts`,
+  `src/lib/cskh/tools.ts`, `src/lib/cskh/rails.ts`, `src/app/api/cskh/chat/route.ts`, `.env.local.example`,
+  migration `042_cskh_tools.sql` (hàm tool phía DB).
+- **Các bước**:
+  1. Interface `LLMProvider.chat(messages, tools)` → `{content, toolCalls, usage}`. Adapter: `claude`
+     (mặc định, model đặt qua env `CSKH_LLM_MODEL`), `openai-compat` (DeepSeek/Gemini/OpenAI/Vilao theo
+     `base_url`), `mock` (port rule-based từ `llm.py`). Chọn provider: `cskh_bot_config.provider` nếu env có key
+     tương ứng, ngược lại rơi về `CSKH_LLM_PROVIDER` rồi `mock`. Env: `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, …
+  2. 4 tool, mỗi tool gọi hàm SQL có kiểm tenant: `tra_cuu_don_hang` (tìm SO/SHIPMENT theo số chứng từ → trạng
+     thái, mốc giao dự kiến; trường nhạy cảm chỉ khi đã xác thực), `xac_thuc_khach` (số chứng từ + SĐT khớp
+     khách hàng master data), `tra_cuu_faq` (KB PUBLISHED), `de_xuat_handoff` (chuyển `awaiting_human`
+     + **tạo TICKET** bằng `api_create_document('TICKET', …)` actor bot, link phiên — dùng SLA sẵn có).
+  3. System prompt dựng từ `cskh_bot_config` + kịch bản KB PUBLISHED; tối đa 3 vòng tool/turn; timeout 15s.
+  4. `SafetyRails` bằng code (R1 không bịa khi tool not_found, R2 chặn lộ dữ liệu khi chưa xác thực, R3 từ cấm
+     hứa → ép chuyển người, R4 handoff có lý do); vi phạm → trả câu xin lỗi + chuyển người.
+  5. Route `POST /api/cskh/chat` (`widget_key` hoặc session Portal → tenant), rate limit theo IP/phiên, ghi
+     `cskh_messages` + `cskh_usage`. Phiên đang `awaiting_human/human_serving` → bot im, chỉ lưu tin khách.
+  6. Báo nhân viên khi chuyển người: Web Push (WP-B2) + `email_outbox`.
+- **Tiêu chí nghiệm thu**: T25.4 (tra đơn chưa xác thực không lộ SĐT/địa chỉ/giá), T25.5 (mã không tồn tại →
+  không bịa), T25.6 (từ khoá bồi thường → awaiting_human + TICKET OPEN được tạo), T25.7 (bot không thực hiện
+  được transition ngoài CREATE TICKET). Test chạy với provider `mock` (không tốn tiền, deterministic).
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-K2** theo `docs/ke-hoach-phat-trien-theo-session.md` §3, Nhóm K (cần WP-K1). Gọi skill
+  > `claude-api` trước khi viết adapter Claude. Port vòng agent + 4 tool + SafetyRails R1–R4 từ
+  > `C:\Users\ThinkPad\Documents\AI CSKH\app\cskh\` sang `src/lib/cskh/` (TypeScript), adapter LLM đa nhà cung cấp
+  > (mặc định Claude, OpenAI-compatible, mock). Tool tra đơn đọc SO/SHIPMENT thật của ERP qua hàm SQL có kiểm
+  > tenant; handoff tạo TICKET. Route `POST /api/cskh/chat`. Test T25.4–T25.7 bằng provider mock. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
+
+#### WP-K3 — Bong bóng chat cho khách
+
+- **Mục tiêu**: khách thấy bong bóng chat ngay trên Portal và trang công khai — không cần app nào khác.
+- **Phụ thuộc**: **WP-K2**.
+- **File đụng tới**: `src/components/cskh/chat-bubble.tsx` (mới, thay `widget-chat.tsx`), layout `(portal)`,
+  landing/help công khai, `src/app/(app)/layout.tsx` (gỡ widget cũ), `.env.local.example` (bỏ `NEXT_PUBLIC_CSKH_*`).
+- **Các bước** (skill `ui-design-logic`): React component theo design system J1 (light/dark, mobile tránh
+  BottomNav); trạng thái: chào → đang trả lời → đã chuyển nhân viên ("nhân viên đang tiếp nhận") → nhân viên
+  trả lời (hiện tên NV) → kết thúc + chấm CSAT 1–5; giữ phiên qua `localStorage` (try/catch); Portal tự gửi
+  ngữ cảnh khách đăng nhập; trang công khai dùng `widget_key` của tenant. Nhận tin nhân viên bằng Supabase
+  Realtime hoặc polling ngắn.
+- **Tiêu chí nghiệm thu**: bong bóng hiện trên Portal + landing ở desktop và điện thoại; không hiện trong `(app)`
+  nội bộ; screenshot QA đủ trạng thái; T25.8 (khách Portal chỉ tra được đơn của chính mình).
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-K3** theo `docs/ke-hoach-phat-trien-theo-session.md` §3, Nhóm K (cần WP-K2). Gọi skill
+  > `ui-design-logic`. Viết `src/components/cskh/chat-bubble.tsx` thay widget.js cũ, gắn vào `(portal)` và trang
+  > công khai, gỡ khỏi `(app)`. Đủ trạng thái chào/đang trả lời/chuyển NV/NV trả lời/kết thúc+CSAT, mobile + dark.
+  > Test T25.8, chụp screenshot bằng chứng. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
+
+#### WP-K4 — Màn điều hành bot cho nhân viên & TP CSKH
+
+- **Mục tiêu**: thay trang `/quan-ly` mật khẩu chung bằng màn trong ERP, đăng nhập theo tài khoản, có phân quyền.
+- **Phụ thuộc**: **WP-K2** (song song được với K3).
+- **File đụng tới**: `src/app/(app)/customer-service/bot/**` (mới), migration `043_cskh_console.sql` (hàm ghi).
+- **Các bước** (skill `ui-design-logic`):
+  1. **Hộp thư** (CS_AGENT, CS_MANAGER): tab Chờ người / Đang xử lý / Bot đang phục vụ / Đã đóng; badge SLA từ
+     TICKET liên kết. Mở phiên → xem transcript + tool đã gọi + dữ liệu đã tra → **Nhận xử lý** (gán mình) →
+     trả lời khách → **Trả lại cho bot** hoặc **Đóng** (đóng phiên đồng bộ trạng thái TICKET theo state machine).
+     Nhân viên chỉ trả lời phiên mình đã nhận (OWN); TP CSKH gán lại được (BRANCH/COMPANY).
+  2. **Tri thức** (KB_ARTICLE): danh sách theo chủ đề, soạn/sửa bản nháp, gửi duyệt; TP CSKH đăng/lưu trữ
+     (SoD: không đăng bài mình soạn). Xem trước diff so với bản đang dùng.
+  3. **Cấu hình bot** (CS_MANAGER): tên/giọng điệu, lời chào, chọn nhà cung cấp + model (chỉ liệt kê nhà cung
+     cấp mà server có key), ngưỡng handoff, từ cấm hứa, bật/tắt bot, bật/tắt voice, lấy `widget_key`.
+  4. **Thử bot** (sandbox): chat thử với bản nháp tri thức trước khi đăng — phiên đánh dấu `test`, không tính KPI.
+- **Tiêu chí nghiệm thu**: T25.9 (CS_AGENT không trả lời được phiên người khác đang giữ), T25.10 (trả lời của NV
+  ghi audit + hiện ở phía khách), T25.11 (CS_AGENT không sửa được cấu hình bot); screenshot đủ state matrix.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-K4** theo `docs/ke-hoach-phat-trien-theo-session.md` §3, Nhóm K (cần WP-K2). Gọi skill
+  > `ui-design-logic`. Dựng `/customer-service/bot`: hộp thư phiên (nhận/trả lời/trả bot/đóng, đồng bộ TICKET),
+  > quản lý tri thức KB_ARTICLE có duyệt SoD, cấu hình bot (CS_MANAGER), sandbox thử bot. Tham khảo UI cũ
+  > `C:\Users\ThinkPad\Documents\AI CSKH\app\static\quan-ly.html`. Test T25.9–T25.11. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
+
+#### WP-K5 — Dashboard hoạt động bot cho lãnh đạo
+
+- **Mục tiêu**: CEO/CFO/TP CSKH xem bot đang làm tốt đến đâu, tốn bao nhiêu.
+- **Phụ thuộc**: **WP-K4** (cần dữ liệu phiên/handoff thật), dùng chart layer WP-B1.
+- **Các bước**: RPC `api_cskh_stats(from, to)`; widget trên `/customer-service/bot` (tab Tổng quan) và dashboard
+  chính theo quyền: số phiên theo kênh/ngày, **tỉ lệ bot tự giải quyết**, tỉ lệ chuyển người + lý do hàng đầu,
+  thời gian phản hồi đầu của nhân viên, CSAT trung bình, SLA TICKET từ bot, **chi phí AI** (từ `cskh_usage`,
+  theo nhà cung cấp), số vi phạm rails bị chặn. Bổ sung 2–3 KPI vào `kpi_catalog` (BM-10).
+- **Tiêu chí nghiệm thu**: mọi số tính từ dữ liệu thật (phiên `test` bị loại); CS_AGENT không thấy tab chi phí;
+  T25.12 (số liệu stats khớp đếm thủ công trên dữ liệu seed).
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-K5** theo `docs/ke-hoach-phat-trien-theo-session.md` §3, Nhóm K (cần WP-K4). Gọi skill `dataviz`.
+  > Viết `api_cskh_stats` + widget: phiên theo kênh, tỉ lệ tự giải quyết/chuyển người, thời gian phản hồi NV,
+  > CSAT, SLA ticket, chi phí AI theo nhà cung cấp; thêm KPI vào kpi_catalog; phân quyền xem theo vai trò.
+  > Test T25.12. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
+
+#### WP-K6 — Khung voice trả lời cuộc gọi
+
+- **Mục tiêu**: giữ năng lực callbot của app cũ trong ERP ở dạng **khung + mock**; bật thật khi có nhà cung cấp.
+- **Phụ thuộc**: **WP-K2** (dùng chung agent, song song được với K3/K4).
+- **File đụng tới**: `src/lib/cskh/voice/{stt,tts,telephony}.ts` (interface + adapter mock; khung Deepgram/
+  OpenAI/ElevenLabs STT-TTS và Vapi/Twilio tổng đài), `src/app/api/cskh/voice/{start,turn,end}/route.ts`,
+  `src/app/api/cskh/vapi/route.ts` (webhook, kiểm `VAPI_SECRET`).
+- **Các bước**: port `speech.py`/`voice.py`/`vapi.py`; phiên `channel='voice'` đi chung agent với kịch bản
+  `script_call` (≤60 từ/turn); chuyển người qua điện thoại = tạo TICKET + ghi "hẹn gọi lại" (chưa chuyển máy
+  thật); transcript cuộc gọi hiện trong hộp thư K4 với nhãn 📞; nút "Gọi thử" (mock, nhập chữ thay giọng) trong
+  sandbox K4. Tắt voice trong config → webhook trả 403.
+- **Tiêu chí nghiệm thu**: T25.13 (luồng gọi mock: start → 2 turn → end ghi đủ transcript), T25.14 (webhook sai
+  secret bị từ chối); không cần key thật nào để chạy test.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-K6** theo `docs/ke-hoach-phat-trien-theo-session.md` §3, Nhóm K (cần WP-K2). Port khung voice từ
+  > `C:\Users\ThinkPad\Documents\AI CSKH\app\cskh\{speech,voice,vapi}.py`: interface STT/TTS/tổng đài + adapter
+  > mock, route voice + webhook Vapi có secret, phiên voice dùng chung agent và hiện trong hộp thư K4, nút gọi thử
+  > mock. Test T25.13–T25.14. Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
+
+#### WP-K7 — Test tổng + hướng dẫn demo/đăng ký dùng thật + retire app cũ
+
+- **Mục tiêu**: chốt nhóm K có chứng cứ, và có sẵn tài liệu để trả lời "demo thế nào / đăng ký gì để dùng thật".
+- **Phụ thuộc**: **WP-K3, K4, K5, K6**.
+- **Các bước**:
+  1. Rà T25.1–T25.14 đủ trong `tests/acceptance.test.mjs`, ghi BM-14; port kịch bản AC-1..AC-6 của
+     `tools/test_acceptance.py` nếu chưa phủ.
+  2. `docs/cskh-bot-huong-dan.md` — **Phần A Demo** (chạy với mock / với Claude, tài khoản demo CS_AGENT,
+     CS_MANAGER, CEO, khách Portal; kịch bản 10 phút: khách hỏi → tra đơn → xác thực → khiếu nại → NV nhận →
+     TP sửa FAQ → lãnh đạo xem dashboard). **Phần B Dùng thật**: đăng ký & lấy key từng nhà cung cấp LLM
+     (Anthropic Console, DeepSeek, Gemini, OpenAI — chi phí ước tính/1.000 phiên, cách đặt env trên Vercel),
+     voice (Vapi/Twilio, số tổng đài Việt Nam, STT/TTS tiếng Việt), thông báo (Web Push, email), checklist
+     go-live (giới hạn chi phí, rate limit, chính sách dữ liệu khách).
+  3. Cập nhật `docs/app-map/017-customer-service-flow.md`, `docs/demo-guide.md`, `.env.local.example`.
+  4. Retire app cũ: ghi chú "ĐÃ HỢP NHẤT VÀO ERP" vào `AI CSKH/README.md`; **không xoá** thư mục (chủ dự án tự
+     quyết).
+- **Tiêu chí nghiệm thu**: toàn bộ `test:acceptance` PASS (gồm T3.1–T3.4); hướng dẫn chạy lại được từ đầu trên
+  máy sạch; không còn tham chiếu `NEXT_PUBLIC_CSKH_API` trong code.
+- **📋 PROMPT MẪU**:
+  > Làm gói **WP-K7** theo `docs/ke-hoach-phat-trien-theo-session.md` §3, Nhóm K (cần K3–K6). Rà đủ test
+  > T25.1–T25.14, viết `docs/cskh-bot-huong-dan.md` (Phần A demo, Phần B đăng ký dùng thật: LLM, voice, thông báo,
+  > go-live), cập nhật app-map 017 + demo-guide + .env.local.example, ghi chú retire vào README app AI CSKH cũ
+  > (không xoá). Commit ngay. Khi hoàn tất, BẮT BUỘC cập nhật `docs/ke-hoach-phat-trien-theo-session.md`: điền checklist DoD §6.1 (dán vào chat), thêm một dòng vào bảng bàn giao §6.2, và tick `[x]` gói này ở §2.
+
+---
+
 ## 4. THỨ TỰ CHẠY ĐÃ CHỐT (tuần tự một mình — theo quyết định §5)
 
 > Đã chọn: **định vị tổ hợp A+B+C · có làm SaaS đa khách (D1 sớm) · chạy tuần tự · demo không gấp.**
@@ -609,6 +826,12 @@ Tuần 18–20    WP-F1, WP-F2 ; WP-G1, WP-G2, WP-G3
 Tuần 20–21    WP-J3                            (QA/triage UX toàn bộ — chạy khi phần lớn màn đã tồn tại)
 Tuần 21–23    WP-H1, WP-H2, WP-H3
 Sau đó        WP-F3 → WP-I1 → WP-I2 ; WP-G4    (khi có cam kết/khách trả tiền; F3/I1 cần D1 đã xong)
+
+— Nhóm K (thêm 2026-09-24, sau khi 28 gói A–J xong) —
+Tuần 1        WP-K1 → WP-K2                    (dữ liệu + bộ não; K2 test bằng mock)
+Tuần 2–3      WP-K3 ; WP-K4                    (bong bóng chat khách + màn điều hành NV/TP CSKH)
+Tuần 3–4      WP-K6 ; WP-K5                    (khung voice mock + dashboard lãnh đạo)
+Tuần 4–5      WP-K7                            (test tổng + hướng dẫn demo/dùng thật + retire app cũ)
 ```
 
 **Nguyên tắc thứ tự**: (1) sửa tính trung thực tài liệu trước tiên; (2) **multi-tenant làm sớm** vì đã chốt SaaS
@@ -628,6 +851,10 @@ trả tiền hoặc hợp đồng thử nghiệm.
 2. **SaaS đa khách**: ✅ **CÓ** → **WP-D1 làm sớm**, đặt ngay sau nhóm A và trước WP-C/WP-E. WP-E1/F3/I1 nằm sau D1.
 3. **Cách chạy**: ✅ **Tuần tự một mình** — theo thứ tự §4; ít lo xung đột merge.
 4. **Demo logistics**: ✅ **Không gấp** → không đẩy C1 lên quá sớm; ưu tiên nền tảng (D1) trước.
+
+5. **AI CSKH (2026-09-24)**: ✅ hợp nhất app AI CSKH vào ERP thành **Nhóm K** · bot chỉ phục vụ **khách hàng**
+   (Portal + trang công khai) · nhà cung cấp AI **chọn được, mặc định Claude** · **giữ khung voice** (mock trước)
+   · hướng dẫn demo/đăng ký dùng thật viết ở WP-K7, trả lời khi chủ dự án hỏi.
 
 > **Trạng thái duyệt**: ✅ **ĐÃ DUYỆT (2026-09-20)** — bắt đầu bằng session đầu tiên với prompt mẫu của **WP-A1**.
 > (Thứ tự chạy theo §4. Mỗi session xong điền checklist bàn giao §6.)
