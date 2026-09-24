@@ -252,6 +252,19 @@ export const DOC_TYPES: Record<string, DocTypeConfig> = {
     ],
     columns: [...BASE_COLS, { key: "partner_name", label: "Khách hàng" }, { key: "data.priority", label: "Ưu tiên" }, { key: "owner_name", label: "Người xử lý" }, { key: "data.sla_due_at", label: "Hạn SLA", kind: "date" }, STATUS_COL],
   },
+  KB_ARTICLE: {
+    code: "KB_ARTICLE", label: "Bài tri thức", plural: "Kho tri thức CSKH", module: "customer-service", flow: "L9", lineMode: "none",
+    header: [
+      { key: "title", label: "Tiêu đề", type: "text", required: true },
+      { key: "kind", label: "Loại", type: "select", data: true, required: true, options: [
+        { value: "FAQ", label: "FAQ" }, { value: "SCRIPT_CHAT", label: "Kịch bản chat" },
+        { value: "SCRIPT_CALL", label: "Kịch bản gọi" }, { value: "SCRIPT_HANDOFF", label: "Kịch bản chuyển người" },
+        { value: "POLICY", label: "Chính sách" } ] },
+      { key: "topic", label: "Chủ đề", type: "text", data: true },
+      { key: "body", label: "Nội dung", type: "textarea", data: true, required: true },
+    ],
+    columns: [...BASE_COLS, { key: "data.kind", label: "Loại" }, { key: "data.topic", label: "Chủ đề" }, BY_COL, STATUS_COL],
+  },
   EXC: {
     code: "EXC", label: "Ngoại lệ", plural: "Sổ ngoại lệ", module: "exceptions", flow: "L4", lineMode: "none",
     header: [
@@ -370,7 +383,7 @@ export const MODULES: ModuleConfig[] = [
   { key: "hr", href: "/hr", title: "Nhân sự & Tiền lương", docTypes: ["HIRE", "PAYROLL"] },
   { key: "finance", href: "/finance", title: "Tài chính & Kế toán", docTypes: ["JV", "SINV", "PMT", "RCPT", "BANKREC"] },
   { key: "assets", href: "/assets", title: "Tài sản", docTypes: ["ASSET"] },
-  { key: "customer-service", href: "/customer-service", title: "Dịch vụ khách hàng", docTypes: ["TICKET"] },
+  { key: "customer-service", href: "/customer-service", title: "Dịch vụ khách hàng", docTypes: ["TICKET", "KB_ARTICLE"] },
   { key: "exceptions", href: "/exceptions", title: "Ngoại lệ", docTypes: ["EXC"] },
   { key: "operations", href: "/operations", title: "Vận hành Logistics", docTypes: ["SHIPMENT", "BOOKING", "HBL", "DO", "DNOTE", "CNOTE"] },
 ]

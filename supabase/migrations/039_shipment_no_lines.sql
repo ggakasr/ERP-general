@@ -137,7 +137,7 @@ BEGIN
 
   -- logistics documents keep their detail in containers / shipment_charges; BANKREC lines come from api_bankrec_import
   IF v_no = 0 AND p_doc.doc_type NOT IN ('PMT','RCPT','ASSET','HIRE','TICKET','EXC','MDC',
-                                         'SHIPMENT','BOOKING','HBL','DO','BANKREC') THEN
+                                         'SHIPMENT','BOOKING','HBL','DO','BANKREC','KB_ARTICLE') THEN
     RAISE EXCEPTION 'Chứng từ cần ít nhất một dòng chi tiết';
   END IF;
   RETURN CASE WHEN p_doc.doc_type IN ('ST','ADJ') THEN 0 ELSE v_total END;

@@ -2714,3 +2714,52 @@ t('T24.5', 'api_admin_change_plan FORBIDDEN cho user không phải SYS_ADMIN', a
   const r = await call('api_admin_change_plan', { p_tenant_id: tenantId, p_new_plan: 'STARTER' })
   fail(r, 'FORBIDDEN')
 })
+
+// ═══════════════════════════════════════════════════════════════
+// T25: CSKH Bot (Group K)
+// ═══════════════════════════════════════════════════════════════
+
+t('T25.1', 'KB_ARTICLE: creator cannot self-PUBLISH (SoD)', async () => {
+  await as('cs_manager')
+  const r = await call('api_create_document', {
+    p_doc_type: 'KB_ARTICLE',
+    p_header: { title: 'Test KB SoD ' + Date.now() },
+    p_lines: null,
+  })
+  ok(r, 'create KB_ARTICLE')
+  const kbId = r.id
+
+  ok(await act('cs_manager', kbId, 'submit'), 'submit')
+
+  const pub = await act('cs_manager', kbId, 'publish')
+  fail(pub, 'SOD_VIOLATION')
+})
+
+t('T25.2', 'CS_AGENT tenant A cannot see tenant B CSKH sessions', async () => {
+  await as('cs_agent')
+  const r = await call('api_cskh_sessions', {})
+  ok(r, 'list sessions')
+  const sessionIds = (r.sessions || []).map(s => s.id)
+
+  const tenantA = (await sys('SELECT fn_current_tenant() AS t'))[0].t
+  for (const sid of sessionIds) {
+    const row = (await sys('SELECT tenant_id FROM cskh_sessions WHERE id = $1', [sid]))[0]
+    assert.equal(row.tenant_id, tenantA, `session ${sid} belongs to tenant A`)
+  }
+})
+
+t('T25.3', 'api_cskh_config_set records audit trail', async () => {
+  await as('cs_manager')
+  const r = await call('api_cskh_config_set', {
+    p_changes: { persona: 'Bot Test', greeting: 'Hello test' },
+  })
+  ok(r, 'config set')
+
+  const rows = await sys(
+    "SELECT * FROM audit_trail WHERE table_name = 'CSKH_CONFIG' ORDER BY created_at DESC LIMIT 1"
+  )
+  assert.ok(rows.length > 0, 'audit trail entry exists')
+  assert.equal(rows[0].action, 'UPDATE')
+  const nv = typeof rows[0].new_value === 'string' ? JSON.parse(rows[0].new_value) : rows[0].new_value
+  assert.equal(nv.persona, 'Bot Test')
+})

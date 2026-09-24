@@ -56,6 +56,9 @@ export const STATUS_LABELS: Record<string, string> = {
   // Booking/HBL/DO
   ISSUED: "Đã phát hành",
   APPLIED: "Đã áp dụng",
+  // KB Article
+  PUBLISHED: "Đã đăng",
+  ARCHIVED: "Lưu trữ",
 }
 
 type Tone = "gray" | "blue" | "amber" | "green" | "red" | "violet" | "teal"
@@ -74,6 +77,7 @@ const STATUS_TONE: Record<string, Tone> = {
   // Shipment tones
   BOOKED: "teal", ARRIVED: "green", CUSTOMS: "amber", DELIVERED: "green",
   ISSUED: "green", APPLIED: "green",
+  PUBLISHED: "green", ARCHIVED: "gray",
 }
 
 const TONE_CLASS: Record<Tone, string> = {
@@ -134,6 +138,7 @@ export const RESOURCE_LABELS: Record<string, string> = {
   INVENTORY: "Tồn kho", EMPLOYEE: "Hồ sơ nhân sự", GL: "Sổ cái & BCTC", AUDIT_TRAIL: "Audit trail",
   SOD_LOG: "Nhật ký SoD", HANDOFF: "Sổ bàn giao", USER_ADMIN: "Quản trị người dùng", PERIOD: "Khóa sổ kỳ",
   DEPRECIATION: "Chạy khấu hao", KPI: "KPI", REPORT_OPS: "Báo cáo vận hành",
+  KB_ARTICLE: "Bài tri thức", CSKH_CONFIG: "Cấu hình bot CSKH",
 }
 
 export const MOVE_LABELS: Record<string, string> = {
