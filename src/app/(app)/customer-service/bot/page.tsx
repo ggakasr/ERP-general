@@ -575,7 +575,8 @@ function ConfigTab() {
 
   useEffect(() => {
     rpc<{ config: BotConfig }>("api_cskh_config_get").then((r) => {
-      if (r.ok && r.config) setConfig(r.config)
+      // Older rows saved the OpenAI adapter as "openai"; show it under its current value.
+      if (r.ok && r.config) setConfig({ ...r.config, provider: r.config.provider === "openai" ? "openai-compat" : r.config.provider })
     })
   }, [])
 
@@ -617,7 +618,7 @@ function ConfigTab() {
         <Field label="Nhà cung cấp AI">
           <select className={inputCls} value={config.provider} onChange={(e) => setConfig({ ...config, provider: e.target.value })}>
             <option value="claude">Claude (Anthropic)</option>
-            <option value="openai">OpenAI Compatible</option>
+            <option value="openai-compat">OpenAI Compatible (DeepSeek/Gemini/OpenAI)</option>
             <option value="mock">Mock (Test)</option>
           </select>
         </Field>

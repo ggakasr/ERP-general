@@ -19,6 +19,10 @@ Mật khẩu mọi tài khoản demo: `Demo@123`.
 | TP CSKH | `cskh.tp` | Quản lý FAQ/tri thức, phân công, xem dashboard |
 | Lãnh đạo | `ceo` | Xem dashboard hoạt động bot, chi phí AI |
 
+> **Bắt buộc trước khi demo** (kể cả mock): đặt `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API →
+> `service_role`) trong `.env.local` / Vercel Environment Variables, và đã đẩy migration 041–044.
+> Hai biến `NEXT_PUBLIC_SUPABASE_*` là chưa đủ — route `/api/cskh/*` chạy phía server bằng service role.
+
 Bot mặc định chạy chế độ **mock** (không cần API key, phản hồi xác định). Để dùng Claude thật:
 đặt `CSKH_LLM_PROVIDER=claude` và `ANTHROPIC_API_KEY=sk-ant-xxx` trong `.env.local`, khởi động lại.
 
@@ -78,10 +82,14 @@ Bot hỗ trợ 3 adapter: **Claude** (mặc định), **OpenAI-compatible** (Dee
 | Nhà cung cấp | Đăng ký | Biến môi trường | Chi phí ước tính / 1.000 phiên |
 |---|---|---|---|
 | **Anthropic (Claude)** | [console.anthropic.com](https://console.anthropic.com) → API Keys | `CSKH_LLM_PROVIDER=claude`<br>`ANTHROPIC_API_KEY=sk-ant-xxx` | ~$2–5 (Haiku) / ~$8–15 (Sonnet) |
-| **DeepSeek** | [platform.deepseek.com](https://platform.deepseek.com) → API Keys | `CSKH_LLM_PROVIDER=openai`<br>`CSKH_OPENAI_API_KEY=sk-xxx`<br>`CSKH_OPENAI_BASE_URL=https://api.deepseek.com/v1`<br>`CSKH_LLM_MODEL=deepseek-chat` | ~$0.5–2 |
-| **Google Gemini** | [aistudio.google.com](https://aistudio.google.com) → API Keys | `CSKH_LLM_PROVIDER=openai`<br>`CSKH_OPENAI_API_KEY=xxx`<br>`CSKH_OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai`<br>`CSKH_LLM_MODEL=gemini-2.0-flash` | ~$0.5–3 |
-| **OpenAI** | [platform.openai.com](https://platform.openai.com) → API Keys | `CSKH_LLM_PROVIDER=openai`<br>`CSKH_OPENAI_API_KEY=sk-xxx`<br>`CSKH_OPENAI_BASE_URL=https://api.openai.com/v1`<br>`CSKH_LLM_MODEL=gpt-4o-mini` | ~$1–5 |
+| **DeepSeek** | [platform.deepseek.com](https://platform.deepseek.com) → API Keys | `CSKH_LLM_PROVIDER=openai-compat`<br>`CSKH_OPENAI_API_KEY=sk-xxx`<br>`CSKH_OPENAI_BASE_URL=https://api.deepseek.com/v1`<br>`CSKH_LLM_MODEL=deepseek-chat` | ~$0.5–2 |
+| **Google Gemini** | [aistudio.google.com](https://aistudio.google.com) → API Keys | `CSKH_LLM_PROVIDER=openai-compat`<br>`CSKH_OPENAI_API_KEY=xxx`<br>`CSKH_OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai`<br>`CSKH_LLM_MODEL=gemini-2.0-flash` | ~$0.5–3 |
+| **OpenAI** | [platform.openai.com](https://platform.openai.com) → API Keys | `CSKH_LLM_PROVIDER=openai-compat`<br>`CSKH_OPENAI_API_KEY=sk-xxx`<br>`CSKH_OPENAI_BASE_URL=https://api.openai.com/v1`<br>`CSKH_LLM_MODEL=gpt-4o-mini` | ~$1–5 |
 | **Mock** | (không cần) | `CSKH_LLM_PROVIDER=mock` | $0 |
+
+> **Model**: ưu tiên ô *Model* ở tab Cấu hình (`/customer-service/bot`) → biến `CSKH_LLM_MODEL` → mặc định của adapter
+> (`claude-sonnet-4-20250514` / `gpt-4o-mini`). Ô Model để `mock` nghĩa là "chưa đặt".
+> Giá trị cũ `openai` vẫn được chấp nhận như bí danh của `openai-compat`.
 
 > **Lưu ý**: API key chỉ đặt ở biến môi trường server (`.env.local` hoặc Vercel Environment Variables).
 > Không lưu trong database, không trả về trình duyệt.
