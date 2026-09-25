@@ -83,6 +83,19 @@ Kiểm toán, Quản trị hệ thống) có phạm vi COMPANY nên vẫn xử l
 | `BR-202609-00001` | Đối chiếu ngân hàng còn 1 dòng phí chưa khớp → kế toán trưởng quyết định |
 | Kỳ 2026-07 / 2026-08 | Khóa cứng / khóa sơ bộ — thử ghi JV ngày 15/07 sẽ bị chặn |
 
+## Kịch bản 4 — Bot CSKH (AI tích hợp)
+
+Xem hướng dẫn chi tiết tại `docs/cskh-bot-huong-dan.md`. Tóm tắt:
+
+1. `portal.acme` → bấm bong bóng chat → tra đơn `SO-202608-00001` → bot trả trạng thái (trường công khai).
+2. Gõ SĐT → bot xác thực → hiện thêm thông tin nhạy cảm (R2).
+3. Khiếu nại → bot tạo TICKET, chuyển người.
+4. `cskh` → Bot CSKH → Nhận phiên → trả lời khách → Đóng phiên → khách chấm CSAT.
+5. `cskh.tp` → Tri thức → thêm FAQ → duyệt (SoD: người soạn ≠ người đăng).
+6. `ceo` → Tổng quan → xem KPI bot, biểu đồ, chi phí AI.
+
+Bot mặc định chạy mock (không cần API key). Đặt `CSKH_LLM_PROVIDER=claude` + `ANTHROPIC_API_KEY` để dùng Claude thật.
+
 ## Thuế GTGT trên hóa đơn
 
 Khi lập **Hóa đơn NCC (SINV)** hoặc **Hóa đơn bán hàng (INV)**, chọn thuế suất GTGT (0/5/8/10%, mặc định 10%).
