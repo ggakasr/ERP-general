@@ -1,8 +1,8 @@
 ---
 covers: docs/, supabase/migrations/, src/, tests/
-last_verified: 2026-09-24
+last_verified: 2026-09-25
 ttl_days: 60
-status: KẾ HOẠCH PHÁT TRIỂN — A–J HOÀN TẤT 28/28 GÓI · Nhóm K (AI CSKH) 6/7 — mở 2026-09-25
+status: KẾ HOẠCH PHÁT TRIỂN — A–J HOÀN TẤT 28/28 GÓI · Nhóm K (AI CSKH) 7/7 HOÀN TẤT — 2026-09-25
 nguon: docs/phan-tich-canh-tranh-freightek.md (§5, §8, §9, §10, §12)
 ---
 
@@ -13,8 +13,8 @@ nguon: docs/phan-tich-canh-tranh-freightek.md (§5, §8, §9, §10, §12)
 > Claude Code riêng**. Khi mở session mới, chủ dự án chỉ cần dán **prompt mẫu** của gói đó
 > (hoặc ghi ngắn "làm gói WP-B1 theo `docs/ke-hoach-phat-trien-theo-session.md`").
 >
-> **Trạng thái**: ✅ **Nhóm A–J HOÀN TẤT 28/28 GÓI** (review cuối 2026-09-24). 🆕 **Nhóm K — AI CSKH hợp nhất
-> vào ERP: 6/7 gói** (WP-K6 xong 2026-09-25). Xem tiến độ ở §2 và bảng bàn giao §6.2.
+> **Trạng thái**: ✅ **Nhóm A–J HOÀN TẤT 28/28 GÓI** (review cuối 2026-09-24). ✅ **Nhóm K — AI CSKH hợp nhất
+> vào ERP: 7/7 gói HOÀN TẤT** (WP-K7 xong 2026-09-25). Xem tiến độ ở §2 và bảng bàn giao §6.2.
 
 ---
 
@@ -141,7 +141,7 @@ K1 dữ liệu ──► K2 bộ não ──┬► K3 widget khách ──┐
 | WP-K4 | Màn điều hành bot cho NV/TP CSKH (`/customer-service/bot`) | P1 | WP-K2 | 1–1,5 tuần | [x] 2026-09-24 |
 | WP-K5 | Dashboard hoạt động bot cho lãnh đạo | P2 | WP-K4 | 3–4 ngày | [x] 2026-09-25 |
 | WP-K6 | Khung voice trả lời cuộc gọi (adapter STT/TTS/tổng đài, mặc định mock) | P2 | WP-K2 | 1 tuần | [x] 2026-09-25 |
-| WP-K7 | Test T25.x + hướng dẫn demo/đăng ký dùng thật + retire app cũ | P1 | WP-K3..K6 | 2–3 ngày | [ ] |
+| WP-K7 | Test T25.x + hướng dẫn demo/đăng ký dùng thật + retire app cũ | P1 | WP-K3..K6 | 2–3 ngày | [x] 2026-09-25 |
 
 ---
 
@@ -1210,6 +1210,7 @@ Cạm bẫy/nợ kỹ thuật còn lại:
 | WP-K4 | 2026-09-24 | `80ffb13` | T25.9–T25.11 (claim scope, staff reply+audit, config CS_MANAGER only) | ✅ | 043_cskh_console.sql: 6 api_cskh_staff_* functions (sessions/claim/reply/return_to_bot/close/transcript); /customer-service/bot page (Inbox+KB+Config tabs); CS_MANAGER can reassign; close session auto-closes linked TICKET |
 | WP-K5 | 2026-09-25 | `025c192` | T25.12 (stats counts match, CS_AGENT no cost, forbidden for ketoan) | ✅ | 044_cskh_stats.sql: api_cskh_stats(from,to) 10 metrics; 3 KPI catalog entries (CUS-003/004/005); Overview tab on bot console; CS_AGENT cannot see cost; time filter 7/30/90 days |
 | WP-K6 | 2026-09-25 | `c819f70` | T25.13–T25.14 (voice session transcript, voice_enabled config flag) | ✅ | voice/stt.ts (Mock+Deepgram), tts.ts (Mock+OpenAI+ElevenLabs), telephony.ts (Mock+Vapi+Twilio); /api/cskh/voice/{start,turn,end} routes; /api/cskh/vapi webhook (VAPI_SECRET check); mock adapters for no-key testing |
+| WP-K7 | 2026-09-25 | `f8eea14` | T25.1–T25.14 (all CSKH tests) | ✅ | docs/cskh-bot-huong-dan.md (Part A demo + Part B production); app-map 017 rewrite; demo-guide Scenario 4; .env.local.example voice vars; removed dead widget-chat.tsx; no NEXT_PUBLIC_CSKH_API references in code; **Nhóm K 7/7 HOÀN TẤT** |
 
 > **Cách chủ dự án dùng**: mở bảng này xem cột *DoD đủ?* = ✅ và *Commit(s)* có hash là biết gói đã xong &
 > có bằng chứng. Chỉ cần soi kỹ những dòng *Ghi chú / nợ kỹ thuật* có nội dung.
@@ -1665,3 +1666,32 @@ Definition of Done chung:
 
 Cạm bẫy/nợ kỹ thuật còn lại: `/api/demo-signup` cần `SUPABASE_SERVICE_ROLE_KEY` trong env — không hoạt động nếu thiếu; không có rate limiting trên endpoint (cần thêm ở production); mật khẩu mặc định `Demo@123` — user nên đổi sau đăng nhập.
 Ảnh hưởng gói sau: không — WP-I2 là gói cuối cùng trong kế hoạch.
+
+---
+
+### Bàn giao WP-K7  (2026-09-25)
+
+Tiêu chí nghiệm thu riêng của gói (§3):
+- [x] T25.1–T25.14 đủ trong `tests/acceptance.test.mjs` — PASS (14 test CSKH)
+- [x] `docs/cskh-bot-huong-dan.md` — Phần A Demo (kịch bản 10 phút: khách hỏi → tra đơn → xác thực → khiếu nại → NV nhận → TP sửa FAQ → lãnh đạo xem dashboard) — PASS
+- [x] `docs/cskh-bot-huong-dan.md` — Phần B Dùng thật (LLM providers: Claude/DeepSeek/Gemini/OpenAI + chi phí ước tính; voice: Deepgram/OpenAI/ElevenLabs/Vapi; thông báo: Web Push/email; checklist go-live) — PASS
+- [x] `docs/app-map/017-customer-service-flow.md` cập nhật bao phủ AI CSKH bot (K1–K7) — PASS
+- [x] `docs/demo-guide.md` thêm Kịch bản 4 (Bot CSKH) — PASS
+- [x] `.env.local.example` thêm voice/Vapi env vars — PASS
+- [x] Không còn tham chiếu `NEXT_PUBLIC_CSKH_API` trong code — PASS (xóa `widget-chat.tsx`, grep confirms 0 hits in `src/`)
+- [x] `AI CSKH/` directory không tồn tại trong repo — bước retire không áp dụng
+
+Definition of Done chung:
+- [x] npm run typecheck ....................... SẠCH
+- [x] npx next lint .......................... SẠCH (✔ No ESLint warnings or errors)
+- [x] npm run test:acceptance ................ PASS (T25.1–T25.14 PASS, T3.1–T3.4 PASS)
+- [x] T3.1–T3.4 (SoD blocker) ................ PASS ✔
+- [x] Acceptance test map tới thay đổi ....... T25.1–T25.14 (toàn bộ CSKH)
+- [x] Không vi phạm FORBIDDEN (CLAUDE.md §1.3) và Quy tắc chung §0
+- [x] (Không thêm bảng/hàm mới — docs + cleanup only)
+- [x] docs/app-map/017-customer-service-flow.md đã cập nhật (last_verified 2026-09-25)
+- [x] Đã commit ngay. Commit: `f8eea14`
+- [x] Đã tick [x] WP-K7 ở §2 và thêm 1 dòng vào bảng bàn giao §6.2
+
+Cạm bẫy/nợ kỹ thuật còn lại: không.
+Ảnh hưởng gói sau: không — WP-K7 là gói cuối cùng của Nhóm K. **Toàn bộ 35 gói (A–K) HOÀN TẤT.**
