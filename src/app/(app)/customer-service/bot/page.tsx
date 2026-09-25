@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
-  ArrowLeft, Bot, CheckCircle2, Clock, Headphones, Inbox, MessageSquare,
-  RotateCcw, Send, Settings2, User, XCircle,
+  ArrowLeft, BarChart3, Bot, CheckCircle2, Clock, Headphones, Inbox, MessageSquare,
+  RotateCcw, Send, Settings2, TrendingUp, User, XCircle,
 } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { useSession } from "@/lib/session"
@@ -84,9 +84,11 @@ export default function BotConsolePage() {
   const isAgent = hasRole("CS_AGENT") || hasRole("CS_MANAGER")
   const isManager = hasRole("CS_MANAGER")
 
-  const [mainTab, setMainTab] = useState("inbox")
+  const canSeeCost = hasRole("CS_MANAGER") || hasRole("CEO") || hasRole("CFO") || hasRole("COO")
+  const [mainTab, setMainTab] = useState("overview")
   const mainTabs = useMemo(() => {
-    const t = [{ key: "inbox", label: "Hộp thư" }]
+    const t = [{ key: "overview", label: "Tổng quan" }]
+    t.push({ key: "inbox", label: "Hộp thư" })
     t.push({ key: "kb", label: "Tri thức" })
     if (isManager) t.push({ key: "config", label: "Cấu hình bot" })
     return t
@@ -112,9 +114,207 @@ export default function BotConsolePage() {
         ]}
       />
       <Tabs items={mainTabs} value={mainTab} onChange={setMainTab} />
+      {mainTab === "overview" && <StatsTab showCost={canSeeCost} />}
       {mainTab === "inbox" && <InboxTab />}
       {mainTab === "kb" && <KBTab />}
       {mainTab === "config" && isManager && <ConfigTab />}
+    </div>
+  )
+}
+
+// ─── Stats types ─────────────────────────────────────────────
+interface StatsData {
+  from: string; to: string
+  totals: { total_sessions: number; total_messages: number; active_sessions: number }
+  sessions_by_channel: Array<{ channel: string; count: number }>
+  sessions_by_day: Array<{ day: string; count: number }>
+  resolution: { total: number; closed: number; bot_resolved: number; handed_off: number }
+  handoff_reasons: Array<{ reason: string; count: number }>
+  response_time: { avg_minutes: number; median_minutes: number }
+  csat: { avg: number; count: number; distribution: Array<{ score: number; count: number }> }
+  ticket_sla: { total_tickets: number; closed_tickets: number; avg_resolve_hours: number }
+  cost: Array<{ provider: string; model: string; tokens_in: number; tokens_out: number; cost: number }> | null
+  rails: { blocked: number }
+}
+
+// ─── Stats Tab (Overview) ────────────────────────────────────
+function StatsTab({ showCost }: { showCost: boolean }) {
+  const [data, setData] = useState<StatsData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [range, setRange] = useState("30")
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const from = new Date(Date.now() - Number(range) * 86400000).toISOString().slice(0, 10)
+    const to = new Date().toISOString().slice(0, 10)
+    const r = await rpc<StatsData>("api_cskh_stats", { p_from: from, p_to: to })
+    if (r.ok) setData(r as unknown as StatsData)
+    setLoading(false)
+  }, [range])
+
+  useEffect(() => { load() }, [load])
+
+  if (loading || !data) return <p className="py-8 text-center text-sm text-muted-foreground">Đang tải thống kê...</p>
+
+  const res = data.resolution
+  const botRate = res.closed > 0 ? Math.round((res.bot_resolved / res.closed) * 100) : 0
+  const handoffRate = res.total > 0 ? Math.round((res.handed_off / res.total) * 100) : 0
+
+  const StatCard = ({ label, value, sub, icon }: { label: string; value: string | number; sub?: string; icon?: React.ReactNode }) => (
+    <div className="rounded-lg border p-4">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">{icon}{label}</div>
+      <div className="mt-1 text-2xl font-semibold">{value}</div>
+      {sub && <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div>}
+    </div>
+  )
+
+  return (
+    <div className="space-y-6">
+      {/* Period filter */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Khoảng thời gian:</span>
+        {["7", "30", "90"].map((d) => (
+          <Button key={d} size="sm" variant={range === d ? "default" : "outline"} className="h-7 text-xs"
+            onClick={() => setRange(d)}>
+            {d} ngày
+          </Button>
+        ))}
+      </div>
+
+      {/* KPI cards row 1 */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Tổng phiên" value={data.totals.total_sessions}
+          sub={`${data.totals.active_sessions} đang hoạt động`}
+          icon={<MessageSquare className="h-3.5 w-3.5" />} />
+        <StatCard label="Bot tự giải quyết" value={`${botRate}%`}
+          sub={`${res.bot_resolved}/${res.closed} phiên đóng`}
+          icon={<Bot className="h-3.5 w-3.5" />} />
+        <StatCard label="Tỉ lệ chuyển người" value={`${handoffRate}%`}
+          sub={`${res.handed_off} phiên`}
+          icon={<Headphones className="h-3.5 w-3.5" />} />
+        <StatCard label="CSAT trung bình" value={data.csat.avg || "—"}
+          sub={`${data.csat.count} đánh giá`}
+          icon={<TrendingUp className="h-3.5 w-3.5" />} />
+      </div>
+
+      {/* KPI cards row 2 */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Thời gian phản hồi NV" value={`${data.response_time.avg_minutes} phút`}
+          sub={`Trung vị: ${data.response_time.median_minutes} phút`}
+          icon={<Clock className="h-3.5 w-3.5" />} />
+        <StatCard label="Ticket từ bot" value={data.ticket_sla.total_tickets}
+          sub={`Đã đóng: ${data.ticket_sla.closed_tickets}, ~${data.ticket_sla.avg_resolve_hours}h`}
+          icon={<Inbox className="h-3.5 w-3.5" />} />
+        <StatCard label="Tổng tin nhắn" value={data.totals.total_messages}
+          icon={<MessageSquare className="h-3.5 w-3.5" />} />
+        <StatCard label="Vi phạm rails bị chặn" value={data.rails.blocked}
+          icon={<XCircle className="h-3.5 w-3.5" />} />
+      </div>
+
+      {/* Sessions by channel + CSAT distribution */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-lg border p-4">
+          <h4 className="mb-3 text-sm font-medium">Phiên theo kênh</h4>
+          {data.sessions_by_channel.length === 0 && <p className="text-xs text-muted-foreground">Chưa có dữ liệu</p>}
+          {data.sessions_by_channel.map((c) => (
+            <div key={c.channel} className="flex items-center justify-between py-1 text-sm">
+              <span className="capitalize">{c.channel === "chat" ? "Chat" : c.channel === "voice" ? "Voice" : c.channel}</span>
+              <Badge variant="secondary">{c.count}</Badge>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-lg border p-4">
+          <h4 className="mb-3 text-sm font-medium">Phân bố CSAT</h4>
+          {(!data.csat.distribution || data.csat.distribution.length === 0) && <p className="text-xs text-muted-foreground">Chưa có đánh giá</p>}
+          <div className="space-y-1">
+            {(data.csat.distribution || []).map((d) => {
+              const maxCount = Math.max(...(data.csat.distribution || []).map(x => x.count), 1)
+              return (
+                <div key={d.score} className="flex items-center gap-2 text-sm">
+                  <span className="w-12 text-right">{"★".repeat(d.score)}</span>
+                  <div className="h-4 flex-1 rounded bg-muted">
+                    <div className="h-4 rounded bg-amber-400" style={{ width: `${(d.count / maxCount) * 100}%` }} />
+                  </div>
+                  <span className="w-8 text-xs text-muted-foreground">{d.count}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Top handoff reasons */}
+      <div className="rounded-lg border p-4">
+        <h4 className="mb-3 text-sm font-medium">Lý do chuyển người hàng đầu</h4>
+        {data.handoff_reasons.length === 0 && <p className="text-xs text-muted-foreground">Chưa có dữ liệu</p>}
+        <div className="space-y-1">
+          {data.handoff_reasons.map((r, i) => (
+            <div key={i} className="flex items-center justify-between py-1 text-sm">
+              <span className="truncate">{r.reason}</span>
+              <Badge variant="outline">{r.count}</Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Sessions by day */}
+      <div className="rounded-lg border p-4">
+        <h4 className="mb-3 text-sm font-medium">Phiên theo ngày</h4>
+        {data.sessions_by_day.length === 0 && <p className="text-xs text-muted-foreground">Chưa có dữ liệu</p>}
+        <div className="flex items-end gap-1" style={{ height: "120px" }}>
+          {data.sessions_by_day.map((d) => {
+            const max = Math.max(...data.sessions_by_day.map(x => x.count), 1)
+            return (
+              <div key={d.day} className="group relative flex-1" title={`${d.day}: ${d.count}`}>
+                <div className="w-full rounded-t bg-primary/70 transition-colors group-hover:bg-primary"
+                  style={{ height: `${(d.count / max) * 100}%`, minHeight: d.count > 0 ? "4px" : "0" }} />
+              </div>
+            )
+          })}
+        </div>
+        {data.sessions_by_day.length > 0 && (
+          <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+            <span>{data.sessions_by_day[0]?.day}</span>
+            <span>{data.sessions_by_day[data.sessions_by_day.length - 1]?.day}</span>
+          </div>
+        )}
+      </div>
+
+      {/* AI Cost (only for managers/execs) */}
+      {showCost && data.cost && (
+        <div className="rounded-lg border p-4">
+          <h4 className="mb-3 flex items-center gap-2 text-sm font-medium">
+            <BarChart3 className="h-4 w-4" /> Chi phí AI
+          </h4>
+          {data.cost.length === 0 && <p className="text-xs text-muted-foreground">Chưa có dữ liệu usage</p>}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-xs text-muted-foreground">
+                  <th className="py-2 text-left font-medium">Nhà cung cấp</th>
+                  <th className="py-2 text-left font-medium">Model</th>
+                  <th className="py-2 text-right font-medium">Tokens vào</th>
+                  <th className="py-2 text-right font-medium">Tokens ra</th>
+                  <th className="py-2 text-right font-medium">Chi phí ước tính</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.cost.map((c, i) => (
+                  <tr key={i} className="border-b last:border-0">
+                    <td className="py-2">{c.provider}</td>
+                    <td className="py-2 font-mono text-xs">{c.model}</td>
+                    <td className="py-2 text-right">{c.tokens_in?.toLocaleString("vi-VN")}</td>
+                    <td className="py-2 text-right">{c.tokens_out?.toLocaleString("vi-VN")}</td>
+                    <td className="py-2 text-right font-medium">
+                      {typeof c.cost === "number" ? `$${c.cost.toFixed(4)}` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

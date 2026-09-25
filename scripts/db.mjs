@@ -100,6 +100,7 @@ async function functions() {
     '041_cskh_bot.sql',
     '042_cskh_tools.sql',
     '043_cskh_console.sql',
+    '044_cskh_stats.sql',
   ]
   for (const file of patches) {
     const path = join(dir, file)
