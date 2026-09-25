@@ -4,6 +4,23 @@ import { NextResponse, type NextRequest } from "next/server"
 const GATE_COOKIE = "demo_gate"
 const GATE_PATHS = ["/gate", "/api/gate"]
 
+// Reachable without sign-in: landing (WP-I2), help center, demo signup, and the customer-facing
+// CSKH bot endpoints (WP-K2–K6). Each of these routes does its own guarding (widget_key, rate
+// limit, VAPI_SECRET). /api/cskh/widget-key stays private — it reads the signed-in user's config.
+const PUBLIC_PATHS = ["/", "/help", "/demo", "/api/demo-signup"]
+const PUBLIC_API_PREFIXES = [
+  "/api/cskh/chat",
+  "/api/cskh/poll",
+  "/api/cskh/csat",
+  "/api/cskh/widget-key-public",
+  "/api/cskh/voice/",
+  "/api/cskh/vapi",
+]
+
+function isPublic(path: string): boolean {
+  return PUBLIC_PATHS.includes(path) || PUBLIC_API_PREFIXES.some((p) => path.startsWith(p))
+}
+
 // Refreshes the Supabase session cookie and guards every page behind sign-in.
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
@@ -43,7 +60,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user && path !== "/login") {
+  if (!user && path !== "/login" && !isPublic(path)) {
     const redirect = request.nextUrl.clone()
     redirect.pathname = "/login"
     redirect.search = path === "/" ? "" : `?next=${encodeURIComponent(path + request.nextUrl.search)}`
