@@ -85,7 +85,9 @@ Khách (Portal/landing) ──► /api/cskh/chat ──► agent.ts ──► LL
 - `src/lib/cskh/voice/telephony.ts` — Telephony interface + MockTelephony + VapiTelephony
 
 **Frontend**:
-- `src/components/cskh/chat-bubble.tsx` — customer-facing chat bubble (Portal/landing)
+- `src/components/cskh/chat-bubble.tsx` — customer-facing chat bubble (Portal/landing) + nút Gọi (web voice)
+- `src/components/cskh/use-voice-call.ts` — web voice call: Web Speech API STT/TTS, cùng lượt `/api/cskh/chat`; đọc trả lời nhân viên qua poll
+- `src/lib/cskh/rails.ts` `wantsHuman` (R5) — khách xin gặp người thật → handoff tất định, không qua LLM
 - `src/components/cskh/public-chat.tsx` — wrapper for server pages
 - `src/app/(app)/customer-service/bot/page.tsx` — staff console (Inbox/KB/Config/Overview tabs)
 

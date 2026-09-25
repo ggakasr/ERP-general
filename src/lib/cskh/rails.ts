@@ -71,3 +71,17 @@ export function checkReplyRails(
 
   return { blocked: false }
 }
+
+// R5: explicit request for a human → hand off deterministically, without asking the LLM.
+// Matches with or without diacritics (speech-to-text and hurried typing often drop them),
+// and still works when the LLM provider is down or overloaded.
+const HUMAN_REQUEST =
+  /(gap|noi chuyen( voi)?|ket noi( voi)?|goi|chuyen( may)?( cho| sang| qua)?|can|muon|xin|cho (toi|em|minh|tui) (gap|noi chuyen voi)) (voi )?(nguoi that|con nguoi|nhan vien|tu van vien|tong dai vien|nguoi truc|nguoi ho tro)|\bnguoi that\b|\b(talk|speak) (to|with) (a )?(human|person|agent)\b/
+
+export function stripDiacritics(text: string): string {
+  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase()
+}
+
+export function wantsHuman(text: string): boolean {
+  return HUMAN_REQUEST.test(stripDiacritics(text).replace(/\s+/g, " "))
+}

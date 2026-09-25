@@ -1,7 +1,7 @@
 import type { ChatMessage, AgentResult, SessionContext, BotConfig, ToolCall } from "./types"
 import { createProvider } from "./llm"
 import { TOOL_DEFS, executeTool } from "./tools"
-import { checkToolRails, checkReplyRails } from "./rails"
+import { checkToolRails, checkReplyRails, wantsHuman } from "./rails"
 
 const MAX_ROUNDS = 3
 const TIMEOUT_MS = 15_000
@@ -34,6 +34,23 @@ export async function runAgent(
   kbArticles: Array<{ title: string; body: string }>,
 ): Promise<AgentResult> {
   const provider = createProvider(config)
+
+  // R5: customer explicitly asks for a human → hand off without an LLM round-trip.
+  if (ctx.status === "serving" && wantsHuman(userMessage)) {
+    const args = { reason: "Khách yêu cầu gặp nhân viên" }
+    const result = await executeTool({ id: "rail_human", name: "de_xuat_handoff", args }, ctx)
+    const ticket = (result as { ticket_number?: string }).ticket_number
+    const handedOff = (ctx.status as string) !== "serving" // executeTool sets ctx.status on success
+    return {
+      reply: handedOff
+        ? `Dạ, em đã chuyển anh/chị sang nhân viên CSKH${ticket ? ` (mã ${ticket})` : ""}. Anh/chị vui lòng chờ trong giây lát, nhân viên sẽ tiếp nhận ngay ạ.`
+        : "Dạ, em chưa chuyển được sang nhân viên lúc này. Anh/chị vui lòng thử lại sau ít phút ạ.",
+      toolCalls: [{ id: "rail_human", name: "de_xuat_handoff", args, result }],
+      usage: { tokensIn: 0, tokensOut: 0, provider: provider.name, model: provider.model },
+      handedOff,
+    }
+  }
+
   const systemPrompt = buildSystemPrompt(config, kbArticles)
   const allToolCalls: ToolCall[] = []
   let totalIn = 0

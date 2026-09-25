@@ -63,7 +63,21 @@ Bot mặc định chạy chế độ **mock** (không cần API key, phản hồ
 18. Biểu đồ: phiên theo kênh, CSAT, lý do chuyển người, phiên theo ngày.
 19. Bảng chi phí AI (chỉ CS_MANAGER/CEO/CFO/COO mới thấy): nhà cung cấp, model, token, chi phí.
 
-### A6. Voice (tùy chọn)
+### A6. Gọi bằng giọng nói ngay trên web (miễn phí)
+
+1. Mở trang chủ `/` bằng **Chrome hoặc Edge** (Edge có giọng Việt tự nhiên hơn) → bấm bong bóng chat → nút **📞 Gọi**.
+2. Lần đầu trình duyệt hỏi quyền micro → **Cho phép**. Bot chào, thanh gọi hiện thời lượng + trạng thái (Đang nghe / Đang xử lý / Đang trả lời).
+3. Nói tự nhiên, ví dụ "tra đơn SO hai không hai sáu không tám gạch không không không không một".
+   Mẹo: đọc mã đơn dễ sai — có thể gõ mã vào ô chat trong lúc đang gọi, bot vẫn đọc câu trả lời.
+4. Nói **"cho tôi gặp nhân viên"** / "nói chuyện với người thật" → chuyển ngay (quy tắc R5, không phụ thuộc AI), tạo TICKET.
+5. Nhân viên (`cskh`) → Bot CSKH → Phiên chờ → **Nhận phiên** → khách nghe "Nhân viên đã tiếp nhận cuộc gọi".
+   Nhân viên **gõ** trả lời → khách **nghe** câu đó đọc lên; khách nói → nhân viên thấy chữ trong lịch sử phiên (~5 giây).
+6. Bấm **Kết thúc** bất cứ lúc nào; không giới hạn thời lượng. Đóng khung chat cũng kết thúc cuộc gọi.
+
+Giới hạn: nhận giọng + đọc giọng dùng Web Speech API của trình duyệt (Chrome gửi âm thanh tới Google để nhận dạng).
+Firefox không hỗ trợ. Nhân viên chưa nói bằng giọng thật (cần WebRTC) — đây là gọi AI trên web, **không thay tổng đài**.
+
+### A7. Voice qua API / tổng đài (khung, chưa nối xong)
 
 Khung voice hoạt động với mock adapter (không cần API key). Để test thật:
 - STT: `DEEPGRAM_API_KEY` (Deepgram)
