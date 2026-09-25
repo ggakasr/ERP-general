@@ -321,7 +321,12 @@ export function ChatBubble({ widgetKey, portalContext }: Props) {
                   <PhoneOff className="h-4 w-4" /> Kết thúc
                 </button>
               </div>
-              {call.state === "listening" && (
+              {call.state === "speaking" && (
+                <button onClick={call.skip} className="mt-1.5 text-[11px] text-primary hover:underline">
+                  Bỏ qua, để tôi nói →
+                </button>
+              )}
+              {call.state === "listening" && call.meter && (
                 <div className="mt-1.5 flex items-center gap-2" aria-hidden>
                   <span className="text-[10px] text-muted-foreground">Micro</span>
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">

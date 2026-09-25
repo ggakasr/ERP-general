@@ -87,6 +87,7 @@ export function useVoiceCall({ send, greeting }: Options) {
   const [noVietnameseVoice, setNoVietnameseVoice] = useState(false)
   const [hint, setHint] = useState<string | null>(null)
   const [level, setLevel] = useState(0)
+  const [meter, setMeter] = useState(false)
 
   const activeRef = useRef(false)
   const queueRef = useRef<string[]>([])
@@ -103,19 +104,55 @@ export function useVoiceCall({ send, greeting }: Options) {
     return () => clearInterval(t)
   }, [state])
 
+  // Chrome may never fire onend (utterance garbage-collected, online voices), which used to
+  // leave the call stuck after the greeting. Keep utterances referenced, watch
+  // speechSynthesis.speaking, and cap each chunk with a timeout.
+  const liveUtterancesRef = useRef<SpeechSynthesisUtterance[]>([])
+  const finishSpeechRef = useRef<(() => void) | null>(null)
+  const skipRef = useRef(false)
+
   const speak = useCallback(async (text: string) => {
+    skipRef.current = false
     for (const part of chunks(text)) {
-      if (!activeRef.current) return
+      if (!activeRef.current || skipRef.current) return
       await new Promise<void>(resolve => {
+        const synth = window.speechSynthesis
         const u = new SpeechSynthesisUtterance(part)
         u.lang = "vi-VN"
         if (voiceRef.current) u.voice = voiceRef.current
         u.rate = 1.05
-        u.onend = () => resolve()
-        u.onerror = () => resolve()
-        window.speechSynthesis.speak(u)
+        liveUtterancesRef.current.push(u)
+        let started = false
+        let done = false
+        const finish = () => {
+          if (done) return
+          done = true
+          clearInterval(watch)
+          clearTimeout(cap)
+          liveUtterancesRef.current = liveUtterancesRef.current.filter(x => x !== u)
+          finishSpeechRef.current = null
+          resolve()
+        }
+        finishSpeechRef.current = finish
+        u.onstart = () => { started = true }
+        u.onend = finish
+        u.onerror = finish
+        synth.speak(u)
+        synth.resume() // Chrome can leave the queue paused after the tab was idle
+        const watch = setInterval(() => {
+          if (synth.speaking || synth.pending) started = true
+          else if (started) finish()
+        }, 300)
+        const cap = setTimeout(() => { synth.cancel(); finish() }, 4000 + part.length * 120)
       })
     }
+  }, [])
+
+  /** Stop reading the current answer and go straight back to listening. */
+  const skip = useCallback(() => {
+    skipRef.current = true
+    window.speechSynthesis.cancel()
+    finishSpeechRef.current?.()
   }, [])
 
   // One recognition turn: resolves with the final transcript, or "" on silence / interruption.
@@ -173,6 +210,10 @@ export function useVoiceCall({ send, greeting }: Options) {
     micRef.current = { stream, ctx, raf: requestAnimationFrame(tick) }
   }
 
+  // Phones: an open getUserMedia stream can block the speech recognizer from the mic,
+  // so there we only ask for permission and release it (no level meter).
+  const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
   const closeMic = useCallback(() => {
     const m = micRef.current
     micRef.current = null
@@ -194,6 +235,7 @@ export function useVoiceCall({ send, greeting }: Options) {
     if (!activeRef.current) return
     activeRef.current = false
     queueRef.current = []
+    finishSpeechRef.current?.()
     stopAudio()
     setInterim("")
     setHint(null)
@@ -230,7 +272,19 @@ export function useVoiceCall({ send, greeting }: Options) {
       silentRounds = 0
       setHint(null)
       setState("thinking")
-      const reply = await sendRef.current(heard).catch(() => "Xin lỗi, em không kết nối được. Anh/chị nói lại giúp em ạ.")
+      // Slow LLM turns (~10s) feel like a dead line on a call — say a short filler after 2.5s.
+      const filler = setTimeout(() => {
+        if (!activeRef.current) return
+        const u = new SpeechSynthesisUtterance("Dạ, anh chị chờ em một chút ạ.")
+        u.lang = "vi-VN"
+        if (voiceRef.current) u.voice = voiceRef.current
+        liveUtterancesRef.current.push(u)
+        u.onend = u.onerror = () => { liveUtterancesRef.current = liveUtterancesRef.current.filter(x => x !== u) }
+        window.speechSynthesis.speak(u)
+      }, 2500)
+      const reply = await sendRef.current(heard)
+        .catch(() => "Xin lỗi, em không kết nối được. Anh/chị nói lại giúp em ạ.")
+        .finally(() => clearTimeout(filler))
       if (reply) queueRef.current.push(reply)
     }
   }, [speak, listenOnce, end])
@@ -248,7 +302,14 @@ export function useVoiceCall({ send, greeting }: Options) {
     setHint(null)
     setState("connecting")
     try {
-      await openMic() // asks for mic permission right on the click, and drives the level meter
+      if (isMobile()) {
+        const s = await navigator.mediaDevices.getUserMedia({ audio: true })
+        s.getTracks().forEach(t => t.stop())
+        setMeter(false)
+      } else {
+        await openMic() // asks for mic permission right on the click, and drives the level meter
+        setMeter(true)
+      }
     } catch (e) {
       const name = e instanceof DOMException ? e.name : ""
       setError(name === "NotFoundError" ? RECOGNITION_ERRORS["audio-capture"] : RECOGNITION_ERRORS["not-allowed"])
@@ -274,5 +335,5 @@ export function useVoiceCall({ send, greeting }: Options) {
     if (typeof window !== "undefined" && "speechSynthesis" in window) stopAudio()
   },[stopAudio])
 
-  return { state, active: state !== "idle", interim, elapsed, error, hint, level, noVietnameseVoice, start, end, announce, clearError: () => setError(null) }
+  return { state, active: state !== "idle", interim, elapsed, error, hint, level, meter, noVietnameseVoice, start, end, announce, skip, clearError: () => setError(null) }
 }
