@@ -14,7 +14,7 @@ Mật khẩu mọi tài khoản demo: `Demo@123`.
 
 | Vai trò | Tài khoản | Mục đích |
 |---|---|---|
-| Khách hàng (Portal) | `portal.acme` | Dùng bong bóng chat, tra đơn, xác thực, khiếu nại |
+| Khách hàng (ẩn danh) | (không cần đăng nhập) | Ô chat trên trang chủ `/` hoặc `/help`: tra đơn, xác thực, khiếu nại |
 | NV CSKH | `cskh` | Nhận phiên chuyển người, trả lời, đóng phiên |
 | TP CSKH | `cskh.tp` | Quản lý FAQ/tri thức, phân công, xem dashboard |
 | Lãnh đạo | `ceo` | Xem dashboard hoạt động bot, chi phí AI |
@@ -28,12 +28,13 @@ Bot mặc định chạy chế độ **mock** (không cần API key, phản hồ
 
 ### A2. Kịch bản demo — Khách hỏi bot
 
-1. **Đăng nhập `portal.acme`** → bấm bong bóng chat góc phải dưới.
+1. Mở **trang chủ `/`** (hoặc `/help`) ở cửa sổ ẩn danh — không đăng nhập — bấm bong bóng chat góc phải dưới.
+   (Portal khách hàng `/portal` cũng có bong bóng chat, nhưng dữ liệu mẫu chưa có tài khoản PORTAL_CUSTOMER.)
 2. Bot hiển thị lời chào (cấu hình trong `/customer-service/bot` tab Cấu hình).
 3. Gõ **"Tôi muốn tra đơn hàng SO-202608-00001"** → bot gọi tool `tra_cuu_don_hang`,
    trả về trạng thái + ngày giao (trường công khai). Thông tin nhạy cảm (SĐT, địa chỉ, giá trị)
    bị ẩn — chưa xác thực (R2).
-4. Gõ **"SĐT của tôi là 0901234567"** → bot gọi `xac_thuc_khach`, khớp → hiện thêm
+4. Gõ **"SĐT của tôi là 024 3444 666"** (SĐT của Công ty CP Nội thất Hoàng Gia — chủ đơn SO-202608-00001) → bot gọi `xac_thuc_khach`, khớp → hiện thêm
    tên khách, SĐT, địa chỉ, giá trị đơn.
 5. Gõ **"Tôi muốn khiếu nại hàng bị lỗi"** → bot gọi `de_xuat_handoff`, tạo TICKET
    tự động, chuyển phiên sang trạng thái **chờ nhân viên**.

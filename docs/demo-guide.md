@@ -87,8 +87,8 @@ Kiểm toán, Quản trị hệ thống) có phạm vi COMPANY nên vẫn xử l
 
 Xem hướng dẫn chi tiết tại `docs/cskh-bot-huong-dan.md`. Tóm tắt:
 
-1. `portal.acme` → bấm bong bóng chat → tra đơn `SO-202608-00001` → bot trả trạng thái (trường công khai).
-2. Gõ SĐT → bot xác thực → hiện thêm thông tin nhạy cảm (R2).
+1. Trang chủ `/` (ẩn danh, không đăng nhập) → bấm bong bóng chat → tra đơn `SO-202608-00001` → bot trả trạng thái (trường công khai).
+2. Gõ SĐT `024 3444 666` → bot xác thực → hiện thêm thông tin nhạy cảm (R2).
 3. Khiếu nại → bot tạo TICKET, chuyển người.
 4. `cskh` → Bot CSKH → Nhận phiên → trả lời khách → Đóng phiên → khách chấm CSAT.
 5. `cskh.tp` → Tri thức → thêm FAQ → duyệt (SoD: người soạn ≠ người đăng).
