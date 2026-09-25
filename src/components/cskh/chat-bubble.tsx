@@ -321,6 +321,15 @@ export function ChatBubble({ widgetKey, portalContext }: Props) {
                   <PhoneOff className="h-4 w-4" /> Kết thúc
                 </button>
               </div>
+              {call.state === "listening" && (
+                <div className="mt-1.5 flex items-center gap-2" aria-hidden>
+                  <span className="text-[10px] text-muted-foreground">Micro</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary transition-[width] duration-100" style={{ width: `${Math.round(call.level * 100)}%` }} />
+                  </div>
+                </div>
+              )}
+              {call.hint && <p className="mt-1.5 text-[11px] text-muted-foreground">{call.hint}</p>}
               {call.interim && call.state === "listening" && (
                 <p className="mt-1.5 truncate text-xs italic text-muted-foreground">“{call.interim}”</p>
               )}

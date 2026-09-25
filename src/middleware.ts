@@ -66,7 +66,8 @@ export async function middleware(request: NextRequest) {
     redirect.search = path === "/" ? "" : `?next=${encodeURIComponent(path + request.nextUrl.search)}`
     return NextResponse.redirect(redirect)
   }
-  if (user && (path === "/login" || path === "/")) {
+  // Signed-in users may still open the landing page ("/") — it hosts the customer CSKH chat.
+  if (user && path === "/login") {
     const redirect = request.nextUrl.clone()
     redirect.pathname = "/dashboard"
     redirect.search = ""

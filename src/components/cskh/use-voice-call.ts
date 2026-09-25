@@ -65,6 +65,14 @@ function chunks(text: string): string[] {
   return out
 }
 
+const RECOGNITION_ERRORS: Record<string, string> = {
+  "not-allowed": "Trình duyệt chưa được cấp quyền micro. Bấm biểu tượng ổ khóa cạnh địa chỉ web → cho phép Micro, rồi gọi lại.",
+  "service-not-allowed": "Trình duyệt chặn dịch vụ nhận giọng nói. Vui lòng dùng Google Chrome hoặc Microsoft Edge bản chính thức.",
+  "audio-capture": "Không tìm thấy micro. Hãy cắm micro/tai nghe rồi gọi lại.",
+  "network": "Trình duyệt không kết nối được dịch vụ nhận giọng nói. Chỉ Google Chrome / Microsoft Edge bản chính thức hỗ trợ (Brave, Cốc Cốc, Opera thường không). Kiểm tra mạng rồi gọi lại.",
+  "language-not-supported": "Trình duyệt không hỗ trợ nhận giọng tiếng Việt. Vui lòng dùng Google Chrome hoặc Microsoft Edge.",
+}
+
 type Options = {
   /** Sends one utterance through the chat API; resolves to the bot reply (null = no bot reply, e.g. waiting for staff). */
   send: (text: string) => Promise<string | null>
@@ -77,12 +85,15 @@ export function useVoiceCall({ send, greeting }: Options) {
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [noVietnameseVoice, setNoVietnameseVoice] = useState(false)
+  const [hint, setHint] = useState<string | null>(null)
+  const [level, setLevel] = useState(0)
 
   const activeRef = useRef(false)
   const queueRef = useRef<string[]>([])
   const recognitionRef = useRef<Recognition | null>(null)
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null)
   const startedAtRef = useRef(0)
+  const micRef = useRef<{ stream: MediaStream; ctx: AudioContext; raf: number } | null>(null)
   const sendRef = useRef(send)
   sendRef.current = send
 
@@ -128,7 +139,7 @@ export function useVoiceCall({ send, greeting }: Options) {
       setInterim((finalText + " " + live).trim())
     }
     rec.onerror = (e) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture") fatal = e.error
+      if (["not-allowed", "service-not-allowed", "audio-capture", "network", "language-not-supported"].includes(e.error)) fatal = e.error
     }
     rec.onend = () => {
       recognitionRef.current = null
@@ -139,11 +150,45 @@ export function useVoiceCall({ send, greeting }: Options) {
     try { rec.start() } catch { recognitionRef.current = null; resolve("") }
   }), [])
 
-  const stopAudio = () => {
+  // Mic level meter — lets the caller see the browser actually receives sound.
+  const openMic = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    const ctx = new AudioContext()
+    const analyser = ctx.createAnalyser()
+    analyser.fftSize = 512
+    ctx.createMediaStreamSource(stream).connect(analyser)
+    const buf = new Uint8Array(analyser.fftSize)
+    let last = 0
+    const tick = (t: number) => {
+      if (!micRef.current) return
+      if (t - last > 100) {
+        last = t
+        analyser.getByteTimeDomainData(buf)
+        let sum = 0
+        for (let i = 0; i < buf.length; i++) sum += (buf[i] - 128) * (buf[i] - 128)
+        setLevel(Math.min(1, Math.sqrt(sum / buf.length) / 40))
+      }
+      micRef.current.raf = requestAnimationFrame(tick)
+    }
+    micRef.current = { stream, ctx, raf: requestAnimationFrame(tick) }
+  }
+
+  const closeMic = useCallback(() => {
+    const m = micRef.current
+    micRef.current = null
+    if (!m) return
+    cancelAnimationFrame(m.raf)
+    m.stream.getTracks().forEach(t => t.stop())
+    void m.ctx.close().catch(() => {})
+    setLevel(0)
+  }, [])
+
+  const stopAudio = useCallback(() => {
     recognitionRef.current?.abort()
     recognitionRef.current = null
     window.speechSynthesis.cancel()
-  }
+    closeMic()
+  }, [closeMic])
 
   const end = useCallback(() => {
     if (!activeRef.current) return
@@ -151,10 +196,12 @@ export function useVoiceCall({ send, greeting }: Options) {
     queueRef.current = []
     stopAudio()
     setInterim("")
+    setHint(null)
     setState("idle")
-  }, [])
+  },[stopAudio])
 
   const loop = useCallback(async () => {
+    let silentRounds = 0
     while (activeRef.current) {
       const next = queueRef.current.shift()
       if (next) {
@@ -168,15 +215,20 @@ export function useVoiceCall({ send, greeting }: Options) {
       try {
         heard = await listenOnce()
       } catch (e) {
-        const code = e instanceof Error ? e.message : ""
-        setError(code === "audio-capture"
-          ? "Không tìm thấy micro. Hãy cắm micro/tai nghe rồi gọi lại."
-          : "Trình duyệt chưa được cấp quyền micro. Bấm biểu tượng ổ khóa cạnh địa chỉ web → cho phép Micro, rồi gọi lại.")
+        setError(RECOGNITION_ERRORS[e instanceof Error ? e.message : ""] || RECOGNITION_ERRORS["not-allowed"])
         end()
         return
       }
       if (!activeRef.current) return
-      if (!heard) continue // silence or interrupted by announce() — listen again / speak queued text
+      if (!heard) {
+        // Silence or interrupted by announce() — listen again / speak queued text.
+        if (!queueRef.current.length && ++silentRounds >= 2) {
+          setHint("Chưa nghe rõ tiếng anh/chị. Nếu thanh âm lượng không nhảy khi nói, hãy kiểm tra micro đang chọn của máy — hoặc gõ câu hỏi vào ô chat, em vẫn đọc câu trả lời.")
+        }
+        continue
+      }
+      silentRounds = 0
+      setHint(null)
       setState("thinking")
       const reply = await sendRef.current(heard).catch(() => "Xin lỗi, em không kết nối được. Anh/chị nói lại giúp em ạ.")
       if (reply) queueRef.current.push(reply)
@@ -193,7 +245,17 @@ export function useVoiceCall({ send, greeting }: Options) {
     activeRef.current = true
     startedAtRef.current = Date.now()
     setElapsed(0)
+    setHint(null)
     setState("connecting")
+    try {
+      await openMic() // asks for mic permission right on the click, and drives the level meter
+    } catch (e) {
+      const name = e instanceof DOMException ? e.name : ""
+      setError(name === "NotFoundError" ? RECOGNITION_ERRORS["audio-capture"] : RECOGNITION_ERRORS["not-allowed"])
+      activeRef.current = false
+      setState("idle")
+      return
+    }
     voiceRef.current = await loadVietnameseVoice()
     setNoVietnameseVoice(!voiceRef.current)
     queueRef.current = [greeting]
@@ -210,7 +272,7 @@ export function useVoiceCall({ send, greeting }: Options) {
   useEffect(() => () => {
     activeRef.current = false
     if (typeof window !== "undefined" && "speechSynthesis" in window) stopAudio()
-  }, [])
+  },[stopAudio])
 
-  return { state, active: state !== "idle", interim, elapsed, error, noVietnameseVoice, start, end, announce, clearError: () => setError(null) }
+  return { state, active: state !== "idle", interim, elapsed, error, hint, level, noVietnameseVoice, start, end, announce, clearError: () => setError(null) }
 }

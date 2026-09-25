@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Bell, LogOut, Menu, Search, Users } from "lucide-react"
+import { Bell, Home, LogOut, Menu, Search, Users } from "lucide-react"
 import { rpc } from "@/lib/api"
 import { useSession } from "@/lib/session"
 import type { DocRef } from "@/lib/types"
@@ -186,7 +186,10 @@ export function Header({ onMenu }: { onMenu?: () => void }) {
               >
                 <Users className="h-4 w-4" /> Chuyển tài khoản demo
               </button>
-              <button onClick={signOut} className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border px-3 py-1.5 hover:bg-accent">
+              <Link href="/" onClick={() => setOpenUser(false)} className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border px-3 py-1.5 hover:bg-accent">
+                <Home className="h-4 w-4" /> Trang giới thiệu & chat CSKH
+              </Link>
+              <button onClick={() => signOut()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border px-3 py-1.5 hover:bg-accent">
                 <LogOut className="h-4 w-4" /> Đăng xuất
               </button>
             </div>

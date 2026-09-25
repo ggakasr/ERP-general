@@ -19,7 +19,8 @@ interface SessionValue {
   canAny: (resources: string[], action: string) => boolean
   hasRole: (role: string) => boolean
   refreshMaster: () => Promise<void>
-  signOut: () => Promise<void>
+  /** Signs out; goes to the landing page (with the CSKH chat) unless another path is given. */
+  signOut: (to?: string) => Promise<void>
   /** Sign in as a different demo account without leaving the current page — lets you
    *  test a cross-role flow (PR → PO → GRN → SINV → PMT, …) without repeated logout/login. */
   switchUser: (email: string, password: string) => Promise<string | null>
@@ -34,9 +35,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [unread, setUnread] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (to: string = "/") => {
     await createClient().auth.signOut()
-    router.replace("/login")
+    router.replace(to)
     router.refresh()
   }, [router])
 
@@ -68,7 +69,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (cancelled) return
       if (!meRes.ok) {
         if ((meRes as any).code === "UNAUTHENTICATED" || (meRes as any).code === "PGRST301") {
-          await signOut()
+          await signOut("/login") // expired session → straight back to sign-in
           return
         }
         setError((meRes as any).error || "Không tải được thông tin người dùng")
@@ -114,7 +115,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         <div className="max-w-md rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-800">
           <p className="font-semibold">Không thể tải phiên làm việc</p>
           <p className="mt-1">{error}</p>
-          <button onClick={signOut} className="mt-3 rounded-md bg-red-600 px-3 py-1.5 text-white">Đăng nhập lại</button>
+          <button onClick={() => signOut("/login")} className="mt-3 rounded-md bg-red-600 px-3 py-1.5 text-white">Đăng nhập lại</button>
         </div>
       </div>
     )

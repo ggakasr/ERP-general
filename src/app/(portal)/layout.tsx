@@ -46,7 +46,7 @@ function PortalNav() {
       </div>
       <div className="flex items-center gap-3 text-sm">
         <span className="hidden text-muted-foreground sm:inline">{me.user.full_name}</span>
-        <button onClick={signOut} className="flex items-center gap-1 text-muted-foreground hover:text-foreground" title="Đăng xuất">
+        <button onClick={() => signOut()} className="flex items-center gap-1 text-muted-foreground hover:text-foreground" title="Đăng xuất">
           <LogOut className="h-4 w-4" />
         </button>
       </div>
