@@ -14,6 +14,28 @@ interface OpenAIChoice {
   }
 }
 
+// Transient provider errors (rate limit, overload — e.g. Gemini free tier 503 "high demand").
+// Retry delays (1s, 2s, Retry-After capped at 4s) keep a turn inside agent.ts TIMEOUT_MS (15s).
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504])
+const RETRY_DELAYS_MS = [1_000, 2_000]
+const MAX_RETRY_AFTER_MS = 4_000
+
+export async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  delays: number[] = RETRY_DELAYS_MS,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetchImpl(url, init)
+    if (res.ok || !RETRYABLE_STATUS.has(res.status) || attempt >= delays.length) return res
+    const retryAfterSec = Number(res.headers.get("retry-after"))
+    const wait = retryAfterSec > 0 ? Math.min(retryAfterSec * 1000, MAX_RETRY_AFTER_MS) : delays[attempt]
+    await res.body?.cancel().catch(() => {})
+    await new Promise(r => setTimeout(r, wait))
+  }
+}
+
 export class OpenAICompatProvider implements LLMProvider {
   name = "openai-compat"
   model: string
@@ -37,7 +59,7 @@ export class OpenAICompatProvider implements LLMProvider {
       function: { name: t.name, description: t.description, parameters: t.parameters },
     }))
 
-    const res = await fetch(`${this.baseUrl}/chat/completions`, {
+    const res = await fetchWithRetry(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
