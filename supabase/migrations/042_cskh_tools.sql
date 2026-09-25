@@ -2,6 +2,9 @@
 -- Tools: tra_cuu_don_hang, xac_thuc_khach, tra_cuu_faq, de_xuat_handoff
 -- Session management: start_session, add_message, update_session, record_usage
 
+-- Drop old 3-param overload that conflicts with the 4-param version below
+DROP FUNCTION IF EXISTS api_cskh_tra_don(uuid, text, uuid[]);
+
 -- ═══════════════════════════════════════════════════════════════
 -- 0. BOT SYSTEM USER (one per tenant, used as actor for TICKET creation)
 -- ═══════════════════════════════════════════════════════════════

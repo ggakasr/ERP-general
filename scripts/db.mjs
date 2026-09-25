@@ -106,15 +106,17 @@ async function functions() {
     const path = join(dir, file)
     if (!existsSync(path)) continue
     const sql = readFileSync(path, 'utf8')
+    // Run any DROP FUNCTION statements first (e.g. removing ambiguous overloads)
+    const drops = sql.match(/DROP FUNCTION[^;]+;/g) || []
+    for (const drop of drops) {
+      await client.query(drop)
+    }
     const blocks = sql.split(/\n(?=CREATE OR REPLACE FUNCTION )/).filter((b) => b.startsWith('CREATE OR REPLACE FUNCTION '))
-    if (blocks.length === 0 && !file.includes('026')) continue
-    if (file.includes('026')) {
-      // 026 drops ambiguous overload — run the DROP statement
-      const drop = sql.match(/DROP FUNCTION[^;]+;/)?.[0]
-      if (drop) await client.query(drop)
-      console.log(`→ ${file}: drop ambiguous fn_notify`)
+    if (blocks.length === 0 && drops.length > 0) {
+      console.log(`→ ${file}: ${drops.length} drop(s), no function patches`)
       continue
     }
+    if (blocks.length === 0) continue
     for (const b of blocks) {
       const end = b.indexOf('$$;')
       if (end < 0) continue
